@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initFaqAccordion();
   initMobileMenu();
   initCopyButtons();
+  initReferralHandler();
 });
 
 /* --------------------------------------------------------------------------
@@ -574,9 +575,17 @@ function initAuthModal() {
           localStorage.setItem(`giga_user_${email}`, storedUsername);
         }
 
+        // Automatic 6-Digit Referral Code
+        let storedRefCode = localStorage.getItem(`giga_ref_${email}`) || user.user_metadata?.referral_code;
+        if (!storedRefCode) {
+          storedRefCode = Math.floor(100000 + Math.random() * 900000).toString();
+          localStorage.setItem(`giga_ref_${email}`, storedRefCode);
+        }
+
         const userSession = {
           email: email,
           username: storedUsername,
+          referralCode: storedRefCode,
           fullName: user.user_metadata?.full_name || 'Gigachain Member',
           gigaBalance: 500.00,
           usdtBalance: 1500.00,
@@ -677,9 +686,23 @@ function initAuthModal() {
           user = { email: email, user_metadata: { full_name: fullName, username: autoUsername } };
         }
 
+        const refInput = document.getElementById('signupReferralInput');
+        const refCodeEntered = refInput ? refInput.value.trim().toUpperCase() : '';
+
+        // Generate Unique 6-Digit Referral Code for this new user
+        const newReferralCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+        // If referred by someone, increment referrer's count in localStorage
+        if (refCodeEntered && refCodeEntered.length === 6) {
+          const prevCount = parseInt(localStorage.getItem(`chainviora_ref_count_${refCodeEntered}`) || '0', 10);
+          localStorage.setItem(`chainviora_ref_count_${refCodeEntered}`, (prevCount + 1).toString());
+        }
+
         const userSession = {
           email: email,
           username: autoUsername,
+          referralCode: newReferralCode,
+          referredBy: refCodeEntered || null,
           fullName: fullName,
           gigaBalance: 500.00, // Free welcome bonus
           usdtBalance: 1500.00,
@@ -687,6 +710,7 @@ function initAuthModal() {
         };
 
         localStorage.setItem(`giga_user_${email}`, autoUsername);
+        localStorage.setItem(`giga_ref_${email}`, newReferralCode);
         localStorage.setItem('gigachain_current_user', JSON.stringify(userSession));
         localStorage.setItem('gigachain_username', autoUsername);
 
@@ -825,4 +849,63 @@ function createToastContainer() {
   document.body.appendChild(cont);
   return cont;
 }
+
+/* --------------------------------------------------------------------------
+   8. Referral Code Auto-Detection (?ref=XXXXXX)
+   -------------------------------------------------------------------------- */
+function initReferralHandler() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const refParam = urlParams.get('ref') || urlParams.get('referral');
+
+  const refInput = document.getElementById('signupReferralInput');
+  const badge = document.getElementById('refAppliedBadge');
+
+  if (refParam) {
+    const cleanRef = refParam.trim().toUpperCase().slice(0, 6);
+    localStorage.setItem('chainviora_active_ref', cleanRef);
+
+    if (refInput) {
+      refInput.value = cleanRef;
+    }
+    if (badge) {
+      badge.textContent = `✓ Code ${cleanRef} Applied`;
+      badge.classList.remove('hidden');
+    }
+
+    // Automatically trigger Sign Up modal so the user immediately sees the pre-filled referral code!
+    setTimeout(() => {
+      const modal = document.getElementById('authModal');
+      const tabSignup = document.getElementById('authTabSignup');
+      const formLogin = document.getElementById('loginForm');
+      const formSignup = document.getElementById('signupForm');
+      const tabLogin = document.getElementById('authTabLogin');
+
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      }
+      if (tabSignup && tabLogin && formSignup && formLogin) {
+        tabSignup.classList.add('bg-white', 'text-slate-800', 'shadow-xs');
+        tabSignup.classList.remove('text-slate-500');
+        tabLogin.classList.remove('bg-white', 'text-slate-800', 'shadow-xs');
+        tabLogin.classList.add('text-slate-500');
+        formSignup.classList.remove('hidden');
+        formLogin.classList.add('hidden');
+      }
+
+      showToast(`Referral code ${cleanRef} applied! Sign up now to claim your welcome bonus 🎁`, 'success');
+    }, 700);
+  } else {
+    // Check if there was a previously saved referral in localStorage
+    const savedRef = localStorage.getItem('chainviora_active_ref');
+    if (savedRef && refInput && !refInput.value) {
+      refInput.value = savedRef;
+      if (badge) {
+        badge.textContent = `✓ Code ${savedRef} Applied`;
+        badge.classList.remove('hidden');
+      }
+    }
+  }
+}
+
 

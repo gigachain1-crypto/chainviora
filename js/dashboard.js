@@ -8,12 +8,14 @@ document.addEventListener('DOMContentLoaded', () => {
   initWithdrawModal();
   initDashboardCanvas();
   initCopyActions();
+  initReferralSystem();
 });
 
 // State
 let currentUser = {
   username: 'GIGA' + Math.floor(100000 + Math.random() * 900000),
   email: 'crypto.member@gigachain.io',
+  referralCode: Math.floor(100000 + Math.random() * 900000).toString(),
   gigaBalance: 500.00,
   usdtBalance: 1500.00
 };
@@ -30,15 +32,19 @@ function initDashboardUser() {
       const parsed = JSON.parse(savedUserJson);
       if (parsed.username) currentUser.username = parsed.username;
       if (parsed.email) currentUser.email = parsed.email;
+      if (parsed.referralCode) currentUser.referralCode = parsed.referralCode;
       if (parsed.gigaBalance !== undefined) currentUser.gigaBalance = parseFloat(parsed.gigaBalance);
       if (parsed.usdtBalance !== undefined) currentUser.usdtBalance = parseFloat(parsed.usdtBalance);
     } catch (e) {
       console.warn('Error reading saved session:', e);
     }
-  } else {
-    // If no session found in localStorage, store the generated one
-    localStorage.setItem('gigachain_current_user', JSON.stringify(currentUser));
   }
+
+  // Ensure user always has a 6-digit referral code
+  if (!currentUser.referralCode) {
+    currentUser.referralCode = Math.floor(100000 + Math.random() * 900000).toString();
+  }
+  localStorage.setItem('gigachain_current_user', JSON.stringify(currentUser));
 
   // DOM Elements
   const headerUsername = document.getElementById('headerUsername');
@@ -422,4 +428,90 @@ function showToast(message, type = 'info') {
     setTimeout(() => toast.remove(), 300);
   }, 4000);
 }
+
+/* --------------------------------------------------------------------------
+   7. Referral System (6-Digit Code, Shareable Link & WhatsApp Sharing)
+   -------------------------------------------------------------------------- */
+function initReferralSystem() {
+  const codeDisplay = document.getElementById('userRefCodeDisplay');
+  const linkInput = document.getElementById('userRefLinkInput');
+  const copyCodeBtn = document.getElementById('copyRefCodeBtn');
+  const copyLinkBtn = document.getElementById('copyRefLinkBtn');
+  const shareBtn = document.getElementById('shareRefBtn');
+  const refCountEl = document.getElementById('totalReferralsCount');
+  const refEarnedEl = document.getElementById('totalReferralEarned');
+
+  if (codeDisplay) {
+    codeDisplay.textContent = currentUser.referralCode;
+  }
+
+  // Construct referral link using current origin or production domain
+  let baseUrl = window.location.origin;
+  if (!baseUrl.includes('localhost') && !baseUrl.includes('127.0.0.1')) {
+    baseUrl = 'https://www.chainviora.com';
+  }
+  const refLink = `${baseUrl}/?ref=${currentUser.referralCode}`;
+
+  if (linkInput) {
+    linkInput.value = refLink;
+  }
+
+  // Stats from localStorage
+  const refCount = parseInt(localStorage.getItem(`chainviora_ref_count_${currentUser.referralCode}`) || '0', 10);
+  if (refCountEl) refCountEl.textContent = refCount;
+  if (refEarnedEl) refEarnedEl.textContent = `${(refCount * 50).toFixed(2)} GIGA`;
+
+  // Copy 6-Digit Code
+  if (copyCodeBtn) {
+    copyCodeBtn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(currentUser.referralCode);
+        showToast(`Referral Code ${currentUser.referralCode} copied!`, 'success');
+      } catch (err) {
+        showToast(`Referral Code: ${currentUser.referralCode}`, 'info');
+      }
+    });
+  }
+
+  // Copy Full Shareable Link
+  if (copyLinkBtn) {
+    copyLinkBtn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(refLink);
+        showToast('Referral Link copied to clipboard! 🚀', 'success');
+      } catch (err) {
+        if (linkInput) {
+          linkInput.select();
+          document.execCommand('copy');
+          showToast('Referral Link copied!', 'success');
+        }
+      }
+    });
+  }
+
+  // Share via WhatsApp / Web Share API
+  if (shareBtn) {
+    shareBtn.addEventListener('click', async () => {
+      const shareText = `Hey! Join Chainviora using my Referral Code: ${currentUser.referralCode} to get 500 GIGA bonus tokens!\nSign up here:\n${refLink}`;
+
+      if (navigator.share) {
+        try {
+          await navigator.share({
+            title: 'Chainviora Web3 Ecosystem',
+            text: shareText,
+            url: refLink
+          });
+          return;
+        } catch (e) {
+          // If user cancelled, fall through
+        }
+      }
+
+      // WhatsApp Web / App share fallback
+      const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`;
+      window.open(waUrl, '_blank');
+    });
+  }
+}
+
 
