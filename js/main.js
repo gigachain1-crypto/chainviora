@@ -449,23 +449,46 @@ function initAuthModal() {
 
           showToast(`Verification code sent to ${email}! Check your inbox ✉️`, 'success');
 
-          // 60-second cooldown timer
-          let timeLeft = 60;
+          // 3-Minute (180s) Cooldown Timer
+          let timeLeft = 180;
           if (otpCountdownInterval) clearInterval(otpCountdownInterval);
           getOtpBtn.innerHTML = `<span>Sent ✓</span>`;
 
-          if (otpTimer) otpTimer.textContent = `Resend in ${timeLeft}s`;
+          function formatMinutes(sec) {
+            const m = Math.floor(sec / 60);
+            const s = sec % 60;
+            return `${m}:${s < 10 ? '0' : ''}${s}`;
+          }
+
+          if (otpTimer) {
+            otpTimer.innerHTML = `<span class="text-[11px] text-amber-700 font-mono font-bold">Resend in ${formatMinutes(timeLeft)}</span>`;
+          }
 
           otpCountdownInterval = setInterval(() => {
             timeLeft--;
-            if (otpTimer) otpTimer.textContent = `Resend in ${timeLeft}s`;
+            if (otpTimer) {
+              otpTimer.innerHTML = `<span class="text-[11px] text-amber-700 font-mono font-bold">Resend in ${formatMinutes(timeLeft)}</span>`;
+            }
 
             if (timeLeft <= 0) {
               clearInterval(otpCountdownInterval);
               getOtpBtn.disabled = false;
               getOtpBtn.classList.remove('opacity-70', 'cursor-not-allowed');
-              getOtpBtn.innerHTML = `<span>Get OTP ⚡</span>`;
-              if (otpTimer) otpTimer.textContent = 'OTP Ready to resend';
+              getOtpBtn.innerHTML = `<span>Resend OTP ↺</span>`;
+
+              if (otpTimer) {
+                otpTimer.innerHTML = `
+                  <button type="button" id="inlineResendOtpBtn" class="text-xs text-amber-600 hover:text-amber-800 font-black underline cursor-pointer flex items-center gap-1 transition-colors">
+                    <span>Resend OTP ↺</span>
+                  </button>
+                `;
+                const inlineBtn = document.getElementById('inlineResendOtpBtn');
+                if (inlineBtn) {
+                  inlineBtn.addEventListener('click', () => {
+                    getOtpBtn.click();
+                  });
+                }
+              }
             }
           }, 1000);
 
