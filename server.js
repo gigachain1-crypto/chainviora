@@ -21,6 +21,34 @@ const MIME_TYPES = {
 const server = http.createServer((req, res) => {
   // Normalize URL
   let cleanUrl = req.url.split('?')[0];
+
+  // API Serverless Route Simulation for Local Development
+  if (cleanUrl === '/api/send-otp' || cleanUrl === '/api/verify-otp') {
+    let bodyData = '';
+    req.on('data', chunk => bodyData += chunk);
+    req.on('end', () => {
+      try {
+        req.body = bodyData ? JSON.parse(bodyData) : {};
+      } catch (e) {
+        req.body = bodyData;
+      }
+      res.status = (code) => {
+        res.statusCode = code;
+        return res;
+      };
+      res.json = (obj) => {
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify(obj));
+      };
+      if (cleanUrl === '/api/send-otp') {
+        require('./api/send-otp')(req, res);
+      } else {
+        require('./api/verify-otp')(req, res);
+      }
+    });
+    return;
+  }
+
   let safePath = path.normalize(cleanUrl).replace(/^(\.\.[\/\\])+/, '');
   let filePath = path.join(__dirname, safePath === path.sep || safePath === '.' ? 'index.html' : safePath);
 

@@ -405,9 +405,9 @@ function initAuthModal() {
     });
   });
 
-  // GET OTP LOGIC
+  // REAL RESEND EMAIL OTP GENERATION & SENDING
   if (getOtpBtn) {
-    getOtpBtn.addEventListener('click', () => {
+    getOtpBtn.addEventListener('click', async () => {
       const email = signupEmailInput ? signupEmailInput.value.trim() : '';
       if (!email || !email.includes('@') || !email.includes('.')) {
         showToast('Please enter a valid email address first.', 'error');
@@ -415,39 +415,78 @@ function initAuthModal() {
         return;
       }
 
-      // Generate 6 digit OTP
-      const generatedOtp = Math.floor(100000 + Math.random() * 900000);
-      window.currentGeneratedOtp = generatedOtp;
-
-      // Reveal OTP box
-      if (otpContainer) {
-        otpContainer.classList.remove('hidden');
-      }
-      if (otpInput) {
-        otpInput.focus();
-      }
-
-      showToast(`Verification code sent! Your 6-Digit OTP is: ${generatedOtp} ✉️`, 'info');
-
-      // 60-second cooldown timer
-      let timeLeft = 60;
+      const origBtnContent = getOtpBtn.innerHTML;
       getOtpBtn.disabled = true;
-      getOtpBtn.classList.add('opacity-50', 'cursor-not-allowed');
+      getOtpBtn.classList.add('opacity-70', 'cursor-not-allowed');
+      getOtpBtn.innerHTML = `
+        <svg class="animate-spin -ml-0.5 mr-1.5 h-3.5 w-3.5 text-amber-600 inline-block" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+        </svg>
+        <span>Sending...</span>
+      `;
 
-      if (otpCountdownInterval) clearInterval(otpCountdownInterval);
-      if (otpTimer) otpTimer.textContent = `Resend in ${timeLeft}s`;
+      try {
+        const response = await fetch('/api/send-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: email })
+        });
 
-      otpCountdownInterval = setInterval(() => {
-        timeLeft--;
-        if (otpTimer) otpTimer.textContent = `Resend in ${timeLeft}s`;
+        const data = await response.json();
 
-        if (timeLeft <= 0) {
-          clearInterval(otpCountdownInterval);
+        if (data.success) {
+          window.chainvioraOtpToken = data.token;
+          window.chainvioraOtpEmail = email;
+
+          // Reveal OTP box
+          if (otpContainer) {
+            otpContainer.classList.remove('hidden');
+          }
+          if (otpInput) {
+            otpInput.focus();
+          }
+
+          showToast(`Verification code sent to ${email}! Check your inbox ✉️`, 'success');
+
+          // 60-second cooldown timer
+          let timeLeft = 60;
+          if (otpCountdownInterval) clearInterval(otpCountdownInterval);
+          getOtpBtn.innerHTML = `<span>Sent ✓</span>`;
+
+          if (otpTimer) otpTimer.textContent = `Resend in ${timeLeft}s`;
+
+          otpCountdownInterval = setInterval(() => {
+            timeLeft--;
+            if (otpTimer) otpTimer.textContent = `Resend in ${timeLeft}s`;
+
+            if (timeLeft <= 0) {
+              clearInterval(otpCountdownInterval);
+              getOtpBtn.disabled = false;
+              getOtpBtn.classList.remove('opacity-70', 'cursor-not-allowed');
+              getOtpBtn.innerHTML = `<span>Get OTP ⚡</span>`;
+              if (otpTimer) otpTimer.textContent = 'OTP Ready to resend';
+            }
+          }, 1000);
+
+        } else {
           getOtpBtn.disabled = false;
-          getOtpBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-          if (otpTimer) otpTimer.textContent = 'OTP Ready to resend';
+          getOtpBtn.classList.remove('opacity-70', 'cursor-not-allowed');
+          getOtpBtn.innerHTML = origBtnContent;
+
+          if (data.resendNotice) {
+            showToast(data.message, 'info');
+          } else {
+            showToast(data.message || 'Could not send verification email.', 'error');
+          }
         }
-      }, 1000);
+      } catch (err) {
+        console.error('Send OTP fetch error:', err);
+        getOtpBtn.disabled = false;
+        getOtpBtn.classList.remove('opacity-70', 'cursor-not-allowed');
+        getOtpBtn.innerHTML = origBtnContent;
+        showToast('Error connecting to email server: ' + err.message, 'error');
+      }
     });
   }
 
@@ -650,13 +689,41 @@ function initAuthModal() {
         return;
       }
 
-      // Check OTP verification
-      if (window.currentGeneratedOtp) {
-        if (!enteredOtp || enteredOtp !== window.currentGeneratedOtp.toString()) {
-          showToast('Please enter the valid 6-digit OTP sent to your email!', 'error');
+      // Strict OTP Verification via Resend Backend
+      if (!enteredOtp || enteredOtp.length !== 6) {
+        showToast('Please enter the 6-digit verification code sent to your email!', 'error');
+        if (enteredOtpInput) enteredOtpInput.focus();
+        return;
+      }
+
+      if (!window.chainvioraOtpToken) {
+        showToast('Please click "Get OTP" first to receive your verification code.', 'error');
+        return;
+      }
+
+      // Verify OTP with Serverless API
+      try {
+        const verifyResponse = await fetch('/api/verify-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: email,
+            otp: enteredOtp,
+            token: window.chainvioraOtpToken
+          })
+        });
+
+        const verifyResult = await verifyResponse.json();
+
+        if (!verifyResult.success) {
+          showToast(verifyResult.message || 'Invalid or expired OTP code. Please check your email.', 'error');
           if (enteredOtpInput) enteredOtpInput.focus();
           return;
         }
+      } catch (err) {
+        console.error('Verify OTP network error:', err);
+        showToast('Verification server error: ' + err.message, 'error');
+        return;
       }
 
       // Generate Unique Automatic Username: GIGA + 6 Digits
