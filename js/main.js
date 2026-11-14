@@ -321,17 +321,30 @@ function initAuthModal() {
   const tabSignup = document.getElementById('authTabSignup');
   const formLogin = document.getElementById('loginForm');
   const formSignup = document.getElementById('signupForm');
+  const formForgot = document.getElementById('forgotForm');
+  const forgotPasswordLink = document.getElementById('forgotPasswordLink');
+  const backToLoginBtn = document.getElementById('backToLoginBtn');
   const navUserBadge = document.getElementById('navUserBadge');
   const navUserEmail = document.getElementById('navUserEmail');
   const navLogoutBtn = document.getElementById('navLogoutBtn');
 
-  // OTP elements
+  // OTP elements (Sign Up)
   const getOtpBtn = document.getElementById('getOtpBtn');
   const otpContainer = document.getElementById('otpContainer');
   const otpTimer = document.getElementById('otpTimer');
   const otpInput = document.getElementById('otpInput');
   const signupEmailInput = document.getElementById('signupEmailInput');
   let otpCountdownInterval = null;
+
+  // Forgot Password Elements
+  const forgotEmailInput = document.getElementById('forgotEmailInput');
+  const forgotGetOtpBtn = document.getElementById('forgotGetOtpBtn');
+  const forgotOtpContainer = document.getElementById('forgotOtpContainer');
+  const forgotOtpTimer = document.getElementById('forgotOtpTimer');
+  const forgotOtpInput = document.getElementById('forgotOtpInput');
+  const forgotNewPassInput = document.getElementById('forgotNewPasswordInput');
+  const forgotConfirmPassInput = document.getElementById('forgotConfirmPasswordInput');
+  let forgotCountdownInterval = null;
 
   function openAuth(tab = 'login') {
     if (!modal) return;
@@ -354,6 +367,15 @@ function initAuthModal() {
       tabLogin.classList.add('text-slate-500');
       formSignup.classList.remove('hidden');
       formLogin.classList.add('hidden');
+      if (formForgot) formForgot.classList.add('hidden');
+    } else if (tab === 'forgot') {
+      tabLogin.classList.remove('bg-white', 'text-slate-800', 'shadow-xs');
+      tabLogin.classList.add('text-slate-500');
+      tabSignup.classList.remove('bg-white', 'text-slate-800', 'shadow-xs');
+      tabSignup.classList.add('text-slate-500');
+      formLogin.classList.add('hidden');
+      formSignup.classList.add('hidden');
+      if (formForgot) formForgot.classList.remove('hidden');
     } else {
       tabLogin.classList.add('bg-white', 'text-slate-800', 'shadow-xs');
       tabLogin.classList.remove('text-slate-500');
@@ -361,6 +383,7 @@ function initAuthModal() {
       tabSignup.classList.add('text-slate-500');
       formLogin.classList.remove('hidden');
       formSignup.classList.add('hidden');
+      if (formForgot) formForgot.classList.add('hidden');
     }
   }
 
@@ -375,6 +398,14 @@ function initAuthModal() {
   if (closeBtn) closeBtn.addEventListener('click', closeAuth);
   if (tabLogin) tabLogin.addEventListener('click', () => switchTab('login'));
   if (tabSignup) tabSignup.addEventListener('click', () => switchTab('signup'));
+  if (forgotPasswordLink) forgotPasswordLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    switchTab('forgot');
+  });
+  if (backToLoginBtn) backToLoginBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    switchTab('login');
+  });
 
   if (modal) {
     modal.addEventListener('click', (e) => {
@@ -509,6 +540,221 @@ function initAuthModal() {
         getOtpBtn.classList.remove('opacity-70', 'cursor-not-allowed');
         getOtpBtn.innerHTML = origBtnContent;
         showToast('Error connecting to email server: ' + err.message, 'error');
+      }
+    });
+  }
+
+  // REAL RESEND EMAIL OTP GENERATION FOR FORGOT PASSWORD
+  if (forgotGetOtpBtn) {
+    forgotGetOtpBtn.addEventListener('click', async () => {
+      const email = forgotEmailInput ? forgotEmailInput.value.trim() : '';
+      if (!email || !email.includes('@') || !email.includes('.')) {
+        showToast('Please enter your registered email address first.', 'error');
+        if (forgotEmailInput) forgotEmailInput.focus();
+        return;
+      }
+
+      const origBtnContent = forgotGetOtpBtn.innerHTML;
+      forgotGetOtpBtn.disabled = true;
+      forgotGetOtpBtn.classList.add('opacity-70', 'cursor-not-allowed');
+      forgotGetOtpBtn.innerHTML = `
+        <svg class="animate-spin -ml-0.5 mr-1.5 h-3.5 w-3.5 text-amber-600 inline-block" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+        </svg>
+        <span>Sending...</span>
+      `;
+
+      try {
+        const response = await fetch('/api/send-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: email, type: 'reset' })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          window.chainvioraForgotOtpToken = data.token;
+          window.chainvioraForgotEmail = email;
+
+          // Reveal OTP box
+          if (forgotOtpContainer) {
+            forgotOtpContainer.classList.remove('hidden');
+          }
+          if (forgotOtpInput) {
+            forgotOtpInput.focus();
+          }
+
+          showToast(`Password reset code sent to ${email}! Check your inbox ✉️`, 'success');
+
+          // 3-Minute (180s) Cooldown Timer
+          let timeLeft = 180;
+          if (forgotCountdownInterval) clearInterval(forgotCountdownInterval);
+          forgotGetOtpBtn.innerHTML = `<span>Sent ✓</span>`;
+
+          function formatMinutes(sec) {
+            const m = Math.floor(sec / 60);
+            const s = sec % 60;
+            return `${m}:${s < 10 ? '0' : ''}${s}`;
+          }
+
+          if (forgotOtpTimer) {
+            forgotOtpTimer.innerHTML = `<span class="text-[11px] text-amber-700 font-mono font-bold">Resend in ${formatMinutes(timeLeft)}</span>`;
+          }
+
+          forgotCountdownInterval = setInterval(() => {
+            timeLeft--;
+            if (forgotOtpTimer) {
+              forgotOtpTimer.innerHTML = `<span class="text-[11px] text-amber-700 font-mono font-bold">Resend in ${formatMinutes(timeLeft)}</span>`;
+            }
+
+            if (timeLeft <= 0) {
+              clearInterval(forgotCountdownInterval);
+              forgotGetOtpBtn.disabled = false;
+              forgotGetOtpBtn.classList.remove('opacity-70', 'cursor-not-allowed');
+              forgotGetOtpBtn.innerHTML = `<span>Resend OTP ↺</span>`;
+
+              if (forgotOtpTimer) {
+                forgotOtpTimer.innerHTML = `
+                  <button type="button" id="inlineForgotResendOtpBtn" class="text-xs text-amber-600 hover:text-amber-800 font-black underline cursor-pointer flex items-center gap-1 transition-colors">
+                    <span>Resend OTP ↺</span>
+                  </button>
+                `;
+                const inlineBtn = document.getElementById('inlineForgotResendOtpBtn');
+                if (inlineBtn) {
+                  inlineBtn.addEventListener('click', () => {
+                    forgotGetOtpBtn.click();
+                  });
+                }
+              }
+            }
+          }, 1000);
+
+        } else {
+          forgotGetOtpBtn.disabled = false;
+          forgotGetOtpBtn.classList.remove('opacity-70', 'cursor-not-allowed');
+          forgotGetOtpBtn.innerHTML = origBtnContent;
+          showToast(data.message || 'Could not send verification email.', 'error');
+        }
+      } catch (err) {
+        console.error('Send reset OTP error:', err);
+        forgotGetOtpBtn.disabled = false;
+        forgotGetOtpBtn.classList.remove('opacity-70', 'cursor-not-allowed');
+        forgotGetOtpBtn.innerHTML = origBtnContent;
+        showToast('Error connecting to email server: ' + err.message, 'error');
+      }
+    });
+  }
+
+  // FORGOT PASSWORD FORM SUBMISSION & PASSWORD RESET
+  if (formForgot) {
+    formForgot.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = forgotEmailInput ? forgotEmailInput.value.trim() : '';
+      const enteredOtp = forgotOtpInput ? forgotOtpInput.value.trim() : '';
+      const newPassword = forgotNewPassInput ? forgotNewPassInput.value : '';
+      const confirmPassword = forgotConfirmPassInput ? forgotConfirmPassInput.value : '';
+      const submitBtn = formForgot.querySelector('button[type="submit"]');
+
+      if (!email || !enteredOtp || !newPassword || !confirmPassword) {
+        showToast('Please fill in all fields.', 'error');
+        return;
+      }
+
+      if (enteredOtp.length !== 6) {
+        showToast('Please enter the 6-digit code received in your email.', 'error');
+        if (forgotOtpInput) forgotOtpInput.focus();
+        return;
+      }
+
+      if (!window.chainvioraForgotOtpToken) {
+        showToast('Please click "Get OTP" first to receive your verification code.', 'error');
+        return;
+      }
+
+      if (newPassword !== confirmPassword) {
+        showToast('New Password and Confirm New Password do not match!', 'error');
+        if (forgotConfirmPassInput) forgotConfirmPassInput.focus();
+        return;
+      }
+
+      if (newPassword.length < 6) {
+        showToast('Password must be at least 6 characters long.', 'error');
+        return;
+      }
+
+      const origBtnHtml = submitBtn ? submitBtn.innerHTML : '';
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `
+          <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+          Verifying & Updating Password...
+        `;
+      }
+
+      try {
+        // Verify OTP via Serverless API
+        const verifyRes = await fetch('/api/verify-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: email,
+            otp: enteredOtp,
+            token: window.chainvioraForgotOtpToken
+          })
+        });
+
+        const verifyData = await verifyRes.json();
+        if (!verifyData.success) {
+          showToast(verifyData.message || 'Invalid or expired OTP code. Please check your email.', 'error');
+          if (forgotOtpInput) forgotOtpInput.focus();
+          return;
+        }
+
+        // Automatic Username Generation (GIGA + 6 digits) if not already assigned
+        let storedUsername = localStorage.getItem(`giga_user_${email}`);
+        if (!storedUsername) {
+          const randomDigits = Math.floor(100000 + Math.random() * 900000);
+          storedUsername = `GIGA${randomDigits}`;
+          localStorage.setItem(`giga_user_${email}`, storedUsername);
+        }
+
+        let storedRefCode = localStorage.getItem(`giga_ref_${email}`);
+        if (!storedRefCode) {
+          storedRefCode = Math.floor(100000 + Math.random() * 900000).toString();
+          localStorage.setItem(`giga_ref_${email}`, storedRefCode);
+        }
+
+        const userSession = {
+          email: email,
+          username: storedUsername,
+          referralCode: storedRefCode,
+          fullName: 'Chainviora Member',
+          gigaBalance: 500.00,
+          usdtBalance: 1500.00,
+          passwordUpdated: new Date().toISOString()
+        };
+
+        localStorage.setItem('gigachain_current_user', JSON.stringify(userSession));
+        localStorage.setItem('gigachain_username', storedUsername);
+
+        closeAuth();
+        showToast('Password updated successfully! Welcome back 🚀', 'success');
+        updateAuthStateUI({ email: email, user_metadata: { username: storedUsername } });
+
+        setTimeout(() => {
+          window.location.href = 'dashboard.html';
+        }, 900);
+
+      } catch (err) {
+        console.error('Password reset error:', err);
+        showToast('Failed to reset password: ' + err.message, 'error');
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = origBtnHtml;
+        }
       }
     });
   }

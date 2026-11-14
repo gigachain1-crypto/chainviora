@@ -106,6 +106,15 @@ module.exports = async (req, res) => {
 
     const token = `${hash}.${expiresAt}`;
 
+    const isReset = body?.type === 'reset';
+    const emailSubject = isReset
+      ? `Your Chainviora Password Reset Code: ${otp}`
+      : `Your Chainviora Verification Code: ${otp}`;
+    const headlineText = isReset ? 'Reset Your Password' : 'Email Verification Code';
+    const leadText = isReset
+      ? 'Hello,<br>We received a request to reset your Chainviora account password. To set a new password, please enter the one-time verification code below:'
+      : 'Hello,<br>Thank you for choosing Chainviora. To verify your email address and activate your Web3 account, please enter the one-time verification code below:';
+
     // Luxury Branded HTML Email Template
     const emailHtml = `
 <!DOCTYPE html>
@@ -113,7 +122,7 @@ module.exports = async (req, res) => {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Chainviora Verification Code</title>
+  <title>${emailSubject}</title>
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -225,10 +234,9 @@ module.exports = async (req, res) => {
       <p class="brand-subtitle">Hyper-Scalable Web3 Ecosystem</p>
     </div>
     <div class="content">
-      <h2 class="headline">Email Verification Code</h2>
+      <h2 class="headline">${headlineText}</h2>
       <p class="lead-text">
-        Hello,<br>
-        Thank you for choosing Chainviora. To verify your email address and activate your Web3 account, please enter the one-time verification code below:
+        ${leadText}
       </p>
 
       <div class="otp-box">
@@ -245,7 +253,7 @@ module.exports = async (req, res) => {
       </div>
 
       <p class="notice" style="font-size: 12px; margin-top: 20px;">
-        If you did not initiate this registration request, please disregard this email. Your email remains completely secure.
+        If you did not initiate this request, please disregard this email. Your account remains completely secure.
       </p>
     </div>
     <div class="footer">
@@ -261,7 +269,7 @@ module.exports = async (req, res) => {
     let sendResult = await sendResendRequest({
       from: 'Chainviora Support <support@chainviora.com>',
       to: email,
-      subject: `Your Chainviora Verification Code: ${otp}`,
+      subject: emailSubject,
       html: emailHtml
     });
 
