@@ -18,7 +18,7 @@ if (!process.env.RESEND_API_KEY) {
         }
       });
     }
-  } catch (e) {}
+  } catch (e) { }
 }
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
@@ -257,9 +257,9 @@ module.exports = async (req, res) => {
 </html>
 `;
 
-    // Attempt 1: Try sending from custom branded domain auth@chainviora.com
+    // Send directly from official email support@chainviora.com
     let sendResult = await sendResendRequest({
-      from: 'Chainviora Security <auth@chainviora.com>',
+      from: 'Chainviora Support <support@chainviora.com>',
       to: email,
       subject: `Your Chainviora Verification Code: ${otp}`,
       html: emailHtml
