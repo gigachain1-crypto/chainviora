@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gigachain - The Hyper-Scalable Layer-1 Blockchain Ecosystem</title>
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="assets/logo.svg">
+
+  <!-- Google Fonts: Plus Jakarta Sans & Space Grotesk -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@500;700&display=swap"
+    rel="stylesheet">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            display: ['"Space Grotesk"', 'sans-serif'],
+          },
+          colors: {
+            gold: {
+              50: '#FDFCF7',
+              100: '#FAF6ED',
+              200: '#F5EEDB',
+              300: '#E8D9AF',
+              400: '#DFC280',
+              500: '#D4AF37',
+              600: '#B8860B',
+              700: '#8C6707',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Custom Styles for Multi-Color Borders and Golden Theme -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body class="relative min-h-screen text-slate-800 antialiased selection:bg-amber-200 selection:text-amber-900">
+
+  <!-- Background Interactive Crypto Canvas -->
+  <canvas id="networkCanvas"></canvas>
+
+  <!-- ========================================================================
+       NAVIGATION BAR (Golden Frosted Glass + Multi-Color Border)
+       ======================================================================== -->
+  <header class="sticky top-0 z-40 glass-gold-nav transition-all duration-300">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-20">
+
+        <!-- Logo -->
+        <a href="#" class="flex items-center gap-3 group">
+          <div class="relative p-1 rounded-xl transition-transform duration-300 group-hover:scale-105">
+            <img src="assets/logo.svg" alt="Gigachain Logo" class="h-10 w-auto">
+          </div>
+        </a>
+
+        <!-- Desktop Navigation Links -->
+        <nav class="hidden md:flex items-center gap-8 font-medium text-sm text-slate-700">
+          <a href="#tokenomics" class="hover:text-amber-600 transition-colors">Tokenomics</a>
+          <a href="#roadmap" class="hover:text-amber-600 transition-colors">Roadmap</a>
+          <a href="#faq" class="hover:text-amber-600 transition-colors">FAQ</a>
+          <a href="dashboard.html"
+            class="hover:text-amber-600 transition-colors font-bold text-amber-600 flex items-center gap-1.5">
+            <span>Dashboard</span>
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+            </svg>
+          </a>
+        </nav>
+
+        <!-- Right Action: GIGA Token Live Price Pill & Supabase User Badge -->
+        <div class="hidden lg:flex items-center gap-3">
+          <!-- GIGA Price Pill -->
+          <div
+            class="border-gradient-rainbow px-3 py-1.5 rounded-xl flex items-center gap-2 bg-white text-xs font-semibold shadow-sm">
+            <span class="text-slate-500">GIGA:</span>
+            <span class="giga-live-price text-slate-900 transition-all font-mono font-bold">$3.4200</span>
+            <span class="text-emerald-600 text-[11px] font-bold">+14.2%</span>
+          </div>
+
+          <!-- Dynamic User Profile Badge (Supabase Logged In Status) -->
+          <div id="navUserBadge"
+            class="hidden items-center gap-2 border-gradient-rainbow px-3.5 py-1.5 rounded-xl bg-white text-xs shadow-sm">
+            <span id="navUserEmail" class="font-bold text-slate-800 font-mono text-[11px]">user@example.com</span>
+            <button id="navLogoutBtn" title="Logout"
+              class="ml-1 text-slate-400 hover:text-red-500 transition-colors cursor-pointer flex items-center gap-1 font-semibold text-[11px]">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+              <span>Exit</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Mobile Hamburger Button -->
+        <div class="flex md:hidden items-center gap-3">
+          <button id="mobileMenuToggle" class="p-2 rounded-lg text-slate-700 hover:bg-amber-100/60 focus:outline-none">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mobile Menu Drawer -->
+    <div id="mobileMenu"
+      class="hidden md:hidden bg-white/95 backdrop-blur-xl border-b-2 border-gradient-rainbow px-6 py-5 shadow-2xl">
+      <div class="flex flex-col gap-4 font-semibold text-slate-800">
+        <a href="#tokenomics" class="mobile-nav-link hover:text-amber-600">Tokenomics</a>
+        <a href="#roadmap" class="mobile-nav-link hover:text-amber-600">Roadmap</a>
+        <a href="#faq" class="mobile-nav-link hover:text-amber-600">FAQ</a>
+        <a href="dashboard.html" class="mobile-nav-link hover:text-amber-600 text-amber-600 font-bold">Dashboard & Vault
+          &rarr;</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- ========================================================================
+       HERO SECTION (Light Golden Luxury Background + Rainbow Border Accents)
+       ======================================================================== -->
+  <section class="relative pt-12 pb-20 lg:pt-20 lg:pb-32 overflow-hidden">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+
+
+      <!-- Main Headline -->
+      <div class="text-center max-w-4xl mx-auto px-2">
+        <h1
+          class="font-display font-black text-3xl sm:text-5xl lg:text-7xl tracking-tight leading-[1.15] text-slate-900">
+          The Future of Web3 Built on
+          <span class="relative inline-block mt-1">
+            <span class="text-rainbow-gradient font-black">GIGACHAIN</span>
+            <!-- Subtle Gold Under-Glow -->
+            <span
+              class="absolute -bottom-2 left-0 right-0 h-1 bg-gradient-to-r from-pink-500 via-amber-400 to-cyan-400 rounded-lg"></span>
+          </span>
+        </h1>
+        <p class="mt-4 sm:mt-6 text-sm sm:text-lg text-slate-600 max-w-2xl mx-auto leading-relaxed">
+          Ultra-scalable, quantum-secure, and carbon-negative blockchain designed for high-frequency DeFi, enterprise
+          Web3 applications, and seamless multi-chain liquid staking.
+        </p>
+
+        <!-- CTA Buttons with Multi-Color Borders (Login & Sign Up) -->
+        <div
+          class="mt-8 sm:mt-10 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-5 max-w-xs sm:max-w-none mx-auto">
+          <button id="heroLoginBtn"
+            class="open-auth-btn btn-rainbow-glow w-full sm:w-auto px-8 py-3.5 sm:py-4 text-base font-bold shadow-xl flex items-center justify-center gap-3 cursor-pointer"
+            data-tab="login">
+            <svg class="w-5 h-5 text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+            </svg>
+            <span>Login</span>
+          </button>
+
+          <button id="heroSignUpBtn"
+            class="open-auth-btn btn-rainbow-light w-full sm:w-auto px-8 py-3.5 sm:py-4 text-base font-bold shadow-md flex items-center justify-center gap-2 cursor-pointer"
+            data-tab="signup">
+            <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+            </svg>
+            <span>Sign Up</span>
+          </button>
+        </div>
+
+      </div>
+
+      <!-- ====================================================================
+           HERO METRICS GRID (Cards with Unified Static Multi-Color Borders)
+           ==================================================================== -->
+      <div class="mt-12 sm:mt-16 grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6">
+
+        <div class="multi-border-card p-4 sm:p-6 text-center">
+          <p class="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-500">Transactions / Sec</p>
+          <p class="mt-1 sm:mt-2 text-2xl sm:text-4xl font-black font-display text-slate-900">125,000<span
+              class="text-amber-500">+</span></p>
+          <p class="mt-1 text-[11px] sm:text-xs text-emerald-600 font-semibold">Real-time Throughput</p>
+        </div>
+
+        <div class="multi-border-card p-4 sm:p-6 text-center">
+          <p class="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-500">Average Gas Fee</p>
+          <p class="mt-1 sm:mt-2 text-2xl sm:text-4xl font-black font-display text-emerald-600">&lt;$0.0001</p>
+          <p class="mt-1 text-[11px] sm:text-xs text-slate-500 font-semibold">Near-Zero Cost</p>
+        </div>
+
+        <div class="multi-border-card p-4 sm:p-6 text-center">
+          <p class="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-500">Block Finality</p>
+          <p class="mt-1 sm:mt-2 text-2xl sm:text-4xl font-black font-display text-slate-900">400 ms</p>
+          <p class="mt-1 text-[11px] sm:text-xs text-slate-500 font-semibold">Instant Settlement</p>
+        </div>
+
+        <div class="multi-border-card p-4 sm:p-6 text-center">
+          <p class="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-500">Total Value Locked</p>
+          <p class="mt-1 sm:mt-2 text-2xl sm:text-4xl font-black font-display text-amber-600">$2.48B</p>
+          <p class="mt-1 text-[11px] sm:text-xs text-emerald-600 font-semibold">High-Yield Staking</p>
+        </div>
+
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ========================================================================
+       SECTION: TOKENOMICS (Interactive Donut Chart + Distribution Stats)
+       ======================================================================== -->
+  <section id="tokenomics" class="py-20 relative">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+      <div class="text-center max-w-3xl mx-auto mb-16">
+        <span class="badge-rainbow px-4 py-1 rounded-md text-xs font-bold text-slate-700 uppercase tracking-wider">
+          Sustainable Economics
+        </span>
+        <h2 class="mt-3 text-2xl sm:text-5xl font-display font-black text-slate-900">
+          $GIGA Tokenomics
+        </h2>
+        <p class="mt-3 text-xs sm:text-base text-slate-600">
+          Strictly capped supply of 1,000,000,000 tokens engineered with deflationary burn mechanisms.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+
+        <!-- Left: Donut Chart with Center Label -->
+        <div
+          class="lg:col-span-6 multi-border-card p-6 sm:p-8 bg-white shadow-xl flex flex-col items-center justify-center">
+          <div class="relative w-64 h-64 sm:w-80 sm:h-80">
+            <canvas id="tokenomicsChart"></canvas>
+            <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+              <span class="text-xs font-bold uppercase text-slate-400">Total Supply</span>
+              <span class="text-2xl font-black font-display text-slate-900">1,000,000,000</span>
+              <span class="text-xs font-black text-amber-600">$GIGA</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Breakdown Metrics with Color Pills -->
+        <div class="lg:col-span-6 space-y-4">
+
+          <div
+            class="p-4 rounded-xl border-l-4 border-amber-500 bg-white shadow-sm border border-slate-100 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <span class="w-3.5 h-3.5 rounded-sm bg-amber-500"></span>
+              <div>
+                <p class="font-bold text-slate-900 text-sm">Staking & Validator Rewards</p>
+                <p class="text-xs text-slate-500">Released linearly over 5 years</p>
+              </div>
+            </div>
+            <div class="text-right">
+              <p class="font-mono font-bold text-slate-900">30%</p>
+              <p class="text-xs text-slate-400">300M GIGA</p>
+            </div>
+          </div>
+
+          <div
+            class="p-4 rounded-xl border-l-4 border-pink-500 bg-white shadow-sm border border-slate-100 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <span class="w-3.5 h-3.5 rounded-sm bg-pink-500"></span>
+              <div>
+                <p class="font-bold text-slate-900 text-sm">Public Presale & IDO</p>
+                <p class="text-xs text-slate-500">Community initial distribution</p>
+              </div>
+            </div>
+            <div class="text-right">
+              <p class="font-mono font-bold text-slate-900">25%</p>
+              <p class="text-xs text-slate-400">250M GIGA</p>
+            </div>
+          </div>
+
+          <div
+            class="p-4 rounded-xl border-l-4 border-cyan-500 bg-white shadow-sm border border-slate-100 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <span class="w-3.5 h-3.5 rounded-sm bg-cyan-500"></span>
+              <div>
+                <p class="font-bold text-slate-900 text-sm">Ecosystem & Developer Grants</p>
+                <p class="text-xs text-slate-500">Empowering Web3 creators & builders</p>
+              </div>
+            </div>
+            <div class="text-right">
+              <p class="font-mono font-bold text-slate-900">20%</p>
+              <p class="text-xs text-slate-400">200M GIGA</p>
+            </div>
+          </div>
+
+          <div
+            class="p-4 rounded-xl border-l-4 border-purple-500 bg-white shadow-sm border border-slate-100 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <span class="w-3.5 h-3.5 rounded-sm bg-purple-500"></span>
+              <div>
+                <p class="font-bold text-slate-900 text-sm">Liquidity & DEX Reserves</p>
+                <p class="text-xs text-slate-500">Locked permanently in liquidity pools</p>
+              </div>
+            </div>
+            <div class="text-right">
+              <p class="font-mono font-bold text-slate-900">15%</p>
+              <p class="text-xs text-slate-400">150M GIGA</p>
+            </div>
+          </div>
+
+          <div
+            class="p-4 rounded-xl border-l-4 border-blue-500 bg-white shadow-sm border border-slate-100 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <span class="w-3.5 h-3.5 rounded-sm bg-blue-500"></span>
+              <div>
+                <p class="font-bold text-slate-900 text-sm">Core Team & Advisory</p>
+                <p class="text-xs text-slate-500">3-year vesting with 12-month cliff</p>
+              </div>
+            </div>
+            <div class="text-right">
+              <p class="font-mono font-bold text-slate-900">10%</p>
+              <p class="text-xs text-slate-400">100M GIGA</p>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ========================================================================
+       SECTION: ROADMAP (Unified Static Multi-Color Timeline)
+       ======================================================================== -->
+  <section id="roadmap" class="py-20 bg-gradient-to-b from-transparent via-amber-50/40 to-transparent relative">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+      <div class="text-center max-w-3xl mx-auto mb-16">
+        <span class="badge-rainbow px-4 py-1 rounded-md text-xs font-bold text-slate-700 uppercase tracking-wider">
+          Strategic Journey
+        </span>
+        <h2 class="mt-3 text-2xl sm:text-5xl font-display font-black text-slate-900">
+          Gigachain Protocol Roadmap
+        </h2>
+        <p class="mt-3 text-xs sm:text-base text-slate-600">
+          Milestones shaping the evolution of the world's most performant blockchain.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+
+        <!-- Phase 1 -->
+        <div class="multi-border-card p-6 bg-white shadow-lg">
+          <div class="flex items-center justify-between mb-4">
+            <span class="text-xs font-black px-2.5 py-1 rounded-md bg-emerald-100 text-emerald-800">
+              COMPLETED
+            </span>
+            <span class="text-xs font-bold text-slate-400">Phase 1</span>
+          </div>
+          <h3 class="text-lg font-bold font-display text-slate-900">Genesis & Testnet</h3>
+          <ul class="mt-4 space-y-2 text-xs text-slate-600">
+            <li class="flex items-start gap-2">
+              <span class="text-emerald-500 font-bold">✓</span> Whitepaper & Architecture Release
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-emerald-500 font-bold">✓</span> Incentivized Public Testnet
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-emerald-500 font-bold">✓</span> Smart Contract Audits (CertiK & Hacken)
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-emerald-500 font-bold">✓</span> Seed & Private Strategic Round
+            </li>
+          </ul>
+        </div>
+
+        <!-- Phase 2 -->
+        <div class="multi-border-card p-6 bg-white shadow-lg">
+          <div class="flex items-center justify-between mb-4">
+            <span class="text-xs font-black px-2.5 py-1 rounded-md bg-amber-100 text-amber-800">
+              IN PROGRESS
+            </span>
+            <span class="text-xs font-bold text-amber-600">Phase 2</span>
+          </div>
+          <h3 class="text-lg font-bold font-display text-slate-900">Mainnet 2.0 & DEX</h3>
+          <ul class="mt-4 space-y-2 text-xs text-slate-600">
+            <li class="flex items-start gap-2">
+              <span class="text-amber-500 font-bold">➜</span> Mainnet Genesis Block Launch
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-amber-500 font-bold">➜</span> Native DEX & Liquid Staking Launch
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-amber-500 font-bold">➜</span> Tier-1 CEX Listings
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-amber-500 font-bold">➜</span> Multi-Chain Bridge to Ethereum & Solana
+            </li>
+          </ul>
+        </div>
+
+        <!-- Phase 3 -->
+        <div class="multi-border-card p-6 bg-white shadow-lg">
+          <div class="flex items-center justify-between mb-4">
+            <span class="text-xs font-black px-2.5 py-1 rounded-md bg-blue-100 text-blue-800">
+              UPCOMING
+            </span>
+            <span class="text-xs font-bold text-slate-400">Phase 3</span>
+          </div>
+          <h3 class="text-lg font-bold font-display text-slate-900">AI Execution Engine</h3>
+          <ul class="mt-4 space-y-2 text-xs text-slate-600">
+            <li class="flex items-start gap-2">
+              <span class="text-blue-500 font-bold">✓</span> On-Chain AI Agent Framework
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-blue-500 font-bold">✓</span> $25M Ecosystem Developer Grants
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-blue-500 font-bold">✓</span> Mobile Web3 App (iOS & Android)
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-blue-500 font-bold">✓</span> Institutional Custody Integration
+            </li>
+          </ul>
+        </div>
+
+        <!-- Phase 4 -->
+        <div class="multi-border-card p-6 bg-white shadow-lg">
+          <div class="flex items-center justify-between mb-4">
+            <span class="text-xs font-black px-2.5 py-1 rounded-md bg-purple-100 text-purple-800">
+              VISION
+            </span>
+            <span class="text-xs font-bold text-slate-400">Phase 4</span>
+          </div>
+          <h3 class="text-lg font-bold font-display text-slate-900">Full DAO & Global Scale</h3>
+          <ul class="mt-4 space-y-2 text-xs text-slate-600">
+            <li class="flex items-start gap-2">
+              <span class="text-purple-500 font-bold">✓</span> Decentralized DAO Governance
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-purple-500 font-bold">✓</span> Real-World Asset (RWA) Tokenization
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-purple-500 font-bold">✓</span> Zero-Gas Subnets for Enterprise
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-purple-500 font-bold">✓</span> Global Developer Hackathons
+            </li>
+          </ul>
+        </div>
+
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ========================================================================
+       SECTION: FAQ ACCORDION
+       ======================================================================== -->
+  <section id="faq" class="py-20 relative">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+
+      <div class="text-center mb-12">
+        <span class="badge-rainbow px-4 py-1 rounded-full text-xs font-bold text-slate-700 uppercase tracking-wider">
+          Got Questions?
+        </span>
+        <h2 class="mt-3 text-3xl sm:text-4xl font-display font-black text-slate-900">
+          Frequently Asked Questions
+        </h2>
+      </div>
+
+      <div class="space-y-4">
+
+        <!-- FAQ 1 -->
+        <div class="faq-item multi-border-card p-5 bg-white shadow-md">
+          <button
+            class="faq-trigger w-full flex items-center justify-between text-left font-bold text-base text-slate-900 focus:outline-none">
+            <span>What makes Gigachain faster than other Layer-1 blockchains?</span>
+            <svg class="faq-icon w-5 h-5 text-amber-600 transform transition-transform duration-300" fill="none"
+              stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          <div class="faq-content hidden mt-3 pt-3 border-t border-slate-100 text-sm text-slate-600 leading-relaxed">
+            Gigachain utilizes a proprietary Proof-of-Speed consensus mechanism paired with parallel transaction
+            execution. This enables the network to process over 125,000 transactions per second with sub-400ms finality
+            while keeping gas fees consistently below $0.0001.
+          </div>
+        </div>
+
+        <!-- FAQ 2 -->
+        <div class="faq-item multi-border-card p-5 bg-white shadow-md">
+          <button
+            class="faq-trigger w-full flex items-center justify-between text-left font-bold text-base text-slate-900 focus:outline-none">
+            <span>How does the 18.5% Staking APY work?</span>
+            <svg class="faq-icon w-5 h-5 text-amber-600 transform transition-transform duration-300" fill="none"
+              stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          <div class="faq-content hidden mt-3 pt-3 border-t border-slate-100 text-sm text-slate-600 leading-relaxed">
+            When you stake $GIGA tokens in the official validator pool, rewards are generated from network block
+            validation fees and designated ecosystem rewards. There is zero lockup period, and rewards compound
+            automatically every 24 hours.
+          </div>
+        </div>
+
+        <!-- FAQ 3 -->
+        <div class="faq-item multi-border-card p-5 bg-white shadow-md">
+          <button
+            class="faq-trigger w-full flex items-center justify-between text-left font-bold text-base text-slate-900 focus:outline-none">
+            <span>Which Web3 wallets are compatible with Gigachain?</span>
+            <svg class="faq-icon w-5 h-5 text-amber-600 transform transition-transform duration-300" fill="none"
+              stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          <div class="faq-content hidden mt-3 pt-3 border-t border-slate-100 text-sm text-slate-600 leading-relaxed">
+            Gigachain is 100% EVM-compatible! You can connect using MetaMask, Coinbase Wallet, Phantom, Trust Wallet,
+            and any wallet supporting WalletConnect v2.
+          </div>
+        </div>
+
+        <!-- FAQ 4 -->
+        <div class="faq-item multi-border-card p-5 bg-white shadow-md">
+          <button
+            class="faq-trigger w-full flex items-center justify-between text-left font-bold text-base text-slate-900 focus:outline-none">
+            <span>Is the smart contract audited?</span>
+            <svg class="faq-icon w-5 h-5 text-amber-600 transform transition-transform duration-300" fill="none"
+              stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          <div class="faq-content hidden mt-3 pt-3 border-t border-slate-100 text-sm text-slate-600 leading-relaxed">
+            Yes, our core contracts and bridge architecture have been fully audited by leading Web3 security firms
+            CertiK and Hacken with zero critical vulnerabilities reported.
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ========================================================================
+       SECTION: CTA BANNER (Multi-Color Glowing Border Card)
+       ======================================================================== -->
+  <section class="py-16">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div
+        class="multi-border-card p-10 sm:p-14 bg-gradient-to-r from-white via-amber-50/50 to-white text-center shadow-2xl relative overflow-hidden">
+        <h2 class="text-3xl sm:text-5xl font-display font-black text-slate-900">
+          Ready to Build on <span class="text-rainbow-gradient">Gigachain</span>?
+        </h2>
+        <p class="mt-4 text-base sm:text-lg text-slate-600 max-w-xl mx-auto">
+          Join thousands of developers, validators, and liquidity providers shaping the decentralized economy.
+        </p>
+        <div class="mt-8 flex flex-wrap items-center justify-center gap-4">
+          <button class="open-wallet-btn btn-rainbow-glow px-8 py-4 text-base font-bold shadow-xl">
+            Connect Wallet & Launch App
+          </button>
+          <a href="dashboard.html" class="btn-rainbow-light px-8 py-4 text-base font-bold shadow-md flex items-center justify-center gap-2">
+            <span>Dashboard & Vault</span>
+            <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================================
+       FOOTER (Golden Light Theme + Multi-Color Top Divider)
+       ======================================================================== -->
+  <footer class="relative bg-white/90 border-t border-amber-200/80 pt-16 pb-12">
+    <!-- Multi-color glowing top line -->
+    <div class="rainbow-divider absolute top-0 left-0 right-0"></div>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-10">
+
+        <!-- Brand column -->
+        <div class="md:col-span-1 space-y-4">
+          <img src="assets/logo.svg" alt="Gigachain Logo" class="h-9 w-auto">
+          <p class="text-xs text-slate-500 leading-relaxed">
+            The next-generation Layer-1 blockchain delivering hyper-scalability, near-zero fees, and golden staking
+            yields.
+          </p>
+          <p class="text-xs font-semibold text-slate-600">
+            &copy; 2026 Gigachain Foundation. All rights reserved.
+          </p>
+        </div>
+
+        <!-- Ecosystem links -->
+        <div>
+          <h4 class="text-xs font-black uppercase tracking-wider text-slate-900 mb-4">Ecosystem</h4>
+          <ul class="space-y-2 text-xs font-medium text-slate-600">
+            <li><a href="dashboard.html" class="hover:text-amber-600 transition-colors">Dashboard & Vault</a></li>
+            <li><a href="#tokenomics" class="hover:text-amber-600 transition-colors">Tokenomics & Burn</a></li>
+            <li><a href="#roadmap" class="hover:text-amber-600 transition-colors">Development Roadmap</a></li>
+            <li><a href="#faq" class="hover:text-amber-600 transition-colors">FAQ & Support</a></li>
+          </ul>
+        </div>
+
+        <!-- Developers & Resources -->
+        <div>
+          <h4 class="text-xs font-black uppercase tracking-wider text-slate-900 mb-4">Developers</h4>
+          <ul class="space-y-2 text-xs font-medium text-slate-600">
+            <li><a href="#" class="hover:text-amber-600 transition-colors">Documentation & SDK</a></li>
+            <li><a href="#" class="hover:text-amber-600 transition-colors">CertiK Security Audit</a></li>
+            <li><a href="#" class="hover:text-amber-600 transition-colors">GitHub Repository</a></li>
+            <li><a href="#" class="hover:text-amber-600 transition-colors">Bug Bounty Program ($500k)</a></li>
+          </ul>
+        </div>
+
+        <!-- Newsletter & Community -->
+        <div>
+          <h4 class="text-xs font-black uppercase tracking-wider text-slate-900 mb-4">Stay Connected</h4>
+          <p class="text-xs text-slate-500 mb-3">Subscribe for mainnet updates and airdrop notifications:</p>
+          <div class="flex items-center gap-2">
+            <input type="email" placeholder="Enter your email"
+              class="w-full text-xs px-3 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:border-amber-500 bg-slate-50">
+            <button class="btn-rainbow-glow px-4 py-2 text-xs font-bold shrink-0">
+              Join
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </footer>
+
+  <!-- ========================================================================
+       MODAL: WEB3 WALLET CONNECTION SIMULATOR (Multi-Color Bordered Modal)
+       ======================================================================== -->
+  <div id="walletModal"
+    class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+    <div class="conic-border-box max-w-md w-full shadow-2xl animate-scale-up">
+      <div class="conic-border-content p-6 sm:p-8 bg-white">
+
+        <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+          <div>
+            <h3 class="text-lg font-bold text-slate-900">Connect Web3 Wallet</h3>
+            <p class="text-xs text-slate-500">Select your preferred cryptocurrency wallet</p>
+          </div>
+          <button id="closeWalletModal" class="p-2 text-slate-400 hover:text-slate-700 rounded-lg transition-colors">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Wallet options list -->
+        <div class="mt-6 space-y-3">
+
+          <button
+            class="wallet-provider-opt w-full flex items-center justify-between p-3.5 rounded-xl border-2 border-slate-200 hover:border-amber-500 hover:bg-amber-50/40 transition-all cursor-pointer"
+            data-wallet="MetaMask">
+            <div class="flex items-center gap-3">
+              <span
+                class="w-9 h-9 rounded-xl bg-orange-100 flex items-center justify-center font-black text-orange-600 text-sm">🦊</span>
+              <div class="text-left">
+                <p class="font-bold text-sm text-slate-900">MetaMask</p>
+                <p class="text-xs text-slate-500">Popular EVM browser extension</p>
+              </div>
+            </div>
+            <span class="text-xs font-bold text-amber-600">Connect &rarr;</span>
+          </button>
+
+          <button
+            class="wallet-provider-opt w-full flex items-center justify-between p-3.5 rounded-xl border-2 border-slate-200 hover:border-purple-500 hover:bg-purple-50/40 transition-all cursor-pointer"
+            data-wallet="Phantom">
+            <div class="flex items-center gap-3">
+              <span
+                class="w-9 h-9 rounded-xl bg-purple-100 flex items-center justify-center font-black text-purple-600 text-sm">👻</span>
+              <div class="text-left">
+                <p class="font-bold text-sm text-slate-900">Phantom</p>
+                <p class="text-xs text-slate-500">Solana & Multi-chain wallet</p>
+              </div>
+            </div>
+            <span class="text-xs font-bold text-purple-600">Connect &rarr;</span>
+          </button>
+
+          <button
+            class="wallet-provider-opt w-full flex items-center justify-between p-3.5 rounded-xl border-2 border-slate-200 hover:border-blue-500 hover:bg-blue-50/40 transition-all cursor-pointer"
+            data-wallet="Coinbase Wallet">
+            <div class="flex items-center gap-3">
+              <span
+                class="w-9 h-9 rounded-xl bg-blue-100 flex items-center justify-center font-black text-blue-600 text-sm">🔵</span>
+              <div class="text-left">
+                <p class="font-bold text-sm text-slate-900">Coinbase Wallet</p>
+                <p class="text-xs text-slate-500">Direct mobile & browser connection</p>
+              </div>
+            </div>
+            <span class="text-xs font-bold text-blue-600">Connect &rarr;</span>
+          </button>
+
+          <button
+            class="wallet-provider-opt w-full flex items-center justify-between p-3.5 rounded-xl border-2 border-slate-200 hover:border-cyan-500 hover:bg-cyan-50/40 transition-all cursor-pointer"
+            data-wallet="Trust Wallet">
+            <div class="flex items-center gap-3">
+              <span
+                class="w-9 h-9 rounded-xl bg-cyan-100 flex items-center justify-center font-black text-cyan-600 text-sm">🛡️</span>
+              <div class="text-left">
+                <p class="font-bold text-sm text-slate-900">Trust Wallet</p>
+                <p class="text-xs text-slate-500">DApp mobile browser & extension</p>
+              </div>
+            </div>
+            <span class="text-xs font-bold text-cyan-600">Connect &rarr;</span>
+          </button>
+
+        </div>
+
+        <p class="mt-5 text-center text-xs text-slate-400">
+          By connecting a wallet, you agree to the Gigachain Terms of Service.
+        </p>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       MODAL: AUTH MODAL (Login & Sign Up with Multi-Color Border)
+       ======================================================================== -->
+  <div id="authModal"
+    class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+    <div class="conic-border-box max-w-md w-full shadow-2xl">
+      <div class="conic-border-content p-6 sm:p-8 bg-white">
+
+        <!-- Top Header & Close Button -->
+        <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+          <div class="flex items-center gap-2">
+            <img src="assets/logo.svg" alt="Gigachain" class="h-7 w-auto">
+          </div>
+          <button id="closeAuthModal"
+            class="p-2 text-slate-400 hover:text-slate-700 rounded-lg transition-colors cursor-pointer">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Auth Switch Tabs (Login / Sign Up) -->
+        <div class="mt-6 flex rounded-xl bg-slate-100 p-1 border border-slate-200">
+          <button id="authTabLogin"
+            class="w-1/2 py-2 text-sm font-bold rounded-lg transition-all text-slate-800 bg-white shadow-xs cursor-pointer">
+            Login
+          </button>
+          <button id="authTabSignup"
+            class="w-1/2 py-2 text-sm font-bold rounded-lg transition-all text-slate-500 hover:text-slate-800 cursor-pointer">
+            Sign Up
+          </button>
+        </div>
+
+        <!-- LOGIN FORM -->
+        <form id="loginForm" class="mt-6 space-y-4">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Email / Wallet Address</label>
+            <input type="text" id="loginEmailInput" placeholder="name@example.com or 0x..." required
+              class="w-full text-sm px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:border-amber-500 bg-slate-50 text-slate-800">
+          </div>
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <label class="text-xs font-bold text-slate-700">Password</label>
+              <a href="#" class="text-xs text-amber-600 hover:underline">Forgot?</a>
+            </div>
+            <div class="relative">
+              <input type="password" id="loginPasswordInput" placeholder="••••••••" required
+                class="w-full text-sm px-3.5 py-2.5 pr-10 rounded-xl border border-slate-300 focus:outline-none focus:border-amber-500 bg-slate-50 text-slate-800">
+              <button type="button"
+                class="toggle-password-btn absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 cursor-pointer focus:outline-none"
+                data-target="loginPasswordInput" title="Show / Hide Password">
+                <svg class="eye-show w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+                <svg class="eye-hide w-4 h-4 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 pt-1">
+            <input type="checkbox" id="rememberMe" class="rounded border-slate-300 text-amber-600 focus:ring-amber-500">
+            <label for="rememberMe" class="text-xs text-slate-600">Remember this device</label>
+          </div>
+          <button type="submit"
+            class="w-full btn-rainbow-glow py-3.5 text-sm font-bold shadow-lg flex items-center justify-center gap-2 mt-2 cursor-pointer">
+            <span>Sign In to Gigachain</span>
+            <svg class="w-4 h-4 text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+            </svg>
+          </button>
+        </form>
+
+        <!-- SIGN UP FORM -->
+        <form id="signupForm" class="mt-6 space-y-4 hidden">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Full Name</label>
+            <input type="text" id="signupNameInput" placeholder="Crypto Trader" required
+              class="w-full text-sm px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:border-amber-500 bg-slate-50 text-slate-800">
+          </div>
+
+          <!-- Email Address + Get OTP Button -->
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <label class="block text-xs font-bold text-slate-700">Email Address</label>
+              <button type="button" id="getOtpBtn"
+                class="text-xs font-bold text-amber-600 hover:text-amber-800 transition-colors cursor-pointer flex items-center gap-1">
+                <span>Get OTP</span>
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </button>
+            </div>
+            <input type="email" id="signupEmailInput" placeholder="name@example.com" required
+              class="w-full text-sm px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:border-amber-500 bg-slate-50 text-slate-800">
+
+            <!-- Dynamic 6-Digit OTP Box (Revealed on clicking Get OTP) -->
+            <div id="otpContainer"
+              class="hidden mt-2 p-3 bg-amber-50/80 border border-amber-300 rounded-xl transition-all">
+              <div class="flex justify-between items-center mb-1.5">
+                <span class="text-xs font-bold text-amber-800 flex items-center gap-1">
+                  <span>✉️ Enter 6-Digit Email OTP</span>
+                </span>
+                <span id="otpTimer" class="text-[11px] text-amber-600 font-mono font-bold">Resend in 60s</span>
+              </div>
+              <input type="text" id="otpInput" maxlength="6" placeholder="• • • • • •"
+                class="w-full text-center tracking-[0.5em] font-mono text-lg font-black py-2 px-3 rounded-lg border border-amber-300 focus:outline-none focus:border-amber-500 bg-white text-slate-800">
+              <p class="text-[11px] text-slate-500 mt-1 text-center">OTP will be verified upon account creation</p>
+            </div>
+          </div>
+
+          <!-- Create Password with Show/Hide Eye Icon -->
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Create Password</label>
+            <div class="relative">
+              <input type="password" id="signupPasswordInput" placeholder="Minimum 8 characters" required minlength="6"
+                class="w-full text-sm px-3.5 py-2.5 pr-10 rounded-xl border border-slate-300 focus:outline-none focus:border-amber-500 bg-slate-50 text-slate-800">
+              <button type="button"
+                class="toggle-password-btn absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 cursor-pointer focus:outline-none"
+                data-target="signupPasswordInput" title="Show / Hide Password">
+                <svg class="eye-show w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+                <svg class="eye-hide w-4 h-4 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Confirm Password with Show/Hide Eye Icon -->
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Confirm Password</label>
+            <div class="relative">
+              <input type="password" id="signupConfirmPasswordInput" placeholder="Re-enter password" required
+                minlength="6"
+                class="w-full text-sm px-3.5 py-2.5 pr-10 rounded-xl border border-slate-300 focus:outline-none focus:border-amber-500 bg-slate-50 text-slate-800">
+              <button type="button"
+                class="toggle-password-btn absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 cursor-pointer focus:outline-none"
+                data-target="signupConfirmPasswordInput" title="Show / Hide Password">
+                <svg class="eye-show w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+                <svg class="eye-hide w-4 h-4 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2 pt-1">
+            <input type="checkbox" id="agreeTerms" required
+              class="rounded border-slate-300 text-amber-600 focus:ring-amber-500">
+            <label for="agreeTerms" class="text-xs text-slate-600">I agree to the Terms of Service & Privacy
+              Policy</label>
+          </div>
+          <button type="submit"
+            class="w-full btn-rainbow-glow py-3.5 text-sm font-bold shadow-lg flex items-center justify-center gap-2 mt-2 cursor-pointer">
+            <span>Create Free Account</span>
+            <svg class="w-4 h-4 text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+            </svg>
+          </button>
+        </form>
+
+        <!-- Divider & Web3 One-click option -->
+        <div class="mt-6 pt-5 border-t border-slate-100">
+          <div class="flex justify-center text-xs text-slate-400 font-semibold mb-3">Or connect instantly</div>
+          <button type="button"
+            class="open-wallet-btn w-full btn-rainbow-light py-2.5 text-xs font-bold flex items-center justify-center gap-2 cursor-pointer">
+            <span>🦊 Connect with Web3 Wallet</span>
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Supabase JS Client & Config -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase-config.js"></script>
+
+  <!-- Scripts -->
+  <script src="js/charts.js"></script>
+  <script src="js/main.js"></script>
+
+</body>
+
+</html>
