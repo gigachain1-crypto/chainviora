@@ -611,7 +611,7 @@ function initBuySellMarket() {
     if (filtered.length === 0) {
       poolTableBody.innerHTML = `
         <tr>
-          <td colspan="5" class="py-6 text-center text-slate-400">
+          <td colspan="4" class="py-6 text-center text-slate-400">
             No orders found matching "${filterQuery}".
           </td>
         </tr>
@@ -623,14 +623,10 @@ function initBuySellMarket() {
       const tr = document.createElement('tr');
       tr.className = 'hover:bg-amber-50/40 transition-colors';
       tr.innerHTML = `
-        <td class="py-3 px-4 font-mono font-bold text-slate-900 flex items-center gap-1.5">
-          <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-          <span>#${item.id}</span>
-        </td>
         <td class="py-3 px-4 font-bold text-slate-800">
-          <span class="inline-flex items-center gap-1">
-            <span class="w-4 h-4 rounded-full bg-amber-500 text-white text-[9px] font-black flex items-center justify-center">G</span>
-            ${item.amount} GIGA
+          <span class="inline-flex items-center gap-1.5">
+            <span class="w-5 h-5 rounded-full bg-amber-500 text-white text-[10px] font-black flex items-center justify-center shadow-xs">G</span>
+            <span>${item.amount} GIGA</span>
           </span>
         </td>
         <td class="py-3 px-4 font-mono font-bold text-emerald-700">$${item.price.toFixed(2)}</td>
@@ -641,7 +637,7 @@ function initBuySellMarket() {
         </td>
         <td class="py-3 px-4 text-right">
           <button type="button" data-id="${item.id}"
-            class="buy-unit-btn px-3 py-1 rounded-lg btn-rainbow-glow text-[11px] font-bold shadow-xs cursor-pointer">
+            class="buy-unit-btn px-3.5 py-1.5 rounded-lg btn-rainbow-glow text-xs font-bold shadow-xs cursor-pointer">
             Buy ($30)
           </button>
         </td>
