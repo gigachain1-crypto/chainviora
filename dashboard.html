@@ -305,6 +305,153 @@
     </div>
 
     <!-- ====================================================================
+         GIGA BUY & SELL MARKETPLACE (100 POOL & PENDING SELL QUEUE)
+         ==================================================================== -->
+    <div class="mt-8 sm:mt-10 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+      <!-- BUY BOX (Col 8 / Left Pane: 100 GIGA List @ $30 each) -->
+      <div class="lg:col-span-8 multi-border-card p-5 sm:p-7 bg-white shadow-xl flex flex-col justify-between">
+        <div>
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+            <div class="flex items-center gap-3">
+              <div
+                class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 text-white flex items-center justify-center font-bold text-lg shadow-sm">
+                🛒
+              </div>
+              <div>
+                <div class="flex items-center gap-2">
+                  <h2 class="text-base sm:text-lg font-bold font-display text-slate-900">Buy GIGA (Available Pool)</h2>
+                  <span
+                    class="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-black">
+                    100 Listed
+                  </span>
+                </div>
+                <p class="text-xs text-slate-500">Fixed Rate: <strong class="text-slate-800 font-mono font-bold">$30.00 / 1 GIGA</strong></p>
+              </div>
+            </div>
+
+            <!-- Quick Buy 1 GIGA Button -->
+            <button id="quickBuyBtn"
+              class="btn-rainbow-glow px-5 py-2.5 text-xs font-bold shadow-md flex items-center justify-center gap-2 cursor-pointer self-start sm:self-auto">
+              <svg class="w-4 h-4 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
+              </svg>
+              <span>Quick Buy 1 GIGA ($30)</span>
+            </button>
+          </div>
+
+          <!-- Search / Filter & Pool Info Bar -->
+          <div class="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div class="relative flex-1">
+              <input type="text" id="buySearchInput" placeholder="Search Order ID (#GIGA-001)..."
+                class="w-full text-xs px-3.5 py-2 pl-9 rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:border-amber-500 font-mono text-slate-800">
+              <svg class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none"
+                stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+            <div class="text-xs text-slate-500 flex items-center gap-2 font-medium shrink-0">
+              <span>Pool Capacity: <strong class="text-emerald-600 font-mono font-bold">100 GIGA</strong></span>
+              <span>•</span>
+              <span>Unit Price: <strong class="text-slate-800 font-mono font-bold">$30.00</strong></span>
+            </div>
+          </div>
+
+          <!-- 100 GIGA Scrollable List Table -->
+          <div class="mt-4 max-h-[380px] overflow-y-auto rounded-xl border border-slate-200 divide-y divide-slate-100 bg-slate-50/40">
+            <table class="w-full text-left text-xs">
+              <thead
+                class="sticky top-0 bg-slate-100/95 backdrop-blur-xs text-slate-500 font-bold uppercase tracking-wider text-[11px] border-b border-slate-200">
+                <tr>
+                  <th class="py-2.5 px-4">Order ID</th>
+                  <th class="py-2.5 px-4">Quantity</th>
+                  <th class="py-2.5 px-4">Price (USD)</th>
+                  <th class="py-2.5 px-4">Status</th>
+                  <th class="py-2.5 px-4 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody id="buyPoolTableBody" class="divide-y divide-slate-100 font-medium text-slate-700">
+                <!-- Dynamically populated 100 GIGA units via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
+          <span>* Click any row's <strong>Buy</strong> button or use <strong>Quick Buy</strong> to purchase 1 GIGA for $30.</span>
+          <span class="font-mono text-emerald-600 font-bold">USDT Auto-Deduction</span>
+        </div>
+      </div>
+
+      <!-- SELL BOX (Col 4 / Right Pane: My Pending Sell Queue) -->
+      <div class="lg:col-span-4 multi-border-card p-5 sm:p-7 bg-white shadow-xl flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+            <div class="flex items-center gap-3">
+              <div
+                class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-rose-500 text-white flex items-center justify-center font-bold text-lg shadow-sm">
+                🏷️
+              </div>
+              <div>
+                <h2 class="text-base sm:text-lg font-bold font-display text-slate-900">Sell GIGA</h2>
+                <p class="text-xs text-slate-500">My Purchased GIGA in Queue</p>
+              </div>
+            </div>
+            <span id="pendingSellBadge"
+              class="px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-xs font-black">
+              0 Pending
+            </span>
+          </div>
+
+          <!-- Pending Summary Stats Card -->
+          <div class="mt-4 p-4 rounded-xl bg-gradient-to-br from-amber-50/70 to-orange-50/50 border border-amber-200/80">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-slate-600">Total Pending for Sell</span>
+              <span id="pendingCountDisplay" class="font-mono font-black text-amber-900 text-lg">0 GIGA</span>
+            </div>
+            <div class="flex items-center justify-between mt-2 pt-2 border-t border-amber-200/60 text-xs">
+              <span class="text-slate-500">Estimated Total Value:</span>
+              <span id="pendingValueDisplay" class="font-mono font-bold text-emerald-700 text-sm">$0.00 USDT</span>
+            </div>
+          </div>
+
+          <!-- List of User's Pending Sells -->
+          <div class="mt-4">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Your Pending Sell Queue</span>
+              <span class="text-[11px] text-slate-500 font-mono font-bold">1 GIGA = $30</span>
+            </div>
+
+            <div id="pendingSellListContainer" class="max-h-[260px] overflow-y-auto space-y-2 pr-1">
+              <!-- Empty state initially -->
+              <div id="emptyPendingSellNotice"
+                class="p-6 rounded-xl border border-dashed border-slate-200 text-center text-slate-400">
+                <svg class="w-8 h-8 text-slate-300 mx-auto mb-1.5" fill="none" stroke="currentColor"
+                  viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p class="text-xs font-medium">No GIGA in Sell Pending queue.</p>
+                <p class="text-[11px] text-slate-400 mt-0.5">When you buy from the 100 pool, it appears here as Pending Sell.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Info Notice -->
+        <div class="mt-4 p-3 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-500 flex items-start gap-2">
+          <svg class="w-4 h-4 text-amber-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>When you buy 1 GIGA ($30), it appears in your Sell queue as <strong>Pending</strong>, and automatically blends back into the 100 pool list.</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ====================================================================
          RECENT ACTIVITY & TRANSACTIONS TABLE
          ==================================================================== -->
     <div class="mt-10 multi-border-card p-6 sm:p-8 bg-white shadow-xl">

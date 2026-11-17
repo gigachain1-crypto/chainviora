@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initDashboardCanvas();
   initCopyActions();
   initReferralSystem();
+  initBuySellMarket();
 });
 
 // State
@@ -538,6 +539,273 @@ function initReferralSystem() {
       window.open(waUrl, '_blank');
     });
   }
+}
+
+/* --------------------------------------------------------------------------
+   7. Buy & Sell GIGA Marketplace (100 Pool & Pending Sell Queue)
+   -------------------------------------------------------------------------- */
+function initBuySellMarket() {
+  const poolTableBody = document.getElementById('buyPoolTableBody');
+  const searchInput = document.getElementById('buySearchInput');
+  const quickBuyBtn = document.getElementById('quickBuyBtn');
+  const pendingContainer = document.getElementById('pendingSellListContainer');
+  const pendingBadge = document.getElementById('pendingSellBadge');
+  const pendingCountDisplay = document.getElementById('pendingCountDisplay');
+  const pendingValueDisplay = document.getElementById('pendingValueDisplay');
+
+  // 1. Get or generate 100 GIGA buy pool
+  function getPool() {
+    let pool = [];
+    const saved = localStorage.getItem('chainviora_buy_pool_100');
+    if (saved) {
+      try {
+        pool = JSON.parse(saved);
+      } catch (e) {}
+    }
+    if (!Array.isArray(pool) || pool.length !== 100) {
+      pool = [];
+      for (let i = 1; i <= 100; i++) {
+        pool.push({
+          id: `GIGA-${String(i).padStart(3, '0')}`,
+          amount: 1,
+          price: 30.00,
+          status: 'Available'
+        });
+      }
+      localStorage.setItem('chainviora_buy_pool_100', JSON.stringify(pool));
+    }
+    return pool;
+  }
+
+  function savePool(pool) {
+    localStorage.setItem('chainviora_buy_pool_100', JSON.stringify(pool));
+  }
+
+  // 2. Get user's pending sell list
+  function getPendingSells() {
+    let pending = [];
+    const saved = localStorage.getItem('chainviora_user_pending_sells');
+    if (saved) {
+      try {
+        pending = JSON.parse(saved);
+      } catch (e) {}
+    }
+    return Array.isArray(pending) ? pending : [];
+  }
+
+  function savePendingSells(pending) {
+    localStorage.setItem('chainviora_user_pending_sells', JSON.stringify(pending));
+  }
+
+  // 3. Render the 100 GIGA buy table
+  function renderPoolTable(filterQuery = '') {
+    if (!poolTableBody) return;
+    const pool = getPool();
+    poolTableBody.innerHTML = '';
+
+    const query = filterQuery.trim().toLowerCase();
+    const filtered = query
+      ? pool.filter(item => item.id.toLowerCase().includes(query))
+      : pool;
+
+    if (filtered.length === 0) {
+      poolTableBody.innerHTML = `
+        <tr>
+          <td colspan="5" class="py-6 text-center text-slate-400">
+            No orders found matching "${filterQuery}".
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    filtered.forEach((item) => {
+      const tr = document.createElement('tr');
+      tr.className = 'hover:bg-amber-50/40 transition-colors';
+      tr.innerHTML = `
+        <td class="py-3 px-4 font-mono font-bold text-slate-900 flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+          <span>#${item.id}</span>
+        </td>
+        <td class="py-3 px-4 font-bold text-slate-800">
+          <span class="inline-flex items-center gap-1">
+            <span class="w-4 h-4 rounded-full bg-amber-500 text-white text-[9px] font-black flex items-center justify-center">G</span>
+            ${item.amount} GIGA
+          </span>
+        </td>
+        <td class="py-3 px-4 font-mono font-bold text-emerald-700">$${item.price.toFixed(2)}</td>
+        <td class="py-3 px-4">
+          <span class="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-bold text-[10px]">
+            ${item.status}
+          </span>
+        </td>
+        <td class="py-3 px-4 text-right">
+          <button type="button" data-id="${item.id}"
+            class="buy-unit-btn px-3 py-1 rounded-lg btn-rainbow-glow text-[11px] font-bold shadow-xs cursor-pointer">
+            Buy ($30)
+          </button>
+        </td>
+      `;
+      poolTableBody.appendChild(tr);
+    });
+
+    // Attach click events to all buy buttons
+    poolTableBody.querySelectorAll('.buy-unit-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const orderId = btn.getAttribute('data-id');
+        executeBuyGiga(orderId);
+      });
+    });
+  }
+
+  // 4. Render User's Pending Sells
+  function renderPendingSells() {
+    const pending = getPendingSells();
+    const count = pending.length;
+    const totalVal = count * 30.00;
+
+    if (pendingBadge) pendingBadge.textContent = `${count} Pending`;
+    if (pendingCountDisplay) pendingCountDisplay.textContent = `${count} GIGA`;
+    if (pendingValueDisplay) pendingValueDisplay.textContent = `$${totalVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT`;
+
+    if (!pendingContainer) return;
+
+    if (count === 0) {
+      pendingContainer.innerHTML = `
+        <div id="emptyPendingSellNotice" class="p-6 rounded-xl border border-dashed border-slate-200 text-center text-slate-400">
+          <svg class="w-8 h-8 text-slate-300 mx-auto mb-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <p class="text-xs font-medium">No GIGA in Sell Pending queue.</p>
+          <p class="text-[11px] text-slate-400 mt-0.5">When you buy from the 100 pool, it appears here as Pending Sell.</p>
+        </div>
+      `;
+      return;
+    }
+
+    pendingContainer.innerHTML = '';
+    pending.forEach(item => {
+      const card = document.createElement('div');
+      card.className = 'p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between hover:border-amber-300 transition-colors shadow-2xs';
+      card.innerHTML = `
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center font-black text-xs">
+            ⏳
+          </div>
+          <div>
+            <div class="flex items-center gap-1.5">
+              <span class="font-mono font-bold text-slate-900 text-xs">${item.orderId}</span>
+              <span class="text-[10px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200">1 GIGA</span>
+            </div>
+            <p class="text-[10px] text-slate-400">${item.timestamp} • Unit: $30.00</p>
+          </div>
+        </div>
+        <div class="text-right">
+          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 font-bold text-[10px] border border-amber-300">
+            <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+            Pending Sell
+          </span>
+          <p class="text-[11px] font-mono font-bold text-emerald-700 mt-0.5">$30.00</p>
+        </div>
+      `;
+      pendingContainer.appendChild(card);
+    });
+  }
+
+  // 5. Execute Buy Action
+  function executeBuyGiga(specificOrderId = null) {
+    const cost = 30.00;
+
+    // Verify main balance has at least $30 USDT
+    if (currentUser.usdtBalance < cost) {
+      showToast(`Insufficient USDT Balance! You have $${currentUser.usdtBalance.toFixed(2)}, but need $30.00 to buy 1 GIGA. Please Deposit funds first.`, 'error');
+      // Suggest opening deposit modal
+      const depModal = document.getElementById('depositModal');
+      if (depModal) {
+        setTimeout(() => {
+          depModal.classList.remove('hidden');
+          depModal.classList.add('flex');
+        }, 800);
+      }
+      return;
+    }
+
+    // Deduct $30 from user's USDT balance
+    currentUser.usdtBalance = Math.max(0, currentUser.usdtBalance - cost);
+    updateBalanceDisplays();
+
+    // Create user's Pending Sell record
+    const pending = getPendingSells();
+    const sellOrderId = `#SELL-${Math.floor(100000 + Math.random() * 900000)}`;
+    const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    pending.unshift({
+      orderId: sellOrderId,
+      amount: 1,
+      price: cost,
+      timestamp: nowTime,
+      status: 'Pending'
+    });
+    savePendingSells(pending);
+
+    // As requested:
+    // "wahi GIGI Fir se 100 Wala list mein kahi bhi add ho jayega.
+    // jo user buy karega wo usko dikhega pata nahi chalega ki kon GIGA mera hai jo abhi buy kiye hai."
+    const pool = getPool();
+    const targetIdx = specificOrderId
+      ? pool.findIndex(i => i.id === specificOrderId)
+      : Math.floor(Math.random() * pool.length);
+
+    const safeIdx = targetIdx >= 0 ? targetIdx : 0;
+    // Remove the purchased item and re-insert into a random position in the 100 list
+    pool.splice(safeIdx, 1);
+    const randomSlot = Math.floor(Math.random() * pool.length);
+    pool.splice(randomSlot, 0, {
+      id: `GIGA-${String(Math.floor(1 + Math.random() * 999)).padStart(3, '0')}`,
+      amount: 1,
+      price: 30.00,
+      status: 'Available'
+    });
+
+    // Ensure pool always has exactly 100 items
+    while (pool.length < 100) {
+      pool.push({
+        id: `GIGA-${String(pool.length + 1).padStart(3, '0')}`,
+        amount: 1,
+        price: 30.00,
+        status: 'Available'
+      });
+    }
+    savePool(pool);
+
+    // Add to transaction history table
+    const txHash = generateTxHash();
+    addTransactionRow('Buy GIGA', '1 GIGA ($30.00)', '-$30.00', txHash, 'Just now', 'Completed');
+
+    // Re-render UI
+    renderPoolTable(searchInput ? searchInput.value : '');
+    renderPendingSells();
+
+    showToast(`Successfully bought 1 GIGA for $30.00! Placed in Sell queue as Pending 🚀`, 'success');
+  }
+
+  // Bind Quick Buy button
+  if (quickBuyBtn) {
+    quickBuyBtn.addEventListener('click', () => {
+      executeBuyGiga();
+    });
+  }
+
+  // Bind search input
+  if (searchInput) {
+    searchInput.addEventListener('input', (e) => {
+      renderPoolTable(e.target.value);
+    });
+  }
+
+  // Initial render
+  renderPoolTable();
+  renderPendingSells();
 }
 
 
