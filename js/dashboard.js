@@ -723,7 +723,7 @@ function initBuySellMarket() {
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <p class="text-xs font-medium">No GIGA in Sell queue.</p>
-          <p class="text-[11px] text-slate-400 mt-0.5">When you buy from the 100 pool, it appears here as Pending Sell until 2 buyers match it.</p>
+          <p class="text-[11px] text-slate-400 mt-0.5">When you buy from the 100 pool, it appears here as Pending Sell.</p>
         </div>
       `;
       return;
@@ -746,7 +746,7 @@ function initBuySellMarket() {
                 <span class="font-mono font-bold text-slate-900 text-xs">${item.orderId}</span>
                 <span class="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.2 rounded border border-emerald-200">1 GIGA</span>
               </div>
-              <p class="text-[10px] text-slate-500">${item.completedAt || item.timestamp} • 2/2 Buyers Matched</p>
+              <p class="text-[10px] text-slate-500">${item.completedAt || item.timestamp}</p>
             </div>
           </div>
           <div class="text-right">
@@ -758,7 +758,6 @@ function initBuySellMarket() {
           </div>
         `;
       } else {
-        const buyers = item.matchedBuyers || 0;
         card.className = 'p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between hover:border-amber-300 transition-colors shadow-2xs';
         card.innerHTML = `
           <div class="flex items-center gap-2.5">
@@ -776,9 +775,9 @@ function initBuySellMarket() {
           <div class="text-right">
             <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 font-bold text-[10px] border border-amber-300">
               <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
-              Pending Sell (${buyers}/2)
+              Pending Sell
             </span>
-            <p class="text-[10px] font-mono font-bold text-slate-500 mt-0.5">${buyers === 1 ? '1 more buyer needed' : 'Waiting for buyers'}</p>
+            <p class="text-[10px] font-mono font-bold text-slate-500 mt-0.5">In Queue</p>
           </div>
         `;
       }
@@ -869,7 +868,7 @@ function initBuySellMarket() {
     scheduleBackgroundBuyer(6000);
   }
 
-  // 6. Background 2-Buyer Matching & Profit Distribution Engine
+  // 6. Background 2-Buyer Matching & Profit Distribution Engine (Silent Background Processing)
   let matchingTimeoutId = null;
 
   function processNextBackgroundBuyer() {
@@ -890,8 +889,7 @@ function initBuySellMarket() {
     if (targetOrder.matchedBuyers === 1) {
       savePendingSells(pending);
       renderPendingSells();
-      showToast(`⚡ Background Buyer Matched (1/2) for ${targetOrder.orderId}! 1 more buyer needed to complete $50.00 profit.`, 'info');
-      // Schedule the second buyer soon (in 7 seconds)
+      // Silently schedule the second buyer in background (no popup)
       scheduleBackgroundBuyer(7000);
     } else if (targetOrder.matchedBuyers >= 2) {
       targetOrder.status = 'Completed';
@@ -906,9 +904,8 @@ function initBuySellMarket() {
 
       // Add to transaction history table
       const txHash = generateTxHash();
-      addTransactionRow('Sell Complete', '1 GIGA (2/2 Buyers)', '+$50.00', txHash, 'Just now', 'Completed');
-
-      showToast(`🎉 Order ${targetOrder.orderId} Completed! 2 buyers bought your GIGA in background. +$50.00 Profit credited to your withdrawable balance! 💰`, 'success');
+      addTransactionRow('Sell Complete', '1 GIGA ($50.00)', '+$50.00', txHash, 'Just now', 'Completed');
+      // Silently completed in background (no popup)
     }
   }
 
