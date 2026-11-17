@@ -242,7 +242,8 @@
                     100 Listed
                   </span>
                 </div>
-                <p class="text-xs text-slate-500">Fixed Rate: <strong class="text-slate-800 font-mono font-bold">$30.00 / 1 GIGA</strong></p>
+                <p class="text-xs text-slate-500">Fixed Rate: <strong class="text-slate-800 font-mono font-bold">$30.00
+                    / 1 GIGA</strong></p>
               </div>
             </div>
 
@@ -267,7 +268,8 @@
           </div>
 
           <!-- 100 GIGA Scrollable List Table -->
-          <div class="mt-4 max-h-[380px] overflow-y-auto rounded-xl border border-slate-200 divide-y divide-slate-100 bg-slate-50/40">
+          <div
+            class="mt-4 max-h-[380px] overflow-y-auto rounded-xl border border-slate-200 divide-y divide-slate-100 bg-slate-50/40">
             <table class="w-full text-left text-xs">
               <thead
                 class="sticky top-0 bg-slate-100/95 backdrop-blur-xs text-slate-500 font-bold uppercase tracking-wider text-[11px] border-b border-slate-200">
@@ -313,7 +315,8 @@
           </div>
 
           <!-- Pending Summary Stats Card -->
-          <div class="mt-4 p-4 rounded-xl bg-gradient-to-br from-amber-50/70 to-orange-50/50 border border-amber-200/80">
+          <div
+            class="mt-4 p-4 rounded-xl bg-gradient-to-br from-amber-50/70 to-orange-50/50 border border-amber-200/80">
             <div class="flex items-center justify-between">
               <span class="text-xs font-bold text-slate-600">Total Pending for Sell</span>
               <span id="pendingCountDisplay" class="font-mono font-black text-amber-900 text-lg">0 GIGA</span>
@@ -341,19 +344,22 @@
                     d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <p class="text-xs font-medium">No GIGA in Sell Pending queue.</p>
-                <p class="text-[11px] text-slate-400 mt-0.5">When you buy from the 100 pool, it appears here as Pending Sell.</p>
+                <p class="text-[11px] text-slate-400 mt-0.5">When you buy from the 100 pool, it appears here as Pending
+                  Sell.</p>
               </div>
             </div>
           </div>
         </div>
 
         <!-- Info Notice -->
-        <div class="mt-4 p-3 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-500 flex items-start gap-2">
+        <div
+          class="mt-4 p-3 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-500 flex items-start gap-2">
           <svg class="w-4 h-4 text-amber-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
               d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <span>When you buy 1 GIGA ($30), it appears in your Sell queue as <strong>Pending</strong>, and automatically blends back into the 100 pool list.</span>
+          <span>When you buy 1 GIGA ($30), it appears in your Sell queue as <strong>Pending</strong>, and automatically
+            blends back into the 100 pool list.</span>
         </div>
       </div>
 
@@ -401,7 +407,8 @@
 
         <!-- Shareable Referral Link Box (Col 4) -->
         <div class="md:col-span-4">
-          <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Your Shareable Referral Link</span>
+          <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Your Shareable Referral
+            Link</span>
           <div class="mt-1 flex items-center gap-2 p-2 rounded-xl bg-slate-50 border border-slate-200">
             <input id="userRefLinkInput" type="text" readonly
               class="w-full bg-transparent text-xs text-slate-600 font-mono focus:outline-none select-all px-1"
@@ -665,53 +672,61 @@
   <div id="buySuccessModal"
     class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/60 backdrop-blur-md p-4">
     <div class="conic-border-box max-w-sm w-full shadow-2xl animate-fade-in">
-      <div class="conic-border-content p-6 sm:p-7 bg-white text-center">
+      <div class="conic-border-content relative p-6 sm:p-7 text-center rounded-2xl overflow-hidden bg-cover bg-center shadow-inner"
+        style="background-image: url('assets/buy-success-bg.jpg'); background-size: cover; background-position: center;">
 
-        <!-- Animated Success Badge -->
-        <div class="mx-auto w-16 h-16 rounded-full bg-emerald-100 border-2 border-emerald-300 flex items-center justify-center shadow-lg shadow-emerald-500/10 mb-3">
-          <svg class="w-8 h-8 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
-          </svg>
+        <!-- Subtle translucent glass overlay so background image is 100% visible and unblurred, while all words are razor sharp -->
+        <div class="absolute inset-0 bg-white/75 pointer-events-none"></div>
+
+        <div class="relative z-10">
+          <!-- Animated Success Badge -->
+          <div
+            class="mx-auto w-16 h-16 rounded-full bg-emerald-100/90 border-2 border-emerald-400 flex items-center justify-center shadow-lg shadow-emerald-500/20 mb-3">
+            <svg class="w-8 h-8 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+
+          <!-- Heading & Message -->
+          <h3 class="text-xl font-display font-black text-slate-900 leading-tight">
+            Buy Successfully! 🎉
+          </h3>
+          <p class="text-xs font-semibold text-slate-700 mt-1">
+            Your 1 GIGA order has been executed and placed in your Sell Queue.
+          </p>
+
+          <!-- Receipt Box with crystal-clear contrast -->
+          <div class="my-4 p-4 rounded-xl bg-white/90 border border-amber-200/80 shadow-md text-left space-y-2 text-xs">
+            <div class="flex justify-between items-center text-slate-600">
+              <span class="font-bold">Asset:</span>
+              <span class="font-extrabold text-slate-900 font-mono">1 GIGA Token</span>
+            </div>
+            <div class="flex justify-between items-center text-slate-600">
+              <span class="font-bold">Amount Paid:</span>
+              <span class="font-black font-mono text-emerald-700 text-sm">$30.00 USDT</span>
+            </div>
+            <div class="flex justify-between items-center text-slate-600">
+              <span class="font-bold">Current Status:</span>
+              <span
+                class="px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 font-bold text-[10px] border border-amber-300">
+                Pending Sell
+              </span>
+            </div>
+            <div class="flex justify-between items-center text-slate-600 pt-1.5 border-t border-slate-200">
+              <span class="font-bold">Order Reference:</span>
+              <span id="buySuccessOrderId" class="font-mono text-slate-800 font-extrabold">#SELL-000000</span>
+            </div>
+          </div>
+
+          <!-- OK Button -->
+          <button id="closeBuySuccessBtn" type="button"
+            class="w-full btn-rainbow-glow py-3 text-sm font-bold shadow-lg cursor-pointer flex items-center justify-center gap-2">
+            <span>OK</span>
+            <svg class="w-4 h-4 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+            </svg>
+          </button>
         </div>
-
-        <!-- Heading & Message -->
-        <h3 class="text-xl font-display font-black text-slate-900 leading-tight">
-          Buy Successfully! 🎉
-        </h3>
-        <p class="text-xs text-slate-500 mt-1">
-          Your 1 GIGA order has been executed and placed in your Sell Queue.
-        </p>
-
-        <!-- Receipt Box -->
-        <div class="my-4 p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-left space-y-2 text-xs">
-          <div class="flex justify-between items-center text-slate-500">
-            <span>Asset:</span>
-            <span class="font-bold text-slate-800 font-mono">1 GIGA Token</span>
-          </div>
-          <div class="flex justify-between items-center text-slate-500">
-            <span>Amount Paid:</span>
-            <span class="font-bold font-mono text-emerald-600">$30.00 USDT</span>
-          </div>
-          <div class="flex justify-between items-center text-slate-500">
-            <span>Current Status:</span>
-            <span class="px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 font-bold text-[10px] border border-amber-300">
-              Pending Sell
-            </span>
-          </div>
-          <div class="flex justify-between items-center text-slate-500 pt-1.5 border-t border-slate-200">
-            <span>Order Reference:</span>
-            <span id="buySuccessOrderId" class="font-mono text-slate-700 font-bold">#SELL-000000</span>
-          </div>
-        </div>
-
-        <!-- OK Button -->
-        <button id="closeBuySuccessBtn" type="button"
-          class="w-full btn-rainbow-glow py-3 text-sm font-bold shadow-lg cursor-pointer flex items-center justify-center gap-2">
-          <span>OK</span>
-          <svg class="w-4 h-4 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
-          </svg>
-        </button>
 
       </div>
     </div>

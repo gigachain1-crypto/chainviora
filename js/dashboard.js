@@ -560,7 +560,7 @@ function initBuySellMarket() {
     if (saved) {
       try {
         pool = JSON.parse(saved);
-      } catch (e) {}
+      } catch (e) { }
     }
     if (!Array.isArray(pool) || pool.length !== 100) {
       pool = [];
@@ -588,7 +588,7 @@ function initBuySellMarket() {
     if (saved) {
       try {
         pending = JSON.parse(saved);
-      } catch (e) {}
+      } catch (e) { }
     }
     return Array.isArray(pending) ? pending : [];
   }
