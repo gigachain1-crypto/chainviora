@@ -14,10 +14,10 @@ document.addEventListener('DOMContentLoaded', () => {
 // State
 let currentUser = {
   username: 'GIGA' + Math.floor(100000 + Math.random() * 900000),
-  email: 'crypto.member@gigachain.io',
+  email: 'crypto.member@chainviora.com',
   referralCode: Math.floor(100000 + Math.random() * 900000).toString(),
-  gigaBalance: 500.00,
-  usdtBalance: 1500.00
+  gigaBalance: 0.00,
+  usdtBalance: 0.00
 };
 
 const GIGA_PRICE = 3.42;
@@ -33,11 +33,25 @@ function initDashboardUser() {
       if (parsed.username) currentUser.username = parsed.username;
       if (parsed.email) currentUser.email = parsed.email;
       if (parsed.referralCode) currentUser.referralCode = parsed.referralCode;
-      if (parsed.gigaBalance !== undefined) currentUser.gigaBalance = parseFloat(parsed.gigaBalance);
-      if (parsed.usdtBalance !== undefined) currentUser.usdtBalance = parseFloat(parsed.usdtBalance);
+
+      // Reset all mock balances to zero for all users
+      if (!localStorage.getItem('chainviora_zero_data_v2')) {
+        currentUser.gigaBalance = 0.00;
+        currentUser.usdtBalance = 0.00;
+        parsed.gigaBalance = 0.00;
+        parsed.usdtBalance = 0.00;
+        localStorage.setItem('gigachain_current_user', JSON.stringify(parsed));
+        localStorage.setItem('chainviora_zero_data_v2', 'true');
+      } else {
+        if (parsed.gigaBalance !== undefined) currentUser.gigaBalance = parseFloat(parsed.gigaBalance) || 0;
+        if (parsed.usdtBalance !== undefined) currentUser.usdtBalance = parseFloat(parsed.usdtBalance) || 0;
+      }
     } catch (e) {
       console.warn('Error reading saved session:', e);
     }
+  } else {
+    currentUser.gigaBalance = 0.00;
+    currentUser.usdtBalance = 0.00;
   }
 
   // Ensure user always has a 6-digit referral code
@@ -86,6 +100,15 @@ function updateBalanceDisplays() {
   if (usdtDisplay) usdtDisplay.textContent = currentUser.usdtBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   if (usdtUsdDisplay) usdtUsdDisplay.textContent = `$${usdtVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   if (totalUsdDisplay) totalUsdDisplay.textContent = `$${totalUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+  // Update withdrawal modal options dynamically
+  const withdrawAssetSelect = document.getElementById('withdrawAssetSelect');
+  if (withdrawAssetSelect) {
+    const usdtOpt = withdrawAssetSelect.querySelector('option[value="USDT"]');
+    const gigaOpt = withdrawAssetSelect.querySelector('option[value="GIGA"]');
+    if (usdtOpt) usdtOpt.textContent = `USDT (Available: ${currentUser.usdtBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT)`;
+    if (gigaOpt) gigaOpt.textContent = `GIGA Token (Available: ${currentUser.gigaBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} GIGA)`;
+  }
 
   // Save updated balance to localStorage
   localStorage.setItem('gigachain_current_user', JSON.stringify(currentUser));
@@ -278,6 +301,9 @@ function generateTxHash() {
 function addTransactionRow(type, asset, amount, txHash, time, status) {
   const table = document.getElementById('transactionHistoryTable');
   if (!table) return;
+
+  const emptyRow = document.getElementById('emptyTxRow');
+  if (emptyRow) emptyRow.remove();
 
   const isDeposit = type === 'Deposit';
   const badgeClass = isDeposit ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200';

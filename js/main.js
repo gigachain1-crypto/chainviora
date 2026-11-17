@@ -731,8 +731,8 @@ function initAuthModal() {
           username: storedUsername,
           referralCode: storedRefCode,
           fullName: 'Chainviora Member',
-          gigaBalance: 500.00,
-          usdtBalance: 1500.00,
+          gigaBalance: 0.00,
+          usdtBalance: 0.00,
           passwordUpdated: new Date().toISOString()
         };
 
@@ -895,8 +895,8 @@ function initAuthModal() {
           username: storedUsername,
           referralCode: storedRefCode,
           fullName: user.user_metadata?.full_name || 'Gigachain Member',
-          gigaBalance: 500.00,
-          usdtBalance: 1500.00,
+          gigaBalance: 0.00,
+          usdtBalance: 0.00,
           loginTime: new Date().toISOString()
         };
 
@@ -1040,8 +1040,8 @@ function initAuthModal() {
           referralCode: newReferralCode,
           referredBy: refCodeEntered || null,
           fullName: fullName,
-          gigaBalance: 500.00, // Free welcome bonus
-          usdtBalance: 1500.00,
+          gigaBalance: 0.00,
+          usdtBalance: 0.00,
           registeredAt: new Date().toISOString()
         };
 
