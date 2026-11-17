@@ -18,7 +18,8 @@ let currentUser = {
   email: 'crypto.member@chainviora.com',
   referralCode: Math.floor(100000 + Math.random() * 900000).toString(),
   gigaBalance: 0.00,
-  usdtBalance: 0.00
+  usdtBalance: 0.00,
+  lifetimeProfit: 0.00
 };
 
 const GIGA_PRICE = 3.42;
@@ -39,13 +40,16 @@ function initDashboardUser() {
       if (!localStorage.getItem('chainviora_zero_data_v2')) {
         currentUser.gigaBalance = 0.00;
         currentUser.usdtBalance = 0.00;
+        currentUser.lifetimeProfit = 0.00;
         parsed.gigaBalance = 0.00;
         parsed.usdtBalance = 0.00;
+        parsed.lifetimeProfit = 0.00;
         localStorage.setItem('gigachain_current_user', JSON.stringify(parsed));
         localStorage.setItem('chainviora_zero_data_v2', 'true');
       } else {
         if (parsed.gigaBalance !== undefined) currentUser.gigaBalance = parseFloat(parsed.gigaBalance) || 0;
         if (parsed.usdtBalance !== undefined) currentUser.usdtBalance = parseFloat(parsed.usdtBalance) || 0;
+        if (parsed.lifetimeProfit !== undefined) currentUser.lifetimeProfit = parseFloat(parsed.lifetimeProfit) || 0;
       }
     } catch (e) {
       console.warn('Error reading saved session:', e);
@@ -53,6 +57,7 @@ function initDashboardUser() {
   } else {
     currentUser.gigaBalance = 0.00;
     currentUser.usdtBalance = 0.00;
+    currentUser.lifetimeProfit = 0.00;
   }
 
   // Ensure user always has a 6-digit referral code
@@ -71,6 +76,30 @@ function initDashboardUser() {
   if (welcomeUsername) welcomeUsername.textContent = currentUser.username;
 
   updateBalanceDisplays();
+
+  // Wire up the Profit Box "Withdraw Profit" button
+  const profitWithdrawBtn = document.getElementById('profitBoxWithdrawBtn');
+  if (profitWithdrawBtn && !profitWithdrawBtn.dataset.bound) {
+    profitWithdrawBtn.dataset.bound = 'true';
+    profitWithdrawBtn.addEventListener('click', () => {
+      const modal = document.getElementById('withdrawModal');
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        const assetSelect = document.getElementById('withdrawAssetSelect');
+        if (assetSelect) assetSelect.value = 'USDT';
+        const amountInput = document.getElementById('withdrawAmountInput');
+        if (amountInput && currentUser.usdtBalance > 0) {
+          amountInput.value = currentUser.usdtBalance.toFixed(2);
+          const receiveDisplay = document.getElementById('withdrawReceiveDisplay');
+          if (receiveDisplay) {
+            const receive = Math.max(0, currentUser.usdtBalance - 1.00);
+            receiveDisplay.textContent = `${receive.toFixed(2)} USDT`;
+          }
+        }
+      }
+    });
+  }
 
   // Logout Action
   const logoutBtn = document.getElementById('logoutBtn');
@@ -91,6 +120,8 @@ function updateBalanceDisplays() {
   const usdtDisplay = document.getElementById('usdtBalanceDisplay');
   const usdtUsdDisplay = document.getElementById('usdtUsdDisplay');
   const totalUsdDisplay = document.getElementById('totalUsdBalance');
+  const profitDisplay = document.getElementById('profitBalanceDisplay');
+  const profitDisplaySell = document.getElementById('profitBalanceDisplaySellCard');
 
   const gigaVal = currentUser.gigaBalance * GIGA_PRICE;
   const usdtVal = currentUser.usdtBalance;
@@ -101,6 +132,8 @@ function updateBalanceDisplays() {
   if (usdtDisplay) usdtDisplay.textContent = currentUser.usdtBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   if (usdtUsdDisplay) usdtUsdDisplay.textContent = `$${usdtVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   if (totalUsdDisplay) totalUsdDisplay.textContent = `$${totalUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  if (profitDisplay) profitDisplay.textContent = `$${currentUser.lifetimeProfit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  if (profitDisplaySell) profitDisplaySell.textContent = `$${currentUser.lifetimeProfit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   // Update withdrawal modal options dynamically
   const withdrawAssetSelect = document.getElementById('withdrawAssetSelect');
@@ -590,7 +623,19 @@ function initBuySellMarket() {
         pending = JSON.parse(saved);
       } catch (e) { }
     }
-    return Array.isArray(pending) ? pending : [];
+    if (Array.isArray(pending)) {
+      pending.forEach(item => {
+        if (item.matchedBuyers === undefined) {
+          item.matchedBuyers = item.status === 'Completed' ? 2 : 0;
+        }
+        if (!item.status) {
+          item.status = item.matchedBuyers >= 2 ? 'Completed' : 'Pending';
+        }
+      });
+    } else {
+      pending = [];
+    }
+    return pending;
   }
 
   function savePendingSells(pending) {
@@ -654,26 +699,31 @@ function initBuySellMarket() {
     });
   }
 
-  // 4. Render User's Pending Sells
+  // 4. Render User's Pending & Completed Sells
   function renderPendingSells() {
     const pending = getPendingSells();
-    const count = pending.length;
-    const totalVal = count * 30.00;
+    const activePending = pending.filter(item => item.status !== 'Completed');
+    const completedItems = pending.filter(item => item.status === 'Completed');
+    const pendingCount = activePending.length;
 
-    if (pendingBadge) pendingBadge.textContent = `${count} Pending`;
-    if (pendingCountDisplay) pendingCountDisplay.textContent = `${count} GIGA`;
-    if (pendingValueDisplay) pendingValueDisplay.textContent = `$${totalVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT`;
+    if (pendingBadge) pendingBadge.textContent = `${pendingCount} Pending`;
+    if (pendingCountDisplay) pendingCountDisplay.textContent = `${pendingCount} GIGA`;
+
+    const profitDisplay = document.getElementById('profitBalanceDisplay');
+    const profitDisplaySell = document.getElementById('profitBalanceDisplaySellCard');
+    if (profitDisplay) profitDisplay.textContent = `$${currentUser.lifetimeProfit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    if (profitDisplaySell) profitDisplaySell.textContent = `$${currentUser.lifetimeProfit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
     if (!pendingContainer) return;
 
-    if (count === 0) {
+    if (pending.length === 0) {
       pendingContainer.innerHTML = `
         <div id="emptyPendingSellNotice" class="p-6 rounded-xl border border-dashed border-slate-200 text-center text-slate-400">
           <svg class="w-8 h-8 text-slate-300 mx-auto mb-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <p class="text-xs font-medium">No GIGA in Sell Pending queue.</p>
-          <p class="text-[11px] text-slate-400 mt-0.5">When you buy from the 100 pool, it appears here as Pending Sell.</p>
+          <p class="text-xs font-medium">No GIGA in Sell queue.</p>
+          <p class="text-[11px] text-slate-400 mt-0.5">When you buy from the 100 pool, it appears here as Pending Sell until 2 buyers match it.</p>
         </div>
       `;
       return;
@@ -681,29 +731,57 @@ function initBuySellMarket() {
 
     pendingContainer.innerHTML = '';
     pending.forEach(item => {
+      const isComplete = item.status === 'Completed' || (item.matchedBuyers >= 2);
       const card = document.createElement('div');
-      card.className = 'p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between hover:border-amber-300 transition-colors shadow-2xs';
-      card.innerHTML = `
-        <div class="flex items-center gap-2.5">
-          <div class="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center font-black text-xs">
-            ⏳
-          </div>
-          <div>
-            <div class="flex items-center gap-1.5">
-              <span class="font-mono font-bold text-slate-900 text-xs">${item.orderId}</span>
-              <span class="text-[10px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200">1 GIGA</span>
+
+      if (isComplete) {
+        card.className = 'p-3 rounded-xl bg-emerald-50/70 border border-emerald-200 flex items-center justify-between hover:border-emerald-300 transition-colors shadow-2xs';
+        card.innerHTML = `
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-black text-xs shadow-xs">
+              ✓
             </div>
-            <p class="text-[10px] text-slate-400">${item.timestamp} • Unit: $30.00</p>
+            <div>
+              <div class="flex items-center gap-1.5">
+                <span class="font-mono font-bold text-slate-900 text-xs">${item.orderId}</span>
+                <span class="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.2 rounded border border-emerald-200">1 GIGA</span>
+              </div>
+              <p class="text-[10px] text-slate-500">${item.completedAt || item.timestamp} • 2/2 Buyers Matched</p>
+            </div>
           </div>
-        </div>
-        <div class="text-right">
-          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 font-bold text-[10px] border border-amber-300">
-            <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
-            Pending Sell
-          </span>
-          <p class="text-[11px] font-mono font-bold text-emerald-700 mt-0.5">$30.00</p>
-        </div>
-      `;
+          <div class="text-right">
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-bold text-[10px] border border-emerald-300">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+              Sell Complete
+            </span>
+            <p class="text-[11px] font-mono font-black text-emerald-700 mt-0.5">+$50.00 Profit</p>
+          </div>
+        `;
+      } else {
+        const buyers = item.matchedBuyers || 0;
+        card.className = 'p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between hover:border-amber-300 transition-colors shadow-2xs';
+        card.innerHTML = `
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center font-black text-xs shadow-xs">
+              ⏳
+            </div>
+            <div>
+              <div class="flex items-center gap-1.5">
+                <span class="font-mono font-bold text-slate-900 text-xs">${item.orderId}</span>
+                <span class="text-[10px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200">1 GIGA</span>
+              </div>
+              <p class="text-[10px] text-slate-400">${item.timestamp} • Unit: $30.00</p>
+            </div>
+          </div>
+          <div class="text-right">
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 font-bold text-[10px] border border-amber-300">
+              <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+              Pending Sell (${buyers}/2)
+            </span>
+            <p class="text-[10px] font-mono font-bold text-slate-500 mt-0.5">${buyers === 1 ? '1 more buyer needed' : 'Waiting for buyers'}</p>
+          </div>
+        `;
+      }
       pendingContainer.appendChild(card);
     });
   }
@@ -739,14 +817,15 @@ function initBuySellMarket() {
       orderId: sellOrderId,
       amount: 1,
       price: cost,
+      profit: 50.00,
+      matchedBuyers: 0,
+      requiredBuyers: 2,
       timestamp: nowTime,
       status: 'Pending'
     });
     savePendingSells(pending);
 
-    // As requested:
-    // "wahi GIGI Fir se 100 Wala list mein kahi bhi add ho jayega.
-    // jo user buy karega wo usko dikhega pata nahi chalega ki kon GIGA mera hai jo abhi buy kiye hai."
+    // Re-blend purchased GIGA back into 100 pool
     const pool = getPool();
     const targetIdx = specificOrderId
       ? pool.findIndex(i => i.id === specificOrderId)
@@ -785,9 +864,67 @@ function initBuySellMarket() {
     // Open Buy Successfully Popup Modal (with background blur)
     openSuccessModal(sellOrderId);
     showToast(`Successfully bought 1 GIGA for $30.00! Placed in Sell queue as Pending 🚀`, 'success');
+
+    // Schedule background buyer matching: 1st buyer in 6s, 2nd buyer in 14s
+    scheduleBackgroundBuyer(6000);
   }
 
-  // 6. Buy Success Modal Handlers
+  // 6. Background 2-Buyer Matching & Profit Distribution Engine
+  let matchingTimeoutId = null;
+
+  function processNextBackgroundBuyer() {
+    const pending = getPendingSells();
+    // FIFO: find oldest pending order where matchedBuyers < 2
+    let targetOrder = null;
+    for (let i = pending.length - 1; i >= 0; i--) {
+      if (pending[i].status !== 'Completed' && (pending[i].matchedBuyers || 0) < 2) {
+        targetOrder = pending[i];
+        break;
+      }
+    }
+
+    if (!targetOrder) return;
+
+    targetOrder.matchedBuyers = (targetOrder.matchedBuyers || 0) + 1;
+
+    if (targetOrder.matchedBuyers === 1) {
+      savePendingSells(pending);
+      renderPendingSells();
+      showToast(`⚡ Background Buyer Matched (1/2) for ${targetOrder.orderId}! 1 more buyer needed to complete $50.00 profit.`, 'info');
+      // Schedule the second buyer soon (in 7 seconds)
+      scheduleBackgroundBuyer(7000);
+    } else if (targetOrder.matchedBuyers >= 2) {
+      targetOrder.status = 'Completed';
+      targetOrder.completedAt = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      savePendingSells(pending);
+
+      // Credit $50.00 to user's lifetime profit & withdrawable USDT balance
+      currentUser.lifetimeProfit = (currentUser.lifetimeProfit || 0) + 50.00;
+      currentUser.usdtBalance = (currentUser.usdtBalance || 0) + 50.00;
+      updateBalanceDisplays();
+      renderPendingSells();
+
+      // Add to transaction history table
+      const txHash = generateTxHash();
+      addTransactionRow('Sell Complete', '1 GIGA (2/2 Buyers)', '+$50.00', txHash, 'Just now', 'Completed');
+
+      showToast(`🎉 Order ${targetOrder.orderId} Completed! 2 buyers bought your GIGA in background. +$50.00 Profit credited to your withdrawable balance! 💰`, 'success');
+    }
+  }
+
+  function scheduleBackgroundBuyer(delayMs) {
+    if (matchingTimeoutId) clearTimeout(matchingTimeoutId);
+    matchingTimeoutId = setTimeout(() => {
+      processNextBackgroundBuyer();
+    }, delayMs);
+  }
+
+  // Periodic background matching interval (every 16s)
+  setInterval(() => {
+    processNextBackgroundBuyer();
+  }, 16000);
+
+  // 7. Buy Success Modal Handlers
   const successModal = document.getElementById('buySuccessModal');
   const closeSuccessBtn = document.getElementById('closeBuySuccessBtn');
   const successOrderIdEl = document.getElementById('buySuccessOrderId');
