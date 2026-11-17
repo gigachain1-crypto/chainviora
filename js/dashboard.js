@@ -786,10 +786,42 @@ function initBuySellMarket() {
     renderPoolTable(searchInput ? searchInput.value : '');
     renderPendingSells();
 
+    // Open Buy Successfully Popup Modal (with background blur)
+    openSuccessModal(sellOrderId);
     showToast(`Successfully bought 1 GIGA for $30.00! Placed in Sell queue as Pending 🚀`, 'success');
   }
 
-  // Bind Quick Buy button
+  // 6. Buy Success Modal Handlers
+  const successModal = document.getElementById('buySuccessModal');
+  const closeSuccessBtn = document.getElementById('closeBuySuccessBtn');
+  const successOrderIdEl = document.getElementById('buySuccessOrderId');
+
+  function openSuccessModal(orderId) {
+    if (successOrderIdEl) successOrderIdEl.textContent = orderId;
+    if (successModal) {
+      successModal.classList.remove('hidden');
+      successModal.classList.add('flex');
+    }
+  }
+
+  function closeSuccessModal() {
+    if (successModal) {
+      successModal.classList.add('hidden');
+      successModal.classList.remove('flex');
+    }
+  }
+
+  if (closeSuccessBtn) {
+    closeSuccessBtn.addEventListener('click', closeSuccessModal);
+  }
+
+  if (successModal) {
+    successModal.addEventListener('click', (e) => {
+      if (e.target === successModal) closeSuccessModal();
+    });
+  }
+
+  // Bind Quick Buy button (if present)
   if (quickBuyBtn) {
     quickBuyBtn.addEventListener('click', () => {
       executeBuyGiga();
