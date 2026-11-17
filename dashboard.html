@@ -136,10 +136,10 @@
     <!-- ====================================================================
          PORTFOLIO BALANCE & ACTION BUTTONS (Deposit & Withdrawal)
          ==================================================================== -->
-    <div class="mt-6 sm:mt-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
+    <div class="mt-6 sm:mt-8">
 
-      <!-- Primary Balance Card (Col 8) -->
-      <div class="lg:col-span-8 multi-border-card p-5 sm:p-8 bg-white shadow-xl">
+      <!-- Primary Balance Card (Full Width) -->
+      <div class="multi-border-card p-5 sm:p-8 bg-white shadow-xl">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-100">
           <div>
             <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Total Portfolio Balance</span>
@@ -216,90 +216,6 @@
 
         </div>
 
-      </div>
-
-      <!-- Refer & Earn Referral Box (Col 4) -->
-      <div class="lg:col-span-4 multi-border-card p-5 sm:p-6 bg-white shadow-xl flex flex-col justify-between">
-        <div>
-          <div class="flex items-center justify-between pb-3 border-b border-slate-100">
-            <div class="flex items-center gap-2">
-              <div
-                class="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-pink-500 text-white flex items-center justify-center font-bold text-base shadow-sm">
-                🎁
-              </div>
-              <div>
-                <h3 class="font-bold text-slate-900 text-sm sm:text-base leading-tight">Refer & Earn</h3>
-                <p class="text-[11px] text-slate-400">Invite friends & get crypto rewards</p>
-              </div>
-            </div>
-            <span
-              class="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-black">
-              Bonus Active
-            </span>
-          </div>
-
-          <div class="mt-4 space-y-3.5">
-            <!-- 6-Digit Referral Code -->
-            <div>
-              <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Your 6-Digit Referral
-                Code</span>
-              <div class="mt-1 flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200">
-                <span id="userRefCodeDisplay"
-                  class="font-mono font-black text-slate-900 text-lg tracking-widest">000000</span>
-                <button id="copyRefCodeBtn"
-                  class="px-3 py-1 rounded-lg bg-white border border-slate-200 text-xs font-bold text-slate-700 hover:text-amber-600 hover:border-amber-400 transition-colors cursor-pointer flex items-center gap-1 shadow-xs"
-                  title="Copy 6-Digit Code">
-                  <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                  </svg>
-                  <span>Copy</span>
-                </button>
-              </div>
-            </div>
-
-            <!-- Shareable Referral Link Box -->
-            <div>
-              <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Your Shareable Referral
-                Link</span>
-              <div class="mt-1 flex items-center gap-2 p-2 rounded-xl bg-slate-50 border border-slate-200">
-                <input id="userRefLinkInput" type="text" readonly
-                  class="w-full bg-transparent text-xs text-slate-600 font-mono focus:outline-none select-all px-1"
-                  value="https://chainviora.com/?ref=000000">
-                <button id="copyRefLinkBtn"
-                  class="shrink-0 px-3 py-1.5 rounded-lg btn-rainbow-glow text-xs font-bold shadow-xs cursor-pointer flex items-center gap-1">
-                  <svg class="w-3.5 h-3.5 text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                  </svg>
-                  <span>Copy Link</span>
-                </button>
-              </div>
-            </div>
-
-            <!-- Referral Stats -->
-            <div class="grid grid-cols-2 gap-2 pt-1 text-center">
-              <div class="p-2.5 rounded-xl bg-amber-50/70 border border-amber-200">
-                <p class="text-[11px] text-slate-500 font-medium">Invited Friends</p>
-                <p id="totalReferralsCount" class="text-sm font-black text-amber-900 font-mono mt-0.5">0</p>
-              </div>
-              <div class="p-2.5 rounded-xl bg-emerald-50/70 border border-emerald-200">
-                <p class="text-[11px] text-slate-500 font-medium">Referral Earned</p>
-                <p id="totalReferralEarned" class="text-sm font-black text-emerald-800 font-mono mt-0.5">0.00 GIGA</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Quick Share Button (WhatsApp / WebShare) -->
-        <button id="shareRefBtn"
-          class="mt-4 w-full btn-rainbow-light py-2.5 text-xs font-bold flex items-center justify-center gap-2 shadow-sm text-center cursor-pointer">
-          <svg class="w-4 h-4 text-emerald-600" fill="currentColor" viewBox="0 0 24 24">
-            <path
-              d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.312.045-.694.072-2.122-.519-1.826-.757-3.003-2.607-3.094-2.729-.092-.122-.741-.986-.741-1.88 0-.895.467-1.336.633-1.518.167-.182.366-.228.487-.228.121 0 .243.002.348.006.111.006.262-.042.41.314.155.374.526 1.282.573 1.376.046.094.077.204.015.328-.063.124-.094.2-.186.31-.093.111-.196.248-.28.333-.094.094-.192.196-.083.383.11.188.488.805 1.047 1.303.719.641 1.325.84 1.512.934.188.093.297.08.408-.047.111-.127.476-.554.603-.745.127-.19.254-.158.423-.095.17.063 1.077.508 1.262.601.185.093.308.139.354.218.046.079.046.458-.098.863z" />
-          </svg>
-          <span>Share via WhatsApp / Friends 🚀</span>
-        </button>
       </div>
 
     </div>
@@ -449,6 +365,90 @@
         </div>
       </div>
 
+    </div>
+
+    <!-- ====================================================================
+         REFER & EARN BOX (Placed Below Buy & Sell Marketplace)
+         ==================================================================== -->
+    <div class="mt-8 sm:mt-10 multi-border-card p-5 sm:p-7 bg-white shadow-xl">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 gap-3">
+        <div class="flex items-center gap-3">
+          <div
+            class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-pink-500 text-white flex items-center justify-center font-bold text-lg shadow-sm">
+            🎁
+          </div>
+          <div>
+            <h3 class="font-bold text-slate-900 text-base sm:text-lg leading-tight">Refer & Earn</h3>
+            <p class="text-xs text-slate-500">Invite friends & get instant crypto bonus rewards</p>
+          </div>
+        </div>
+        <span
+          class="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-black self-start sm:self-auto">
+          Bonus Active
+        </span>
+      </div>
+
+      <div class="mt-5 grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+        <!-- 6-Digit Referral Code (Col 3) -->
+        <div class="md:col-span-3">
+          <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Your 6-Digit Referral Code</span>
+          <div class="mt-1 flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+            <span id="userRefCodeDisplay"
+              class="font-mono font-black text-slate-900 text-lg tracking-widest">000000</span>
+            <button id="copyRefCodeBtn"
+              class="px-3 py-1 rounded-lg bg-white border border-slate-200 text-xs font-bold text-slate-700 hover:text-amber-600 hover:border-amber-400 transition-colors cursor-pointer flex items-center gap-1 shadow-xs"
+              title="Copy 6-Digit Code">
+              <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+              <span>Copy</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Shareable Referral Link Box (Col 4) -->
+        <div class="md:col-span-4">
+          <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Your Shareable Referral Link</span>
+          <div class="mt-1 flex items-center gap-2 p-2 rounded-xl bg-slate-50 border border-slate-200">
+            <input id="userRefLinkInput" type="text" readonly
+              class="w-full bg-transparent text-xs text-slate-600 font-mono focus:outline-none select-all px-1"
+              value="https://chainviora.com/?ref=000000">
+            <button id="copyRefLinkBtn"
+              class="shrink-0 px-3 py-1.5 rounded-lg btn-rainbow-glow text-xs font-bold shadow-xs cursor-pointer flex items-center gap-1">
+              <svg class="w-3.5 h-3.5 text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+              <span>Copy Link</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Referral Stats (Col 2) -->
+        <div class="md:col-span-2 grid grid-cols-2 gap-2 text-center">
+          <div class="p-2 rounded-xl bg-amber-50/70 border border-amber-200">
+            <p class="text-[10px] text-slate-500 font-medium">Invited</p>
+            <p id="totalReferralsCount" class="text-sm font-black text-amber-900 font-mono mt-0.5">0</p>
+          </div>
+          <div class="p-2 rounded-xl bg-emerald-50/70 border border-emerald-200">
+            <p class="text-[10px] text-slate-500 font-medium">Earned</p>
+            <p id="totalReferralEarned" class="text-xs font-black text-emerald-800 font-mono mt-0.5">0.00 GIGA</p>
+          </div>
+        </div>
+
+        <!-- Share Button (Col 3) -->
+        <div class="md:col-span-3">
+          <button id="shareRefBtn"
+            class="w-full btn-rainbow-light py-2.5 text-xs font-bold flex items-center justify-center gap-2 shadow-sm text-center cursor-pointer">
+            <svg class="w-4 h-4 text-emerald-600" fill="currentColor" viewBox="0 0 24 24">
+              <path
+                d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.312.045-.694.072-2.122-.519-1.826-.757-3.003-2.607-3.094-2.729-.092-.122-.741-.986-.741-1.88 0-.895.467-1.336.633-1.518.167-.182.366-.228.487-.228.121 0 .243.002.348.006.111.006.262-.042.41.314.155.374.526 1.282.573 1.376.046.094.077.204.015.328-.063.124-.094.2-.186.31-.093.111-.196.248-.28.333-.094.094-.192.196-.083.383.11.188.488.805 1.047 1.303.719.641 1.325.84 1.512.934.188.093.297.08.408-.047.111-.127.476-.554.603-.745.127-.19.254-.158.423-.095.17.063 1.077.508 1.262.601.185.093.308.139.354.218.046.079.046.458-.098.863z" />
+            </svg>
+            <span>Share via WhatsApp / Friends 🚀</span>
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- ====================================================================
