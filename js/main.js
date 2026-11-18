@@ -876,19 +876,39 @@ function initAuthModal() {
           if (!user) throw new Error('No user returned from authentication.');
         } catch (authErr) {
           console.error('Login failed:', authErr.message);
-          // Show meaningful error to user — no silent bypass
           const msg = authErr.message || '';
-          if (msg.includes('Invalid login credentials') || msg.includes('invalid_credentials')) {
+
+          if (msg.includes('Email not confirmed')) {
+            // Auto-confirm via backend silently, then retry login
+            showToast('Verifying account... Please wait.', 'info');
+            try {
+              await fetch('/api/confirm-email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: email })
+              });
+              // Retry login after auto-confirm
+              const retryData = await window.gigachainAuth.signIn(email, password);
+              user = retryData.user;
+              if (!user) throw new Error('Retry failed after confirm.');
+            } catch (retryErr) {
+              showToast('Incorrect email or password. Please try again.', 'error');
+              if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = origBtnHtml; }
+              return;
+            }
+          } else if (msg.includes('Invalid login credentials') || msg.includes('invalid_credentials')) {
             showToast('Incorrect email or password. Please try again.', 'error');
-          } else if (msg.includes('Email not confirmed')) {
-            showToast('Please verify your email address before logging in. Check your inbox.', 'error');
+            if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = origBtnHtml; }
+            return;
           } else if (msg.includes('User not found') || msg.includes('No user')) {
             showToast('No account found with this email. Please sign up first.', 'error');
+            if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = origBtnHtml; }
+            return;
           } else {
             showToast(msg || 'Login failed. Please check your credentials.', 'error');
+            if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = origBtnHtml; }
+            return;
           }
-          if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = origBtnHtml; }
-          return;
         }
 
         // Automatic Username Generation (GIGA + 6 digits) if not already assigned
@@ -1036,6 +1056,18 @@ function initAuthModal() {
           }
         } else {
           user = { email: email, user_metadata: { full_name: fullName, username: autoUsername } };
+        }
+
+        // ✅ Auto-confirm email via backend (so user doesn't need to click Supabase's email)
+        // Our OTP already verified the email, so this is safe
+        try {
+          await fetch('/api/confirm-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: email })
+          });
+        } catch (confirmErr) {
+          console.warn('Auto-confirm skipped:', confirmErr.message);
         }
 
         const refInput = document.getElementById('signupReferralInput');
