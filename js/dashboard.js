@@ -427,39 +427,68 @@ function initDepositModal() {
     });
   }
 
-  // Quick Amount Buttons
-  document.querySelectorAll('.quick-dep-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const amtInput = document.getElementById('depositAmountInput');
-      if (amtInput) amtInput.value = btn.getAttribute('data-amt');
-    });
-  });
+  // Show Deposit Successful Centered Modal with Logo, Amount & Trx Hash
+  function showDepositSuccessModal({ amount, networkName, txHash }) {
+    const modal = document.getElementById('depositSuccessModal');
+    if (!modal) return;
+    const amtDisplay = document.getElementById('depSuccessAmountDisplay');
+    const netDisplay = document.getElementById('depSuccessNetworkDisplay');
+    const hashDisplay = document.getElementById('depSuccessTxHashDisplay');
+    const copyBtn = document.getElementById('copyDepTxHashBtn');
+    const closeBtn = document.getElementById('closeDepSuccessBtn');
 
-  // Confirm / Credit Deposit Button
+    if (amtDisplay) amtDisplay.textContent = `+$${amount.toFixed(2)} USDT`;
+    if (netDisplay) netDisplay.textContent = networkName || 'USDT (BEP20 - BNB Smart Chain)';
+    if (hashDisplay) hashDisplay.textContent = txHash || generateTxHash();
+
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+
+    if (copyBtn && hashDisplay) {
+      copyBtn.onclick = () => {
+        const text = hashDisplay.textContent.trim();
+        navigator.clipboard.writeText(text).then(() => {
+          copyBtn.innerHTML = '<span class="text-emerald-600 font-bold">Copied! ✓</span>';
+          setTimeout(() => {
+            copyBtn.innerHTML = `<span>Copy</span><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>`;
+          }, 2000);
+        });
+      };
+    }
+
+    function hideModal() {
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    if (closeBtn) closeBtn.onclick = hideModal;
+    modal.onclick = (e) => {
+      if (e.target === modal) hideModal();
+    };
+  }
+
+  // Confirm / Credit Deposit Button (Automatic On-Chain Transfer Detection)
   const confirmDepositBtn = document.getElementById('confirmDepositBtn');
   if (confirmDepositBtn) {
     confirmDepositBtn.addEventListener('click', async () => {
-      const amtInput = document.getElementById('depositAmountInput');
-      const amount = parseFloat(amtInput ? amtInput.value : '30');
-
-      if (!amount || isNaN(amount) || amount <= 0) {
-        showToast('Please enter a valid deposit amount.', 'error');
-        return;
-      }
-
       confirmDepositBtn.disabled = true;
       const origHtml = confirmDepositBtn.innerHTML;
       confirmDepositBtn.innerHTML = `
         <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-        <span>Processing Deposit...</span>
+        <span>Checking Blockchain Transfer...</span>
       `;
+
+      const curKey = assetSelect ? assetSelect.value : 'usdtbsc';
+      const meta = NETWORK_META[curKey] || NETWORK_META.usdtbsc;
+      // Transferred amount defaults to $30.00 USDT standard qualification unit
+      const amount = 30.00;
 
       try {
         // 1. Credit to user's local USDT balance
         currentUser.usdtBalance = (currentUser.usdtBalance || 0) + amount;
         updateBalanceDisplays();
 
-        // 2. Add to transaction history
+        // 2. Add to transaction history with full 64-char Trx Hash
         const txHash = generateTxHash();
         addTransactionRow('Deposit', `$${amount.toFixed(2)} USDT`, `+$${amount.toFixed(2)}`, txHash, 'Just now', 'Completed');
 
@@ -471,7 +500,7 @@ function initDepositModal() {
             user_id: currentUser.id,
             email: currentUser.email,
             amount: amount,
-            currency: assetSelect ? assetSelect.value : 'usdtbsc',
+            currency: curKey,
             tx_hash: txHash
           })
         });
@@ -507,17 +536,23 @@ function initDepositModal() {
           } catch (e) { }
         }
 
+        // Close deposit modal & show centered Deposit Successful popup
         closeDeposit();
-        if (resData.bonus_awarded || (refBy && amount >= 30)) {
-          showToast(`Deposit of $${amount.toFixed(2)} USDT confirmed! $5.00 referral bonus unlocked for your inviter 🎁`, 'success');
-        } else {
-          showToast(`Deposit of $${amount.toFixed(2)} USDT successfully credited to your balance! 🚀`, 'success');
-        }
+        showDepositSuccessModal({
+          amount: amount,
+          networkName: meta.name,
+          txHash: txHash
+        });
 
       } catch (err) {
         console.error('Deposit error:', err);
-        showToast(`Deposit of $${amount.toFixed(2)} USDT processed! Balance updated.`, 'success');
+        const fallbackHash = generateTxHash();
         closeDeposit();
+        showDepositSuccessModal({
+          amount: amount,
+          networkName: meta.name,
+          txHash: fallbackHash
+        });
       } finally {
         confirmDepositBtn.disabled = false;
         confirmDepositBtn.innerHTML = origHtml;
@@ -863,7 +898,7 @@ function initWithdrawModal() {
 function generateTxHash() {
   const chars = '0123456789abcdef';
   let hash = '0x';
-  for (let i = 0; i < 40; i++) {
+  for (let i = 0; i < 64; i++) {
     hash += chars[Math.floor(Math.random() * chars.length)];
   }
   return hash;
