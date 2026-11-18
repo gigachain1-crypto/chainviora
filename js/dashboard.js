@@ -1170,13 +1170,13 @@ function initReferralSystem() {
         </td>
         <td class="py-3 px-3 text-right">
           ${isQualified
-            ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs">
+          ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs">
                 <span>✓</span> +$5.00 Earned
               </span>`
-            : `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+          : `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
                 <span>⏳</span> Pending ($30+ needed)
               </span>`
-          }
+        }
         </td>
       `;
       tableBody.appendChild(tr);

@@ -93,9 +93,9 @@ function initParticleNetwork() {
    -------------------------------------------------------------------------- */
 function initCryptoTicker() {
   const gigaPriceEl = document.querySelectorAll('.giga-live-price');
-  // Fixed rate: 1 GIGA = $30.00 (no live fluctuation)
+  // Fixed rate: 1 GIGA $30 (no live fluctuation)
   gigaPriceEl.forEach(el => {
-    el.textContent = '$30.00';
+    el.textContent = '1 GIGA $30';
   });
 }
 
