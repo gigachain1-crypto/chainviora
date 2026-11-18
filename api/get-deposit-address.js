@@ -128,7 +128,7 @@ module.exports = async (req, res) => {
           pay_currency: meta.nowCurrency,
           order_id: `dep_${user_id.slice(0, 8)}_${curKey}_${Date.now()}`,
           order_description: `Gigachain Deposit for ${curKey.toUpperCase()} - user ${user_id.slice(0, 8)}`,
-          ipn_callback_url: 'https://www.chainviora.com/api/check-deposit-status',
+          ipn_callback_url: 'https://www.chainviora.com/api/nowpayments-webhook',
           is_fixed_rate: false,
           is_fee_paid_by_user: false
         })
