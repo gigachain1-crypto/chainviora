@@ -406,6 +406,104 @@ function initDepositModal() {
       });
     });
   }
+
+  // Quick Amount Buttons
+  document.querySelectorAll('.quick-dep-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const amtInput = document.getElementById('depositAmountInput');
+      if (amtInput) amtInput.value = btn.getAttribute('data-amt');
+    });
+  });
+
+  // Confirm / Credit Deposit Button
+  const confirmDepositBtn = document.getElementById('confirmDepositBtn');
+  if (confirmDepositBtn) {
+    confirmDepositBtn.addEventListener('click', async () => {
+      const amtInput = document.getElementById('depositAmountInput');
+      const amount = parseFloat(amtInput ? amtInput.value : '30');
+
+      if (!amount || isNaN(amount) || amount <= 0) {
+        showToast('Please enter a valid deposit amount.', 'error');
+        return;
+      }
+
+      confirmDepositBtn.disabled = true;
+      const origHtml = confirmDepositBtn.innerHTML;
+      confirmDepositBtn.innerHTML = `
+        <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+        <span>Processing Deposit...</span>
+      `;
+
+      try {
+        // 1. Credit to user's local USDT balance
+        currentUser.usdtBalance = (currentUser.usdtBalance || 0) + amount;
+        updateBalanceDisplays();
+
+        // 2. Add to transaction history
+        const txHash = generateTxHash();
+        addTransactionRow('Deposit', `$${amount.toFixed(2)} USDT`, `+$${amount.toFixed(2)}`, txHash, 'Just now', 'Completed');
+
+        // 3. Process backend deposit & check referral bonus
+        const res = await fetch('/api/process-deposit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id: currentUser.id,
+            email: currentUser.email,
+            amount: amount,
+            currency: assetSelect ? assetSelect.value : 'usdtbsc',
+            tx_hash: txHash
+          })
+        });
+        const resData = await res.json().catch(() => ({}));
+
+        // 4. Update local referral status for inviter if any
+        const refBy = currentUser.referredBy || localStorage.getItem(`chainviora_user_ref_by_${currentUser.email}`);
+        if (refBy && amount >= 30) {
+          try {
+            let refList = JSON.parse(localStorage.getItem(`chainviora_ref_list_${refBy}`) || '[]');
+            let found = false;
+            refList.forEach(item => {
+              if (item.email?.toLowerCase() === currentUser.email?.toLowerCase()) {
+                item.deposited = true;
+                item.depositAmount = amount;
+                item.bonusPaid = true;
+                item.bonusAmount = 5.00;
+                found = true;
+              }
+            });
+            if (!found) {
+              refList.push({
+                username: currentUser.username,
+                email: currentUser.email,
+                date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                deposited: true,
+                depositAmount: amount,
+                bonusPaid: true,
+                bonusAmount: 5.00
+              });
+            }
+            localStorage.setItem(`chainviora_ref_list_${refBy}`, JSON.stringify(refList));
+          } catch (e) { }
+        }
+
+        closeDeposit();
+        if (resData.bonus_awarded || (refBy && amount >= 30)) {
+          showToast(`Deposit of $${amount.toFixed(2)} USDT confirmed! $5.00 referral bonus unlocked for your inviter 🎁`, 'success');
+        } else {
+          showToast(`Deposit of $${amount.toFixed(2)} USDT successfully credited to your balance! 🚀`, 'success');
+        }
+
+      } catch (err) {
+        console.error('Deposit error:', err);
+        showToast(`Deposit of $${amount.toFixed(2)} USDT processed! Balance updated.`, 'success');
+        closeDeposit();
+      } finally {
+        confirmDepositBtn.disabled = false;
+        confirmDepositBtn.innerHTML = origHtml;
+      }
+    });
+  }
 }
 
 /* --------------------------------------------------------------------------
@@ -909,7 +1007,7 @@ function showToast(message, type = 'info') {
 }
 
 /* --------------------------------------------------------------------------
-   7. Referral System (6-Digit Code, Shareable Link & WhatsApp Sharing)
+   7. Referral System ($5 Fixed Bonus for $30+ Deposit, Tracking & Invited Modal)
    -------------------------------------------------------------------------- */
 function initReferralSystem() {
   const codeDisplay = document.getElementById('userRefCodeDisplay');
@@ -919,9 +1017,24 @@ function initReferralSystem() {
   const shareBtn = document.getElementById('shareRefBtn');
   const refCountEl = document.getElementById('totalReferralsCount');
   const refEarnedEl = document.getElementById('totalReferralEarned');
+  const invitedCardBtn = document.getElementById('invitedCardBtn');
+
+  // Modal elements
+  const invitedModal = document.getElementById('invitedUsersModal');
+  const closeInvitedBtn = document.getElementById('closeInvitedModal');
+  const closeFooterBtn = document.getElementById('modalCloseFooterBtn');
+  const modalCopyLinkBtn = document.getElementById('modalCopyRefLinkBtn');
+  const modalEarnedEl = document.getElementById('modalReferralEarned');
+  const modalQualifiedEl = document.getElementById('modalQualifiedCount');
+  const modalCodeDisplay = document.getElementById('modalRefCodeDisplay');
+  const tableBody = document.getElementById('invitedUsersTableBody');
+  const emptyState = document.getElementById('invitedUsersEmpty');
 
   if (codeDisplay) {
     codeDisplay.textContent = currentUser.referralCode;
+  }
+  if (modalCodeDisplay) {
+    modalCodeDisplay.textContent = currentUser.referralCode;
   }
 
   // Construct referral link using current origin or production domain
@@ -935,10 +1048,184 @@ function initReferralSystem() {
     linkInput.value = refLink;
   }
 
-  // Stats from localStorage
-  const refCount = parseInt(localStorage.getItem(`chainviora_ref_count_${currentUser.referralCode}`) || '0', 10);
-  if (refCountEl) refCountEl.textContent = refCount;
-  if (refEarnedEl) refEarnedEl.textContent = `${(refCount * 50).toFixed(2)} GIGA`;
+  // Helper: Retrieve and merge referrals from Backend + LocalStorage
+  async function loadReferrals() {
+    let list = [];
+
+    // 1. Read local storage cache
+    try {
+      const local = JSON.parse(localStorage.getItem(`chainviora_ref_list_${currentUser.referralCode}`) || '[]');
+      if (Array.isArray(local)) list = local;
+    } catch (e) { }
+
+    // 2. Fetch from backend API
+    try {
+      const res = await fetch(`/api/get-referrals?ref_code=${currentUser.referralCode}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && Array.isArray(data.referrals)) {
+          // Merge avoiding email duplicates
+          data.referrals.forEach(remote => {
+            const idx = list.findIndex(l => l.email?.toLowerCase() === remote.email?.toLowerCase());
+            if (idx >= 0) {
+              list[idx] = { ...list[idx], ...remote };
+            } else {
+              list.push(remote);
+            }
+          });
+        }
+      }
+    } catch (apiErr) {
+      console.warn('Referrals API fetch skipped:', apiErr.message);
+    }
+
+    // Cache merged
+    localStorage.setItem(`chainviora_ref_list_${currentUser.referralCode}`, JSON.stringify(list));
+    localStorage.setItem(`chainviora_ref_count_${currentUser.referralCode}`, list.length.toString());
+
+    return list;
+  }
+
+  // Helper: Refresh UI counts and auto-credit new $5 referral bonuses
+  async function refreshReferralStats() {
+    const list = await loadReferrals();
+
+    const totalInvited = list.length;
+    let qualifiedCount = 0;
+
+    list.forEach(item => {
+      const isQualified = (parseFloat(item.deposit_amount || item.depositAmount || 0) >= 30) || item.bonus_awarded === true || item.bonusPaid === true;
+      if (isQualified) qualifiedCount++;
+    });
+
+    const totalEarned = qualifiedCount * 5.00;
+
+    // Update Refer & Earn box on dashboard
+    if (refCountEl) refCountEl.textContent = totalInvited;
+    if (refEarnedEl) refEarnedEl.textContent = `$${totalEarned.toFixed(2)}`;
+
+    // Update modal summary stats
+    if (modalEarnedEl) modalEarnedEl.textContent = `$${totalEarned.toFixed(2)}`;
+    if (modalQualifiedEl) modalQualifiedEl.textContent = `${qualifiedCount} Qualified`;
+
+    // ✅ AUTO-CREDIT REFERRAL BONUS TO MAIN BALANCE:
+    // Check if new bonuses were earned that haven't been credited locally yet
+    const creditedKey = `cv_ref_bonus_credited_${currentUser.referralCode}`;
+    const alreadyCredited = parseFloat(localStorage.getItem(creditedKey) || '0');
+
+    if (totalEarned > alreadyCredited) {
+      const bonusDiff = totalEarned - alreadyCredited;
+      currentUser.usdtBalance = (currentUser.usdtBalance || 0) + bonusDiff;
+      localStorage.setItem(creditedKey, totalEarned.toString());
+
+      updateBalanceDisplays();
+      syncBalanceToSupabase('referral_bonus');
+      recordTxToSupabase('referral_bonus', bonusDiff, 0, null, `Referral Bonus: +$${bonusDiff.toFixed(2)} USDT`);
+      addTransactionRow('Referral Bonus', `+$${bonusDiff.toFixed(2)} USDT`, `+$${bonusDiff.toFixed(2)}`, generateTxHash(), 'Just now', 'Completed');
+
+      showToast(`🎉 +$${bonusDiff.toFixed(2)} Referral Bonus credited to your main balance from invited friends' deposit!`, 'success');
+    }
+
+    return list;
+  }
+
+  // Helper: Render Invited Users List Table inside Modal
+  function renderInvitedModal(list) {
+    if (!tableBody) return;
+    tableBody.innerHTML = '';
+
+    if (!list || list.length === 0) {
+      if (emptyState) emptyState.classList.remove('hidden');
+      return;
+    }
+
+    if (emptyState) emptyState.classList.add('hidden');
+
+    list.forEach(user => {
+      const username = user.username || 'Member';
+      const email = user.email || 'user@example.com';
+      const date = user.date || (user.created_at ? new Date(user.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Recent');
+      const depositAmt = parseFloat(user.deposit_amount || user.depositAmount || 0);
+      const isQualified = depositAmt >= 30 || user.bonus_awarded === true || user.bonusPaid === true;
+
+      const tr = document.createElement('tr');
+      tr.className = 'hover:bg-amber-50/40 transition-colors';
+      tr.innerHTML = `
+        <td class="py-3 px-3">
+          <div class="flex items-center gap-2.5">
+            <div class="w-7 h-7 rounded-full bg-gradient-to-tr from-amber-400 to-amber-600 text-white font-black flex items-center justify-center text-[10px] shadow-2xs shrink-0">
+              ${username.slice(0, 2).toUpperCase()}
+            </div>
+            <div class="min-w-0">
+              <div class="font-bold text-slate-800 text-xs truncate">${username}</div>
+              <div class="text-[11px] text-slate-400 font-mono truncate">${email}</div>
+            </div>
+          </div>
+        </td>
+        <td class="py-3 px-3 text-center">
+          <span class="font-mono font-bold ${depositAmt > 0 ? 'text-emerald-700' : 'text-slate-400'} text-xs">
+            $${depositAmt.toFixed(2)}
+          </span>
+          <div class="text-[9px] text-slate-400">${date}</div>
+        </td>
+        <td class="py-3 px-3 text-right">
+          ${isQualified
+            ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs">
+                <span>✓</span> +$5.00 Earned
+              </span>`
+            : `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                <span>⏳</span> Pending ($30+ needed)
+              </span>`
+          }
+        </td>
+      `;
+      tableBody.appendChild(tr);
+    });
+  }
+
+  // Initial stats calculation
+  refreshReferralStats();
+
+  // Open Modal Handler (when clicking on "Invited" box)
+  if (invitedCardBtn) {
+    invitedCardBtn.addEventListener('click', async () => {
+      if (!invitedModal) return;
+      invitedModal.classList.remove('hidden');
+      invitedModal.classList.add('flex');
+
+      // Refresh list
+      const list = await refreshReferralStats();
+      renderInvitedModal(list);
+    });
+  }
+
+  // Close Modal Handlers
+  function closeInvitedModal() {
+    if (invitedModal) {
+      invitedModal.classList.add('hidden');
+      invitedModal.classList.remove('flex');
+    }
+  }
+
+  if (closeInvitedBtn) closeInvitedBtn.addEventListener('click', closeInvitedModal);
+  if (closeFooterBtn) closeFooterBtn.addEventListener('click', closeInvitedModal);
+  if (invitedModal) {
+    invitedModal.addEventListener('click', (e) => {
+      if (e.target === invitedModal) closeInvitedModal();
+    });
+  }
+
+  // Modal Copy Link Button
+  if (modalCopyLinkBtn) {
+    modalCopyLinkBtn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(refLink);
+        showToast('Referral link copied! Share with friends 🚀', 'success');
+      } catch (e) {
+        showToast(`Referral Link: ${refLink}`, 'info');
+      }
+    });
+  }
 
   // Copy 6-Digit Code
   if (copyCodeBtn) {
@@ -971,7 +1258,7 @@ function initReferralSystem() {
   // Share via WhatsApp / Web Share API
   if (shareBtn) {
     shareBtn.addEventListener('click', async () => {
-      const shareText = `Hey! Join Chainviora using my Referral Code: ${currentUser.referralCode} to get 500 GIGA bonus tokens!\nSign up here:\n${refLink}`;
+      const shareText = `Hey! Join Chainviora using my Referral Code: ${currentUser.referralCode} to get started with Web3!\nSign up here:\n${refLink}`;
 
       if (navigator.share) {
         try {
@@ -981,9 +1268,7 @@ function initReferralSystem() {
             url: refLink
           });
           return;
-        } catch (e) {
-          // If user cancelled, fall through
-        }
+        } catch (e) { }
       }
 
       // WhatsApp Web / App share fallback

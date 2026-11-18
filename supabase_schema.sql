@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   -- Referral
   referral_code text DEFAULT null,
   referred_by text DEFAULT null,
+  referral_bonus_earned numeric(18, 2) DEFAULT 0.00,
 
   created_at timestamp with time zone DEFAULT timezone('utc', now()) NOT NULL
 );
@@ -42,6 +43,7 @@ ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS deposit_address_currency te
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS deposit_addresses jsonb DEFAULT '{}'::jsonb;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS referral_code text DEFAULT null;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS referred_by text DEFAULT null;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS referral_bonus_earned numeric(18, 2) DEFAULT 0.00;
 
 -- Enable RLS
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
@@ -135,3 +137,29 @@ ALTER TABLE public.stakes ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Users can view and create own stakes" ON public.stakes;
 CREATE POLICY "Users can view and create own stakes"
   ON public.stakes FOR ALL USING (auth.uid() = user_id);
+
+-- ============================================================
+-- 5. REFERRALS TABLE (Tracks invited friends and $5 bonuses)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS public.referrals (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  referrer_code text NOT NULL,
+  referred_email text NOT NULL UNIQUE,
+  referred_username text,
+  deposit_amount numeric(18, 2) DEFAULT 0.00,
+  bonus_awarded boolean DEFAULT false,
+  bonus_amount numeric(18, 2) DEFAULT 0.00,
+  created_at timestamp with time zone DEFAULT timezone('utc', now()) NOT NULL,
+  updated_at timestamp with time zone DEFAULT timezone('utc', now()) NOT NULL
+);
+
+ALTER TABLE public.referrals ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Anyone can view referrals" ON public.referrals;
+DROP POLICY IF EXISTS "Service role full access referrals" ON public.referrals;
+
+CREATE POLICY "Anyone can view referrals"
+  ON public.referrals FOR SELECT USING (true);
+
+CREATE POLICY "Service role full access referrals"
+  ON public.referrals FOR ALL USING (true);

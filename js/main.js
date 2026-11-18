@@ -949,7 +949,7 @@ function initAuthModal() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email: email, username: storedUsername })
-          }).catch(() => {});
+          }).catch(() => { });
         }
         // Always cache locally too for fast access
         localStorage.setItem(`giga_user_${email}`, storedUsername);
@@ -1134,10 +1134,41 @@ function initAuthModal() {
         const refInput = document.getElementById('signupReferralInput');
         const refCodeEntered = refInput ? refInput.value.trim().toUpperCase() : '';
 
-        // If referred by someone, increment referrer's count in localStorage
+        // ✅ If referred by someone, track referral both locally and on backend
         if (refCodeEntered && refCodeEntered.length === 6) {
           const prevCount = parseInt(localStorage.getItem(`chainviora_ref_count_${refCodeEntered}`) || '0', 10);
           localStorage.setItem(`chainviora_ref_count_${refCodeEntered}`, (prevCount + 1).toString());
+
+          // Save detailed referral item to referrer's list
+          let refList = [];
+          try {
+            refList = JSON.parse(localStorage.getItem(`chainviora_ref_list_${refCodeEntered}`) || '[]');
+          } catch (e) { }
+
+          // Add this new user to the referrer's list if not already present
+          if (!refList.some(r => r.email?.toLowerCase() === email.toLowerCase())) {
+            refList.unshift({
+              username: autoUsername,
+              email: email,
+              date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+              deposited: false,
+              depositAmount: 0,
+              bonusPaid: false,
+              bonusAmount: 0
+            });
+            localStorage.setItem(`chainviora_ref_list_${refCodeEntered}`, JSON.stringify(refList));
+          }
+
+          // Call backend API to record referral in Supabase permanently
+          fetch('/api/record-referral', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              referrer_code: refCodeEntered,
+              referred_email: email,
+              referred_username: autoUsername
+            })
+          }).catch(err => console.warn('Record referral network error:', err));
         }
 
         const userSession = {
