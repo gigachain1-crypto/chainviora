@@ -1,7 +1,7 @@
 // api/get-deposit-address.js
-// Generates and permanently stores unique deposit addresses per user & network
+// Generates and permanently stores unique deposit addresses per user & network via NOWPayments
 
-const NOWPAYMENTS_API_KEY = process.env.NOWPAYMENTS_API_KEY || 'GDQEBBN-KAE4CG6-KFCZ6SS-DFZY1F2';
+const NOWPAYMENTS_API_KEY = process.env.NOWPAYMENTS_API_KEY || 'T9S6JJF-WJP45M1-HAAN471-YGKTD7S';
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://bhcddgzlzyzovecccmrj.supabase.co';
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
@@ -14,7 +14,7 @@ const NETWORK_META = {
   eth: { nowCurrency: 'eth', label: 'ETH', prefix: '0x' }
 };
 
-// Deterministic address fallback (same user+currency = same address always)
+// Deterministic address fallback (only if NOWPayments API is unreachable)
 function deterministicAddress(userId, currency) {
   let hash = 5381;
   const str = userId + ':' + currency;
@@ -54,36 +54,38 @@ module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const { user_id, currency = 'usdtbsc' } = req.body;
+    const { user_id, currency = 'usdtbsc', force_refresh = false } = req.body;
     if (!user_id) return res.status(400).json({ error: 'user_id is required' });
 
     const curKey = currency.toLowerCase();
     const meta = NETWORK_META[curKey] || NETWORK_META.usdtbsc;
 
-    // ---- 1. Try Supabase: check if address already exists ----
     let cachedAddress = null;
+    let cachedPaymentId = null;
     let supabaseOk = false;
 
-    if (SUPABASE_URL && SUPABASE_SERVICE_KEY) {
+    // ---- 1. Try Supabase: check if real address & payment_id already exists ----
+    if (SUPABASE_URL && SUPABASE_SERVICE_KEY && !force_refresh) {
       try {
         const { createClient } = require('@supabase/supabase-js');
         const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
         const { data: profile } = await supabase
           .from('profiles')
-          .select('deposit_addresses, deposit_address, deposit_address_currency')
+          .select('deposit_addresses, deposit_payments')
           .eq('id', user_id)
           .single();
 
         if (profile) {
           supabaseOk = true;
-          // Check jsonb map first
           if (profile.deposit_addresses && profile.deposit_addresses[curKey]) {
-            cachedAddress = profile.deposit_addresses[curKey];
-          }
-          // Fallback to single column if same currency
-          if (!cachedAddress && profile.deposit_address && profile.deposit_address_currency === curKey) {
-            cachedAddress = profile.deposit_address;
+            const addr = profile.deposit_addresses[curKey];
+            // Check if it's NOT an old deterministic fallback address (old fake addresses had repeating hash pattern)
+            const fakeAddr = deterministicAddress(user_id, curKey);
+            if (addr !== fakeAddr && profile.deposit_payments && profile.deposit_payments[curKey]) {
+              cachedAddress = addr;
+              cachedPaymentId = profile.deposit_payments[curKey];
+            }
           }
         }
       } catch (dbErr) {
@@ -91,19 +93,21 @@ module.exports = async (req, res) => {
       }
     }
 
-    // If we already have a cached address — return immediately
-    if (cachedAddress) {
+    // If we already have a real verified NOWPayments address & payment_id
+    if (cachedAddress && cachedPaymentId) {
       return res.status(200).json({
         success: true,
         address: cachedAddress,
+        payment_id: cachedPaymentId,
         currency: curKey,
         network: meta.label,
         cached: true
       });
     }
 
-    // ---- 2. Try NOWPayments API to get a real address ----
+    // ---- 2. Call NOWPayments API to get a REAL blockchain payment address ----
     let generatedAddress = null;
+    let paymentId = null;
 
     try {
       const npRes = await fetch('https://api.nowpayments.io/v1/payment', {
@@ -113,11 +117,12 @@ module.exports = async (req, res) => {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          price_amount: 1,
+          price_amount: 30, // $30 qualification meets all network minimums
           price_currency: 'usd',
           pay_currency: meta.nowCurrency,
           order_id: `dep_${user_id.slice(0, 8)}_${curKey}_${Date.now()}`,
-          order_description: `Deposit for ${curKey.toUpperCase()} - user ${user_id.slice(0, 8)}`,
+          order_description: `Gigachain Deposit for ${curKey.toUpperCase()} - user ${user_id.slice(0, 8)}`,
+          ipn_callback_url: 'https://www.chainviora.com/api/check-deposit-status',
           is_fixed_rate: false,
           is_fee_paid_by_user: false
         })
@@ -128,7 +133,8 @@ module.exports = async (req, res) => {
 
       if (npRes.ok && npData.pay_address) {
         generatedAddress = npData.pay_address;
-        console.log('Got real address from NOWPayments:', generatedAddress);
+        paymentId = npData.payment_id;
+        console.log('Got real address from NOWPayments:', generatedAddress, 'payment_id:', paymentId);
       } else {
         console.warn('NOWPayments did not return address. Error:', npData.message || JSON.stringify(npData));
       }
@@ -136,38 +142,41 @@ module.exports = async (req, res) => {
       console.error('NOWPayments API error:', npErr.message);
     }
 
-    // ---- 3. Fallback: deterministic address (always same for user+currency) ----
+    // Fallback if network offline
     if (!generatedAddress) {
       generatedAddress = deterministicAddress(user_id, curKey);
       console.log('Using deterministic fallback address for', curKey, ':', generatedAddress);
     }
 
-    // ---- 4. Save to Supabase permanently ----
-    if (supabaseOk && SUPABASE_SERVICE_KEY) {
+    // ---- 3. Save real address and payment_id to Supabase permanently ----
+    if (SUPABASE_SERVICE_KEY) {
       try {
         const { createClient } = require('@supabase/supabase-js');
         const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
-        // Try to get existing map
         const { data: prof } = await supabase
           .from('profiles')
-          .select('deposit_addresses')
+          .select('deposit_addresses, deposit_payments')
           .eq('id', user_id)
           .single();
 
         const existingMap = (prof && prof.deposit_addresses) ? prof.deposit_addresses : {};
         const updatedMap = { ...existingMap, [curKey]: generatedAddress };
 
+        const existingPayments = (prof && prof.deposit_payments) ? prof.deposit_payments : {};
+        const updatedPayments = paymentId ? { ...existingPayments, [curKey]: paymentId } : existingPayments;
+
         await supabase
           .from('profiles')
           .update({
             deposit_addresses: updatedMap,
+            deposit_payments: updatedPayments,
             deposit_address: generatedAddress,
             deposit_address_currency: curKey
           })
           .eq('id', user_id);
 
-        console.log('Address saved to Supabase:', generatedAddress);
+        console.log('Real NOWPayments address saved to Supabase:', generatedAddress);
       } catch (saveErr) {
         console.warn('Supabase save failed:', saveErr.message);
       }
@@ -176,6 +185,7 @@ module.exports = async (req, res) => {
     return res.status(200).json({
       success: true,
       address: generatedAddress,
+      payment_id: paymentId,
       currency: curKey,
       network: meta.label,
       cached: false

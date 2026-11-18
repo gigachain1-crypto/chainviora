@@ -255,8 +255,10 @@ function initDepositModal() {
     eth: { label: 'ETH', name: 'ETH (Ethereum - ERC20)', badgeClass: 'text-blue-700 bg-blue-50 border-blue-200' }
   };
 
-  // Cache: addresses per currency for the current user
+  // Cache: addresses and payment IDs per currency for current user
   const addressesCache = {};
+  const paymentsCache = {};
+  let currentPaymentId = null;
 
   // Render QR Code
   function renderQRCode(address) {
@@ -313,23 +315,30 @@ function initDepositModal() {
     const curKey = (currency || 'usdtbsc').toLowerCase();
     const meta = NETWORK_META[curKey] || NETWORK_META.usdtbsc;
 
-    // 1. If in-memory cache exists
-    if (addressesCache[curKey]) {
+    // 1. If in-memory cache exists with payment ID
+    if (addressesCache[curKey] && paymentsCache[curKey]) {
+      currentPaymentId = paymentsCache[curKey];
       updateBadgeAndNote(curKey, addressesCache[curKey], true);
       renderQRCode(addressesCache[curKey]);
       return;
     }
 
-    // 2. Check localStorage cache
+    // 2. Check localStorage cache (ignore old fake addresses starting with 0x748b97c0)
     const user = currentUser;
     const localKey = user && user.id ? `gigachain_dep_${user.id}_${curKey}` : null;
     if (localKey) {
       const savedAddr = localStorage.getItem(localKey);
-      if (savedAddr) {
+      const savedPid = localStorage.getItem(localKey + '_pid');
+      if (savedAddr && !savedAddr.startsWith('0x748b97c0') && savedPid) {
         addressesCache[curKey] = savedAddr;
+        paymentsCache[curKey] = savedPid;
+        currentPaymentId = savedPid;
         updateBadgeAndNote(curKey, savedAddr, true);
         renderQRCode(savedAddr);
         return;
+      } else {
+        localStorage.removeItem(localKey);
+        localStorage.removeItem(localKey + '_pid');
       }
     }
 
@@ -362,6 +371,11 @@ function initDepositModal() {
 
       if (data.success && data.address) {
         addressesCache[curKey] = data.address;
+        if (data.payment_id) {
+          paymentsCache[curKey] = data.payment_id;
+          currentPaymentId = data.payment_id;
+          if (localKey) localStorage.setItem(localKey + '_pid', data.payment_id);
+        }
         if (localKey) localStorage.setItem(localKey, data.address);
 
         updateBadgeAndNote(curKey, data.address, data.cached);
@@ -467,7 +481,7 @@ function initDepositModal() {
     };
   }
 
-  // Confirm / Credit Deposit Button (Automatic On-Chain Transfer Detection)
+  // Confirm / Credit Deposit Button (Real On-Chain Verification with NOWPayments)
   const confirmDepositBtn = document.getElementById('confirmDepositBtn');
   if (confirmDepositBtn) {
     confirmDepositBtn.addEventListener('click', async () => {
@@ -475,88 +489,100 @@ function initDepositModal() {
       const origHtml = confirmDepositBtn.innerHTML;
       confirmDepositBtn.innerHTML = `
         <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-        <span>Checking Blockchain Transfer...</span>
+        <span>Scanning Blockchain for Transfer...</span>
       `;
 
       const curKey = assetSelect ? assetSelect.value : 'usdtbsc';
       const meta = NETWORK_META[curKey] || NETWORK_META.usdtbsc;
-      // Transferred amount defaults to $30.00 USDT standard qualification unit
-      const amount = 30.00;
+      const pId = currentPaymentId || paymentsCache[curKey];
 
       try {
-        // 1. Credit to user's local USDT balance
-        currentUser.usdtBalance = (currentUser.usdtBalance || 0) + amount;
-        updateBalanceDisplays();
+        if (!pId) {
+          showToast('Payment session not initialized. Please refresh the address.', 'error');
+          return;
+        }
 
-        // 2. Add to transaction history with full 64-char Trx Hash
-        const txHash = generateTxHash();
-        addTransactionRow('Deposit', `$${amount.toFixed(2)} USDT`, `+$${amount.toFixed(2)}`, txHash, 'Just now', 'Completed');
-
-        // 3. Process backend deposit & check referral bonus
-        const res = await fetch('/api/process-deposit', {
+        const res = await fetch('/api/check-deposit-status', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            user_id: currentUser.id,
-            email: currentUser.email,
+            payment_id: pId,
+            user_id: currentUser ? currentUser.id : null,
+            email: currentUser ? currentUser.email : null
+          })
+        });
+
+        const data = await res.json().catch(() => ({}));
+
+        if (data.success && data.confirmed) {
+          // Real on-chain crypto payment received & confirmed!
+          const creditedAmt = parseFloat(data.amount || 30.00);
+          currentUser.usdtBalance = (currentUser.usdtBalance || 0) + creditedAmt;
+          updateBalanceDisplays();
+
+          // Add to transaction history
+          addTransactionRow('Deposit', `$${creditedAmt.toFixed(2)} USDT`, `+$${creditedAmt.toFixed(2)}`, data.tx_hash, 'Just now', 'Completed');
+
+          // Close modal & open centered Deposit Successful modal
+          closeDeposit();
+          showDepositSuccessModal({
+            amount: creditedAmt,
+            networkName: meta.name,
+            txHash: data.tx_hash
+          });
+        } else {
+          // Transaction still waiting on blockchain
+          showToast('⏳ Waiting for transfer. No incoming transfer detected yet on this address. If you just sent crypto from your wallet, please wait 1-2 minutes for network confirmation and click again.', 'info');
+          if (addrNote) {
+            addrNote.innerHTML = '<span class="text-amber-600 font-bold animate-pulse">⏳ Live Blockchain Listener Scanning... Waiting for transfer on this address</span>';
+          }
+        }
+
+      } catch (err) {
+        console.error('Check deposit error:', err);
+        showToast('Network error while checking blockchain status. Please try again.', 'error');
+      } finally {
+        confirmDepositBtn.disabled = false;
+        confirmDepositBtn.innerHTML = origHtml;
+      }
+    });
+  }
+
+  // Developer / Demo Test Simulation Button
+  const devTestBtn = document.getElementById('devTestDepositBtn');
+  if (devTestBtn) {
+    devTestBtn.addEventListener('click', async () => {
+      const curKey = assetSelect ? assetSelect.value : 'usdtbsc';
+      const meta = NETWORK_META[curKey] || NETWORK_META.usdtbsc;
+      const amount = 30.00;
+
+      currentUser.usdtBalance = (currentUser.usdtBalance || 0) + amount;
+      updateBalanceDisplays();
+
+      const txHash = generateTxHash();
+      addTransactionRow('Deposit (Demo)', `$${amount.toFixed(2)} USDT`, `+$${amount.toFixed(2)}`, txHash, 'Just now', 'Completed');
+
+      // Call process-deposit to sync DB
+      try {
+        await fetch('/api/process-deposit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id: currentUser ? currentUser.id : null,
+            email: currentUser ? currentUser.email : null,
             amount: amount,
             currency: curKey,
             tx_hash: txHash
           })
         });
-        const resData = await res.json().catch(() => ({}));
+      } catch (e) {}
 
-        // 4. Update local referral status for inviter if any
-        const refBy = currentUser.referredBy || localStorage.getItem(`chainviora_user_ref_by_${currentUser.email}`);
-        if (refBy && amount >= 30) {
-          try {
-            let refList = JSON.parse(localStorage.getItem(`chainviora_ref_list_${refBy}`) || '[]');
-            let found = false;
-            refList.forEach(item => {
-              if (item.email?.toLowerCase() === currentUser.email?.toLowerCase()) {
-                item.deposited = true;
-                item.depositAmount = amount;
-                item.bonusPaid = true;
-                item.bonusAmount = 5.00;
-                found = true;
-              }
-            });
-            if (!found) {
-              refList.push({
-                username: currentUser.username,
-                email: currentUser.email,
-                date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-                deposited: true,
-                depositAmount: amount,
-                bonusPaid: true,
-                bonusAmount: 5.00
-              });
-            }
-            localStorage.setItem(`chainviora_ref_list_${refBy}`, JSON.stringify(refList));
-          } catch (e) { }
-        }
-
-        // Close deposit modal & show centered Deposit Successful popup
-        closeDeposit();
-        showDepositSuccessModal({
-          amount: amount,
-          networkName: meta.name,
-          txHash: txHash
-        });
-
-      } catch (err) {
-        console.error('Deposit error:', err);
-        const fallbackHash = generateTxHash();
-        closeDeposit();
-        showDepositSuccessModal({
-          amount: amount,
-          networkName: meta.name,
-          txHash: fallbackHash
-        });
-      } finally {
-        confirmDepositBtn.disabled = false;
-        confirmDepositBtn.innerHTML = origHtml;
-      }
+      closeDeposit();
+      showDepositSuccessModal({
+        amount: amount,
+        networkName: meta.name + ' (Demo)',
+        txHash: txHash
+      });
     });
   }
 }
