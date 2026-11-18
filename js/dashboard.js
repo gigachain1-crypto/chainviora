@@ -14,6 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // State
 let currentUser = {
+  id: null, // Will be set from localStorage (persistent UUID per device)
   username: 'GIGA' + Math.floor(100000 + Math.random() * 900000),
   email: 'crypto.member@chainviora.com',
   referralCode: Math.floor(100000 + Math.random() * 900000).toString(),
@@ -22,12 +23,30 @@ let currentUser = {
   lifetimeProfit: 0.00
 };
 
+// Generate or retrieve persistent user UUID (stays same across sessions)
+function getOrCreateUserId() {
+  let uid = localStorage.getItem('chainviora_user_uid');
+  if (!uid) {
+    // Generate a UUID v4-like string
+    uid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0;
+      const v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+    localStorage.setItem('chainviora_user_uid', uid);
+  }
+  return uid;
+}
+
 const GIGA_PRICE = 3.42;
 
 /* --------------------------------------------------------------------------
    1. User Session & Balance Display
    -------------------------------------------------------------------------- */
 function initDashboardUser() {
+  // Set persistent user ID first
+  currentUser.id = getOrCreateUserId();
+
   const savedUserJson = localStorage.getItem('gigachain_current_user');
   if (savedUserJson) {
     try {
