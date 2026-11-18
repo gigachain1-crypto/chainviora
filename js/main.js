@@ -89,23 +89,14 @@ function initParticleNetwork() {
 }
 
 /* --------------------------------------------------------------------------
-   2. Live Crypto Ticker Simulation
+   2. GIGA Fixed Price Display ($30.00 / 1 GIGA)
    -------------------------------------------------------------------------- */
 function initCryptoTicker() {
   const gigaPriceEl = document.querySelectorAll('.giga-live-price');
-  let currentPrice = 3.42;
-
-  setInterval(() => {
-    // Small random fluctuations (-0.5% to +0.8%)
-    const change = (Math.random() * 0.04 - 0.015);
-    currentPrice = Math.max(3.20, +(currentPrice + change).toFixed(4));
-
-    gigaPriceEl.forEach(el => {
-      el.textContent = `$${currentPrice.toFixed(4)}`;
-      el.classList.add('scale-105');
-      setTimeout(() => el.classList.remove('scale-105'), 300);
-    });
-  }, 3500);
+  // Fixed rate: 1 GIGA = $30.00 (no live fluctuation)
+  gigaPriceEl.forEach(el => {
+    el.textContent = '$30.00';
+  });
 }
 
 /* --------------------------------------------------------------------------
