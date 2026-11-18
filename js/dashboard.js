@@ -77,30 +77,6 @@ function initDashboardUser() {
 
   updateBalanceDisplays();
 
-  // Wire up the Profit Box "Withdraw Profit" button
-  const profitWithdrawBtn = document.getElementById('profitBoxWithdrawBtn');
-  if (profitWithdrawBtn && !profitWithdrawBtn.dataset.bound) {
-    profitWithdrawBtn.dataset.bound = 'true';
-    profitWithdrawBtn.addEventListener('click', () => {
-      const modal = document.getElementById('withdrawModal');
-      if (modal) {
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
-        const assetSelect = document.getElementById('withdrawAssetSelect');
-        if (assetSelect) assetSelect.value = 'USDT';
-        const amountInput = document.getElementById('withdrawAmountInput');
-        if (amountInput && currentUser.usdtBalance > 0) {
-          amountInput.value = currentUser.usdtBalance.toFixed(2);
-          const receiveDisplay = document.getElementById('withdrawReceiveDisplay');
-          if (receiveDisplay) {
-            const receive = Math.max(0, currentUser.usdtBalance - 1.00);
-            receiveDisplay.textContent = `${receive.toFixed(2)} USDT`;
-          }
-        }
-      }
-    });
-  }
-
   // Logout Action
   const logoutBtn = document.getElementById('logoutBtn');
   if (logoutBtn) {
@@ -207,7 +183,7 @@ function initDepositModal() {
 }
 
 /* --------------------------------------------------------------------------
-   3. Withdrawal Modal & Actions
+   3. Withdrawal Modal & Actions (6% Service Charge & Email OTP Verification)
    -------------------------------------------------------------------------- */
 function initWithdrawModal() {
   const modal = document.getElementById('withdrawModal');
@@ -218,13 +194,27 @@ function initWithdrawModal() {
   const amountInput = document.getElementById('withdrawAmountInput');
   const maxBtn = document.getElementById('withdrawMaxBtn');
   const symbolLabel = document.getElementById('withdrawSymbolLabel');
+  const feeDisplay = document.getElementById('withdrawFeeDisplay');
   const receiveDisplay = document.getElementById('withdrawReceiveDisplay');
+  const emailInput = document.getElementById('withdrawEmailInput');
+  const getOtpBtn = document.getElementById('withdrawGetOtpBtn');
+  const otpContainer = document.getElementById('withdrawOtpContainer');
+  const otpInput = document.getElementById('withdrawOtpInput');
+  const otpTimer = document.getElementById('withdrawOtpTimer');
+  const submitBtn = document.getElementById('submitWithdrawBtn');
+
+  let otpCountdownInterval = null;
 
   function openWithdraw() {
     if (modal) {
       modal.classList.remove('hidden');
       modal.classList.add('flex');
     }
+    // Pre-fill user's email if available
+    if (emailInput && (!emailInput.value || emailInput.value.includes('crypto.member'))) {
+      emailInput.value = currentUser.email || '';
+    }
+    calculateReceive();
   }
 
   function closeWithdraw() {
@@ -243,14 +233,21 @@ function initWithdrawModal() {
     });
   }
 
+  // 6% Service Charge Calculation
   function calculateReceive() {
     const asset = assetSelect ? assetSelect.value : 'USDT';
     const amount = parseFloat(amountInput ? amountInput.value : 0) || 0;
-    const fee = asset === 'GIGA' ? 0.05 : 1.00;
+    const feeRate = 0.06; // 6% Service Charge
+    const fee = amount * feeRate;
     const receive = Math.max(0, amount - fee);
+
+    if (feeDisplay) {
+      feeDisplay.textContent = `${fee.toFixed(2)} ${asset}`;
+    }
     if (receiveDisplay) {
       receiveDisplay.textContent = `${receive.toFixed(2)} ${asset}`;
     }
+    return { fee, receive };
   }
 
   if (assetSelect) {
@@ -269,19 +266,132 @@ function initWithdrawModal() {
     maxBtn.addEventListener('click', () => {
       const asset = assetSelect ? assetSelect.value : 'USDT';
       const maxAvailable = asset === 'GIGA' ? currentUser.gigaBalance : currentUser.usdtBalance;
-      amountInput.value = maxAvailable;
+      amountInput.value = maxAvailable.toFixed(2);
       calculateReceive();
     });
   }
 
-  // Handle Withdrawal Form Submit
+  // Format MM:SS for OTP countdown
+  function formatMinutes(sec) {
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${m}:${s < 10 ? '0' : ''}${s}`;
+  }
+
+  // GET OTP BUTTON CLICK HANDLER
+  if (getOtpBtn) {
+    getOtpBtn.addEventListener('click', async () => {
+      const email = emailInput ? emailInput.value.trim().toLowerCase() : '';
+      if (!email || !email.includes('@') || !email.includes('.')) {
+        showToast('Please enter a valid email address to receive OTP.', 'error');
+        if (emailInput) emailInput.focus();
+        return;
+      }
+
+      const asset = assetSelect ? assetSelect.value : 'USDT';
+      const amount = parseFloat(amountInput ? amountInput.value : 0) || 0;
+      const maxAvailable = asset === 'GIGA' ? currentUser.gigaBalance : currentUser.usdtBalance;
+
+      if (amount <= 0) {
+        showToast('Please enter a valid withdrawal amount first.', 'error');
+        if (amountInput) amountInput.focus();
+        return;
+      }
+
+      if (amount > maxAvailable) {
+        showToast(`Insufficient balance! Available: ${maxAvailable.toFixed(2)} ${asset}`, 'error');
+        return;
+      }
+
+      const origBtnContent = getOtpBtn.innerHTML;
+      getOtpBtn.disabled = true;
+      getOtpBtn.classList.add('opacity-70', 'cursor-not-allowed');
+      getOtpBtn.innerHTML = `
+        <svg class="animate-spin -ml-0.5 mr-1 h-3 w-3 text-amber-500 inline-block" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+        </svg>
+        <span>Sending...</span>
+      `;
+
+      try {
+        const response = await fetch('/api/send-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: email, type: 'withdrawal' })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          window.chainvioraWithdrawOtpToken = data.token;
+          window.chainvioraWithdrawOtpEmail = email;
+
+          // Open OTP Box dynamically
+          if (otpContainer) {
+            otpContainer.classList.remove('hidden');
+          }
+          if (otpInput) {
+            otpInput.value = '';
+            otpInput.focus();
+          }
+
+          if (data.devOtp) {
+            showToast(`Security OTP: ${data.devOtp} (Testing Code Generated) ✉️`, 'success');
+          } else {
+            showToast(`Security code sent to ${email}! Check your inbox ✉️`, 'success');
+          }
+
+          // 3-Minute (180s) Timer Countdown
+          let timeLeft = 180;
+          if (otpCountdownInterval) clearInterval(otpCountdownInterval);
+          getOtpBtn.innerHTML = `<span>Sent ✓</span>`;
+
+          if (otpTimer) {
+            otpTimer.innerHTML = `<span class="text-[11px] text-amber-700 font-mono font-bold">Resend in ${formatMinutes(timeLeft)}</span>`;
+          }
+
+          otpCountdownInterval = setInterval(() => {
+            timeLeft--;
+            if (otpTimer) {
+              otpTimer.innerHTML = `<span class="text-[11px] text-amber-700 font-mono font-bold">Resend in ${formatMinutes(timeLeft)}</span>`;
+            }
+
+            if (timeLeft <= 0) {
+              clearInterval(otpCountdownInterval);
+              getOtpBtn.disabled = false;
+              getOtpBtn.classList.remove('opacity-70', 'cursor-not-allowed');
+              getOtpBtn.innerHTML = `<span>Resend OTP ↺</span>`;
+            }
+          }, 1000);
+
+        } else {
+          getOtpBtn.disabled = false;
+          getOtpBtn.classList.remove('opacity-70', 'cursor-not-allowed');
+          getOtpBtn.innerHTML = origBtnContent;
+          showToast(data.message || 'Could not send verification email.', 'error');
+        }
+      } catch (err) {
+        console.error('Withdrawal OTP fetch error:', err);
+        getOtpBtn.disabled = false;
+        getOtpBtn.classList.remove('opacity-70', 'cursor-not-allowed');
+        getOtpBtn.innerHTML = origBtnContent;
+        showToast('Error connecting to OTP verification server.', 'error');
+      }
+    });
+  }
+
+  // HANDLE WITHDRAWAL FORM SUBMIT (WITH OTP VERIFICATION)
   if (form) {
-    form.addEventListener('submit', (e) => {
+    form.addEventListener('submit', async (e) => {
       e.preventDefault();
+
       const asset = assetSelect ? assetSelect.value : 'USDT';
       const amount = parseFloat(amountInput ? amountInput.value : 0) || 0;
       const destInput = document.getElementById('withdrawDestinationInput');
       const destination = destInput ? destInput.value.trim() : '';
+      const email = emailInput ? emailInput.value.trim().toLowerCase() : '';
+      const enteredOtp = otpInput ? otpInput.value.trim() : '';
 
       const maxAvailable = asset === 'GIGA' ? currentUser.gigaBalance : currentUser.usdtBalance;
 
@@ -291,7 +401,7 @@ function initWithdrawModal() {
       }
 
       if (amount > maxAvailable) {
-        showToast(`Insufficient ${asset} balance! Max available: ${maxAvailable}`, 'error');
+        showToast(`Insufficient ${asset} balance! Max available: ${maxAvailable.toFixed(2)}`, 'error');
         return;
       }
 
@@ -300,22 +410,105 @@ function initWithdrawModal() {
         return;
       }
 
-      // Deduct balance
-      if (asset === 'GIGA') {
-        currentUser.gigaBalance -= amount;
-      } else {
-        currentUser.usdtBalance -= amount;
+      // Check OTP step
+      if (!window.chainvioraWithdrawOtpToken) {
+        showToast('Please click "Get OTP" first to receive your security verification code.', 'error');
+        if (getOtpBtn) getOtpBtn.focus();
+        return;
       }
-      updateBalanceDisplays();
 
-      // Add to transaction history table
-      const txHash = generateTxHash();
-      addTransactionRow('Withdrawal', `${asset}`, `-${amount.toFixed(2)}`, txHash, 'Just now', 'Confirmed');
+      if (!enteredOtp || enteredOtp.length !== 6) {
+        showToast('Please enter the 6-digit OTP code sent to your email.', 'error');
+        if (otpInput) otpInput.focus();
+        return;
+      }
 
-      closeWithdraw();
-      showToast(`Withdrawal of ${amount} ${asset} processed successfully! 🚀 Tx: ${txHash.slice(0, 10)}...`, 'success');
-      form.reset();
-      calculateReceive();
+      // Submit button loading state
+      const origSubmitText = submitBtn ? submitBtn.innerHTML : 'Confirm & Withdraw Funds';
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.classList.add('opacity-70', 'cursor-not-allowed');
+        submitBtn.innerHTML = `
+          <svg class="animate-spin -ml-0.5 mr-2 h-4 w-4 text-white inline-block" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+          </svg>
+          <span>Verifying OTP & Processing...</span>
+        `;
+      }
+
+      try {
+        // Verify OTP via Serverless API
+        const verifyRes = await fetch('/api/verify-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: window.chainvioraWithdrawOtpEmail || email,
+            otp: enteredOtp,
+            token: window.chainvioraWithdrawOtpToken
+          })
+        });
+
+        const verifyData = await verifyRes.json();
+
+        if (!verifyData.success) {
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.classList.remove('opacity-70', 'cursor-not-allowed');
+            submitBtn.innerHTML = origSubmitText;
+          }
+          showToast(verifyData.message || 'Incorrect OTP code. Please enter the valid code.', 'error');
+          if (otpInput) otpInput.focus();
+          return;
+        }
+
+        // OTP Verified Successfully! Proceed with Withdrawal
+        const { fee, receive } = calculateReceive();
+
+        // Deduct balance
+        if (asset === 'GIGA') {
+          currentUser.gigaBalance -= amount;
+        } else {
+          currentUser.usdtBalance -= amount;
+        }
+        updateBalanceDisplays();
+
+        // Add to transaction history table with 6% service charge noted
+        const txHash = generateTxHash();
+        addTransactionRow('Withdrawal', `${asset} (-6% Fee)`, `-${amount.toFixed(2)}`, txHash, 'Just now', 'Confirmed');
+
+        closeWithdraw();
+        showToast(`Withdrawal of ${amount.toFixed(2)} ${asset} successfully submitted! (Received: ${receive.toFixed(2)} ${asset} after 6% fee) 🚀`, 'success');
+
+        // Reset Form & OTP state
+        form.reset();
+        window.chainvioraWithdrawOtpToken = null;
+        window.chainvioraWithdrawOtpEmail = null;
+        if (otpCountdownInterval) clearInterval(otpCountdownInterval);
+        if (otpContainer) otpContainer.classList.add('hidden');
+        if (otpInput) otpInput.value = '';
+        if (getOtpBtn) {
+          getOtpBtn.disabled = false;
+          getOtpBtn.classList.remove('opacity-70', 'cursor-not-allowed');
+          getOtpBtn.innerHTML = `<span>Get OTP</span>`;
+        }
+        calculateReceive();
+
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.classList.remove('opacity-70', 'cursor-not-allowed');
+          submitBtn.innerHTML = origSubmitText;
+        }
+
+      } catch (err) {
+        console.error('Withdrawal processing error:', err);
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.classList.remove('opacity-70', 'cursor-not-allowed');
+          submitBtn.innerHTML = origSubmitText;
+        }
+        showToast('Error verifying OTP: ' + err.message, 'error');
+      }
     });
   }
 }
