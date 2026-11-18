@@ -135,14 +135,24 @@ function initDepositModal() {
   const addrInput = document.getElementById('depositAddressInput');
   const qrBox = document.getElementById('depositQRBox');
   const addrNote = document.getElementById('depositAddrNote');
+  const assetSelect = document.getElementById('depositAssetSelect');
+  const networkBadge = document.getElementById('depositNetworkBadge');
 
-  // Cache: once address is loaded, don't reload
-  let addressLoaded = false;
+  // Network configuration metadata
+  const NETWORK_META = {
+    usdtbsc: { label: 'BEP20', name: 'USDT (BEP20 - BNB Smart Chain)', badgeClass: 'text-amber-700 bg-amber-50 border-amber-200' },
+    usdttrc20: { label: 'TRC20', name: 'USDT (TRC20 - TRON)', badgeClass: 'text-emerald-700 bg-emerald-50 border-emerald-200' },
+    sol: { label: 'SOL', name: 'SOL (Solana Network)', badgeClass: 'text-purple-700 bg-purple-50 border-purple-200' },
+    btc: { label: 'BTC', name: 'BTC (Bitcoin Network)', badgeClass: 'text-orange-700 bg-orange-50 border-orange-200' },
+    eth: { label: 'ETH', name: 'ETH (Ethereum - ERC20)', badgeClass: 'text-blue-700 bg-blue-50 border-blue-200' }
+  };
 
-  // Generate QR code using QRCode.js library
+  // Cache: addresses per currency for the current user
+  const addressesCache = {};
+
+  // Render QR Code
   function renderQRCode(address) {
     if (!qrBox) return;
-    // Clear loading spinner & old QR
     qrBox.innerHTML = '';
     try {
       new QRCode(qrBox, {
@@ -154,20 +164,77 @@ function initDepositModal() {
         correctLevel: QRCode.CorrectLevel.M
       });
     } catch (e) {
-      // Fallback: show address as QR API image
       qrBox.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=128x128&data=${encodeURIComponent(address)}" class="w-full h-full rounded-lg" alt="QR Code">`;
     }
   }
 
-  // Fetch or retrieve permanent deposit address from NOWPayments via backend
-  async function loadDepositAddress() {
-    if (addressLoaded) return; // Already loaded, skip
+  // Show Loading state inside QR box
+  function showQRLoading(label) {
+    if (!qrBox) return;
+    qrBox.innerHTML = `
+      <div class="flex flex-col items-center justify-center gap-2 p-2 text-center">
+        <div class="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+        <span class="text-[10px] text-slate-500 font-medium">Fetching ${label}...</span>
+      </div>
+    `;
+  }
 
-    if (addrNote) addrNote.textContent = '⏳ Fetching your permanent wallet address...';
-    if (addrInput) addrInput.placeholder = 'Generating your address...';
+  // Update Network Badge and Notes
+  function updateBadgeAndNote(currencyKey, address, isCached) {
+    const meta = NETWORK_META[currencyKey] || NETWORK_META.usdtbsc;
+
+    if (networkBadge) {
+      networkBadge.textContent = meta.label;
+      networkBadge.className = `ml-1 text-[10px] font-semibold border px-1.5 py-0.5 rounded-full ${meta.badgeClass}`;
+    }
+
+    if (addrInput) {
+      addrInput.value = address;
+    }
+
+    if (addrNote) {
+      addrNote.textContent = isCached
+        ? `✅ Your permanent ${meta.name} deposit address`
+        : `✅ New permanent ${meta.label} address assigned to your account`;
+      addrNote.className = 'text-[10px] text-emerald-600 mt-1 font-medium';
+    }
+  }
+
+  // Fetch or retrieve permanent deposit address for selected currency
+  async function loadDepositAddress(currency = 'usdtbsc') {
+    const curKey = (currency || 'usdtbsc').toLowerCase();
+    const meta = NETWORK_META[curKey] || NETWORK_META.usdtbsc;
+
+    // 1. If in-memory cache exists
+    if (addressesCache[curKey]) {
+      updateBadgeAndNote(curKey, addressesCache[curKey], true);
+      renderQRCode(addressesCache[curKey]);
+      return;
+    }
+
+    // 2. Check localStorage cache
+    const user = currentUser;
+    const localKey = user && user.id ? `gigachain_dep_${user.id}_${curKey}` : null;
+    if (localKey) {
+      const savedAddr = localStorage.getItem(localKey);
+      if (savedAddr) {
+        addressesCache[curKey] = savedAddr;
+        updateBadgeAndNote(curKey, savedAddr, true);
+        renderQRCode(savedAddr);
+        return;
+      }
+    }
+
+    // 3. Show loading UI
+    showQRLoading(meta.label);
+    if (addrInput) addrInput.value = '';
+    if (addrInput) addrInput.placeholder = `Generating your ${meta.label} address...`;
+    if (addrNote) {
+      addrNote.textContent = `⏳ Connecting to gateway for ${meta.label} address...`;
+      addrNote.className = 'text-[10px] text-slate-500 mt-1';
+    }
 
     try {
-      const user = currentUser;
       if (!user || !user.id) {
         if (addrNote) addrNote.textContent = '⚠️ Please log in to get your deposit address.';
         return;
@@ -178,60 +245,49 @@ function initDepositModal() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           user_id: user.id,
-          email: user.email
+          email: user.email,
+          currency: curKey
         })
       });
 
       const data = await response.json();
 
       if (data.success && data.address) {
-        // Set the address in input
-        if (addrInput) addrInput.value = data.address;
+        addressesCache[curKey] = data.address;
+        if (localKey) localStorage.setItem(localKey, data.address);
 
-        // Update note
-        if (addrNote) {
-          addrNote.textContent = data.cached
-            ? '✅ Your permanent TRC20 deposit address (USDT only)'
-            : '✅ New permanent address generated for your account';
-          addrNote.className = 'text-[10px] text-emerald-600 mt-1 font-medium';
-        }
-
-        // Render real QR code
+        updateBadgeAndNote(curKey, data.address, data.cached);
         renderQRCode(data.address);
-
-        // Update network badge based on currency
-        const badge = document.getElementById('depositNetworkBadge');
-        if (badge) {
-          const cur = (data.currency || 'usdttrc20').toUpperCase();
-          badge.textContent = cur.includes('TRC') ? 'TRC20' : cur.includes('ERC') ? 'ERC20' : cur;
-        }
-
-        addressLoaded = true;
       } else {
         console.error('Failed to get deposit address:', data);
         if (addrNote) {
-          addrNote.textContent = '⚠️ Failed to load address. Please try again.';
+          addrNote.textContent = `⚠️ Could not generate ${meta.label} address. Please try again.`;
           addrNote.className = 'text-[10px] text-red-500 mt-1';
         }
-        // Retry after 3 seconds
-        setTimeout(loadDepositAddress, 3000);
       }
     } catch (err) {
       console.error('Deposit address fetch error:', err);
       if (addrNote) {
-        addrNote.textContent = '⚠️ Network error. Retrying...';
+        addrNote.textContent = '⚠️ Network error. Please try again.';
         addrNote.className = 'text-[10px] text-red-500 mt-1';
       }
-      setTimeout(loadDepositAddress, 4000);
     }
+  }
+
+  // Network Select Dropdown change listener
+  if (assetSelect) {
+    assetSelect.addEventListener('change', (e) => {
+      loadDepositAddress(e.target.value);
+    });
   }
 
   function openDeposit() {
     if (modal) {
       modal.classList.remove('hidden');
       modal.classList.add('flex');
-      // Load address each time modal opens (but skip if already loaded)
-      loadDepositAddress();
+      // Set to selected or default to BEP20
+      const currentCur = assetSelect ? assetSelect.value : 'usdtbsc';
+      loadDepositAddress(currentCur);
     }
   }
 

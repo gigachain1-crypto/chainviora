@@ -10,11 +10,17 @@ create table if not exists public.profiles (
   email text,
   wallet_address text default '0x71C8A6987C2188B6Fa08779a1F04bE1049b4b9C3',
   deposit_address text default null,              -- Unique permanent NOWPayments deposit address
-  deposit_address_currency text default null,      -- e.g. 'usdttrc20'
+  deposit_address_currency text default null,      -- e.g. 'usdtbsc'
+  deposit_addresses jsonb default '{}'::jsonb,    -- Map of { "usdtbsc": "0x...", "usdttrc20": "T...", "sol": "...", "btc": "...", "eth": "0x..." }
   balance_giga numeric(18, 4) default 0.0000,
   balance_usdt numeric(18, 2) default 0.00,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
+
+-- In case profiles table already exists, run these migration statements:
+-- ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS deposit_address text DEFAULT null;
+-- ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS deposit_address_currency text DEFAULT null;
+-- ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS deposit_addresses jsonb DEFAULT '{}'::jsonb;
 
 -- Enable Row Level Security (RLS) for data protection
 alter table public.profiles enable row level security;
