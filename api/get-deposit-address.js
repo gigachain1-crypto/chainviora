@@ -1,7 +1,13 @@
 // api/get-deposit-address.js
 // Generates and permanently stores unique deposit addresses per user & network via NOWPayments
 
-const NOWPAYMENTS_API_KEY = process.env.NOWPAYMENTS_API_KEY || 'T9S6JJF-WJP45M1-HAAN471-YGKTD7S';
+// Always use verified active NOWPayments key
+const VALID_KEY = 'T9S6JJF-WJP45M1-HAAN471-YGKTD7S';
+let envKey = process.env.NOWPAYMENTS_API_KEY;
+if (!envKey || envKey.includes('GDQE') || envKey.includes('DFZY1F2')) {
+  envKey = VALID_KEY;
+}
+const NOWPAYMENTS_API_KEY = envKey;
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://bhcddgzlzyzovecccmrj.supabase.co';
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
