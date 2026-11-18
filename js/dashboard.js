@@ -55,7 +55,26 @@ function initDashboardUser() {
       if (parsed.email) currentUser.email = parsed.email;
       if (parsed.referralCode) currentUser.referralCode = parsed.referralCode;
 
-      // Reset all mock balances to zero for all users
+      // ✅ User-Switch Guard: if email changed on this device, clear old history
+      const lastDashEmail = localStorage.getItem('chainviora_dash_user_email');
+      if (lastDashEmail && parsed.email && lastDashEmail.toLowerCase() !== parsed.email.toLowerCase()) {
+        localStorage.removeItem('chainviora_user_pending_sells');
+        localStorage.removeItem('chainviora_buy_pool_100');
+        localStorage.removeItem('chainviora_zero_data_v2');
+        localStorage.removeItem('chainviora_user_uid');
+        currentUser.gigaBalance = 0.00;
+        currentUser.usdtBalance = 0.00;
+        currentUser.lifetimeProfit = 0.00;
+        parsed.gigaBalance = 0.00;
+        parsed.usdtBalance = 0.00;
+        parsed.lifetimeProfit = 0.00;
+        localStorage.setItem('gigachain_current_user', JSON.stringify(parsed));
+      }
+      if (parsed.email) {
+        localStorage.setItem('chainviora_dash_user_email', parsed.email.toLowerCase());
+      }
+
+      // Reset all mock balances to zero for all users (first time)
       if (!localStorage.getItem('chainviora_zero_data_v2')) {
         currentUser.gigaBalance = 0.00;
         currentUser.usdtBalance = 0.00;

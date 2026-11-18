@@ -939,6 +939,18 @@ function initAuthModal() {
         localStorage.setItem('gigachain_current_user', JSON.stringify(userSession));
         localStorage.setItem('gigachain_username', storedUsername);
 
+        // ✅ User-Switch Detection: Clear previous user's sell/pool history
+        const lastLoggedInEmail = localStorage.getItem('chainviora_last_user_email');
+        if (lastLoggedInEmail && lastLoggedInEmail.toLowerCase() !== email.toLowerCase()) {
+          // Different user logged in — clear all user-specific trading data
+          localStorage.removeItem('chainviora_user_pending_sells');
+          localStorage.removeItem('chainviora_buy_pool_100');
+          localStorage.removeItem('chainviora_zero_data_v2');
+          localStorage.removeItem('chainviora_user_uid');
+          console.log('New user detected — previous session data cleared');
+        }
+        localStorage.setItem('chainviora_last_user_email', email.toLowerCase());
+
         closeAuth();
         showToast(`Login successful! Welcome ${storedUsername} 🚀`, 'success');
         updateAuthStateUI(user);
@@ -1097,6 +1109,13 @@ function initAuthModal() {
         localStorage.setItem(`giga_ref_${email}`, newReferralCode);
         localStorage.setItem('gigachain_current_user', JSON.stringify(userSession));
         localStorage.setItem('gigachain_username', autoUsername);
+
+        // ✅ New Signup: Always clear any previous user's trading history
+        localStorage.removeItem('chainviora_user_pending_sells');
+        localStorage.removeItem('chainviora_buy_pool_100');
+        localStorage.removeItem('chainviora_zero_data_v2');
+        localStorage.removeItem('chainviora_user_uid');
+        localStorage.setItem('chainviora_last_user_email', email.toLowerCase());
 
         closeAuth();
         showToast(`Account Created! Your Username is ${autoUsername} ✨`, 'success');
