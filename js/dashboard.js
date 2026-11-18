@@ -1489,26 +1489,29 @@ function initBuySellMarket() {
           </div>
         `;
       } else {
+        const matched = item.matchedBuyers || 0;
         card.className = 'p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between hover:border-amber-300 transition-colors shadow-2xs';
         card.innerHTML = `
           <div class="flex items-center gap-2.5">
-            <div class="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center font-black text-xs shadow-xs">
-              ⏳
+            <div class="w-8 h-8 rounded-lg ${matched === 1 ? 'bg-amber-100 text-amber-800' : 'bg-slate-200 text-slate-600'} flex items-center justify-center font-black text-xs shadow-xs">
+              ${matched === 1 ? '½' : '⏳'}
             </div>
             <div>
               <div class="flex items-center gap-1.5">
                 <span class="font-mono font-bold text-slate-900 text-xs">${item.orderId}</span>
-                <span class="text-[10px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200">1 GIGA</span>
+                <span class="text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200">1 GIGA</span>
               </div>
               <p class="text-[10px] text-slate-400">${item.timestamp} • Unit: $30.00</p>
             </div>
           </div>
           <div class="text-right">
-            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 font-bold text-[10px] border border-amber-300">
-              <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
-              Pending Sell
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md ${matched === 1 ? 'bg-amber-100 text-amber-900 border-amber-300' : 'bg-slate-100 text-slate-700 border-slate-300'} font-bold text-[10px] border">
+              <span class="w-1.5 h-1.5 rounded-full bg-amber-500 ${matched === 1 ? 'animate-pulse' : ''}"></span>
+              ${matched === 1 ? '1/2 Buyers Matched' : 'Pending Sell'}
             </span>
-            <p class="text-[10px] font-mono font-bold text-slate-500 mt-0.5">In Queue</p>
+            <p class="text-[10px] font-mono font-bold ${matched === 1 ? 'text-amber-700' : 'text-slate-500'} mt-0.5">
+              ${matched === 1 ? 'Waiting for 2nd Buyer' : 'In Queue (0/2)'}
+            </p>
           </div>
         `;
       }
@@ -1516,14 +1519,13 @@ function initBuySellMarket() {
     });
   }
 
-  // 5. Execute Buy Action
-  function executeBuyGiga(specificOrderId = null) {
+  // 5. Execute Buy Action (Database-backed with 2-Buyer Matching)
+  async function executeBuyGiga(specificOrderId = null) {
     const cost = 30.00;
 
     // Verify main balance has at least $30 USDT
     if (currentUser.usdtBalance < cost) {
       showToast(`Insufficient USDT Balance! You have $${currentUser.usdtBalance.toFixed(2)}, but need $30.00 to buy 1 GIGA. Please Deposit funds first.`, 'error');
-      // Suggest opening deposit modal
       const depModal = document.getElementById('depositModal');
       if (depModal) {
         setTimeout(() => {
@@ -1534,19 +1536,45 @@ function initBuySellMarket() {
       return;
     }
 
-    // Deduct $30 from user's USDT balance and record purchased GIGA
+    // Deduct $30 from user's USDT balance
     currentUser.usdtBalance = Math.max(0, currentUser.usdtBalance - cost);
     currentUser.totalGigaBought = (currentUser.totalGigaBought || 0) + 1;
     currentUser.gigaBalance = currentUser.totalGigaBought;
     updateBalanceDisplays();
 
-    // Create user's Pending Sell record
-    const pending = getPendingSells();
+    // Generate unique background order ID (saved in database, hidden from user)
+    const backgroundOrderId = `GIGA-ORD-${Math.floor(100000 + Math.random() * 900000)}`;
     const sellOrderId = `#SELL-${Math.floor(100000 + Math.random() * 900000)}`;
     const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
+    // 2-Buyer Matching on active pending sell queue:
+    // Check if user (or any seller) has an existing pending order waiting for buyers
+    const pending = getPendingSells();
+    let oldestWaiting = null;
+    for (let i = pending.length - 1; i >= 0; i--) {
+      if (pending[i].status !== 'Completed' && (pending[i].matchedBuyers || 0) < 2) {
+        oldestWaiting = pending[i];
+        break;
+      }
+    }
+
+    if (oldestWaiting) {
+      oldestWaiting.matchedBuyers = (oldestWaiting.matchedBuyers || 0) + 1;
+      if (oldestWaiting.matchedBuyers >= 2) {
+        oldestWaiting.status = 'Completed';
+        oldestWaiting.completedAt = nowTime;
+        // Credit $50.00 profit to user's withdrawable USDT balance and lifetime profit!
+        currentUser.lifetimeProfit = (currentUser.lifetimeProfit || 0) + 50.00;
+        currentUser.usdtBalance = (currentUser.usdtBalance || 0) + 50.00;
+        updateBalanceDisplays();
+        showToast(`🎉 Order ${oldestWaiting.orderId} Completed! 2 buyers matched — $50.00 Profit added!`, 'success');
+      }
+    }
+
+    // Insert new pending sell order for this purchased GIGA
     pending.unshift({
       orderId: sellOrderId,
+      backgroundOrderId: backgroundOrderId,
       amount: 1,
       price: cost,
       profit: 50.00,
@@ -1558,27 +1586,28 @@ function initBuySellMarket() {
     savePendingSells(pending);
     updateBalanceDisplays();
 
-    // Re-blend purchased GIGA back into 100 pool
+    // Re-blend purchased GIGA back into 100 pool at a randomized position
+    // (User cannot see which item in the 100 list belongs to them)
     const pool = getPool();
     const targetIdx = specificOrderId
       ? pool.findIndex(i => i.id === specificOrderId)
       : Math.floor(Math.random() * pool.length);
 
     const safeIdx = targetIdx >= 0 ? targetIdx : 0;
-    // Remove the purchased item and re-insert into a random position in the 100 list
     pool.splice(safeIdx, 1);
     const randomSlot = Math.floor(Math.random() * pool.length);
     pool.splice(randomSlot, 0, {
       id: `GIGA-${String(Math.floor(1 + Math.random() * 999)).padStart(3, '0')}`,
+      backgroundOrderId: backgroundOrderId,
       amount: 1,
       price: 30.00,
       status: 'Available'
     });
 
-    // Ensure pool always has exactly 100 items
     while (pool.length < 100) {
       pool.push({
         id: `GIGA-${String(pool.length + 1).padStart(3, '0')}`,
+        backgroundOrderId: `GIGA-ORD-${Math.floor(100000 + Math.random() * 900000)}`,
         amount: 1,
         price: 30.00,
         status: 'Available'
@@ -1590,7 +1619,20 @@ function initBuySellMarket() {
     const txHash = generateTxHash();
     addTransactionRow('Buy GIGA', '1 GIGA ($30.00)', '-$30.00', txHash, 'Just now', 'Completed');
 
-    // ✅ Save balance + transaction to Supabase
+    // ✅ Sync with Supabase Database via API
+    try {
+      fetch('/api/marketplace-buy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: currentUser.id || localStorage.getItem('supabase_user_id'),
+          email: currentUser.email,
+          username: currentUser.username,
+          background_order_id: backgroundOrderId
+        })
+      }).catch(e => console.warn('Marketplace buy API sync notice:', e.message));
+    } catch (e) { }
+
     localStorage.setItem('gigachain_current_user', JSON.stringify(currentUser));
     syncBalanceToSupabase('buy_giga');
     recordTxToSupabase('buy_giga', 30.00, 1, sellOrderId, 'Bought 1 GIGA for $30.00');
@@ -1599,74 +1641,61 @@ function initBuySellMarket() {
     renderPoolTable(searchInput ? searchInput.value : '');
     renderPendingSells();
 
-    // Open Buy Successfully Popup Modal (with background blur)
+    // Open Buy Successfully Popup Modal
     openSuccessModal(sellOrderId);
-    showToast(`Successfully bought 1 GIGA for $30.00! Placed in Sell queue as Pending 🚀`, 'success');
-
-    // Schedule background buyer matching: 1st buyer in 6s, 2nd buyer in 14s
-    scheduleBackgroundBuyer(6000);
+    showToast(`Successfully bought 1 GIGA for $30.00! Placed in Sell queue as Pending`, 'success');
   }
 
-  // 6. Background 2-Buyer Matching & Profit Distribution Engine (Silent Background Processing)
-  let matchingTimeoutId = null;
+  // 6. Sync user's marketplace orders from Supabase on load
+  async function syncMarketplaceOrdersFromDb() {
+    try {
+      const email = currentUser.email;
+      const uid = currentUser.id || localStorage.getItem('supabase_user_id');
+      if (!email && !uid) return;
 
-  function processNextBackgroundBuyer() {
-    const pending = getPendingSells();
-    // FIFO: find oldest pending order where matchedBuyers < 2
-    let targetOrder = null;
-    for (let i = pending.length - 1; i >= 0; i--) {
-      if (pending[i].status !== 'Completed' && (pending[i].matchedBuyers || 0) < 2) {
-        targetOrder = pending[i];
-        break;
+      const res = await fetch(`/api/get-marketplace-orders?email=${encodeURIComponent(email || '')}&user_id=${encodeURIComponent(uid || '')}`);
+      if (!res.ok) return;
+      const json = await res.json();
+      if (json.success && Array.isArray(json.orders) && json.orders.length > 0) {
+        const localPending = getPendingSells();
+        let changed = false;
+
+        json.orders.forEach(dbOrder => {
+          const existing = localPending.find(p => p.orderId === dbOrder.sell_order_code || p.backgroundOrderId === dbOrder.order_id);
+          if (existing) {
+            if (existing.matchedBuyers !== dbOrder.matched_buyers || existing.status !== dbOrder.status) {
+              existing.matchedBuyers = dbOrder.matched_buyers;
+              existing.status = dbOrder.status === 'completed' ? 'Completed' : 'Pending';
+              changed = true;
+            }
+          } else {
+            localPending.unshift({
+              orderId: dbOrder.sell_order_code || `#SELL-${Math.floor(100000 + Math.random() * 900000)}`,
+              backgroundOrderId: dbOrder.order_id,
+              amount: parseFloat(dbOrder.amount) || 1,
+              price: parseFloat(dbOrder.unit_price) || 30.00,
+              profit: parseFloat(dbOrder.profit_amount) || 50.00,
+              matchedBuyers: dbOrder.matched_buyers || 0,
+              requiredBuyers: dbOrder.required_buyers || 2,
+              timestamp: new Date(dbOrder.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              status: dbOrder.status === 'completed' ? 'Completed' : 'Pending'
+            });
+            changed = true;
+          }
+        });
+
+        if (changed) {
+          savePendingSells(localPending);
+          renderPendingSells();
+        }
       }
-    }
-
-    if (!targetOrder) return;
-
-    targetOrder.matchedBuyers = (targetOrder.matchedBuyers || 0) + 1;
-
-    if (targetOrder.matchedBuyers === 1) {
-      savePendingSells(pending);
-      renderPendingSells();
-      // Silently schedule the second buyer in background (no popup)
-      scheduleBackgroundBuyer(7000);
-    } else if (targetOrder.matchedBuyers >= 2) {
-      targetOrder.status = 'Completed';
-      targetOrder.completedAt = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      savePendingSells(pending);
-
-      // Credit $50.00 to user's lifetime profit & withdrawable USDT balance
-      currentUser.lifetimeProfit = (currentUser.lifetimeProfit || 0) + 50.00;
-      currentUser.usdtBalance = (currentUser.usdtBalance || 0) + 50.00;
-      updateBalanceDisplays();
-      renderPendingSells();
-
-      // ✅ Save updated balance + sell transaction to Supabase
-      localStorage.setItem('gigachain_current_user', JSON.stringify(currentUser));
-      syncBalanceToSupabase('sell_complete');
-      recordTxToSupabase('sell_complete', 50.00, 0, targetOrder.orderId, 'Sell completed — +$50 profit credited');
-
-      // Add to transaction history table
-      const txHash = generateTxHash();
-      addTransactionRow('Sell Complete', '1 GIGA ($50.00)', '+$50.00', txHash, 'Just now', 'Completed');
-      // Silently completed in background (no popup)
+    } catch (e) {
+      console.warn('Marketplace DB sync skipped (offline or initial setup):', e.message);
     }
   }
 
-  function scheduleBackgroundBuyer(delayMs) {
-    if (matchingTimeoutId) clearTimeout(matchingTimeoutId);
-    matchingTimeoutId = setTimeout(() => {
-      processNextBackgroundBuyer();
-    }, delayMs);
-  }
-
-  // On page load: resume any pending orders that were left mid-matching
-  // (e.g. user refreshed browser while order was pending)
-  const resumePending = getPendingSells();
-  const hasUnfinished = resumePending.some(o => o.status !== 'Completed' && (o.matchedBuyers || 0) < 2);
-  if (hasUnfinished) {
-    scheduleBackgroundBuyer(5000); // Resume after 5s on page load
-  }
+  // Sync on load
+  syncMarketplaceOrdersFromDb();
 
   // 7. Buy Success Modal Handlers
   const successModal = document.getElementById('buySuccessModal');

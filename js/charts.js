@@ -56,7 +56,7 @@ function initTokenomicsChart() {
           cornerRadius: 10,
           displayColors: true,
           callbacks: {
-            label: function(context) {
+            label: function (context) {
               const label = context.label || '';
               const value = context.raw || 0;
               const totalTokens = 1000000000;
@@ -148,7 +148,7 @@ function initStakingGrowthChart() {
 }
 
 // Update Staking chart dynamically when slider changes
-window.updateStakingChartData = function(stakedAmount, apyRate) {
+window.updateStakingChartData = function (stakedAmount, apyRate) {
   if (!stakingChartInstance) return;
 
   const monthlyRate = Math.pow(1 + apyRate / 100, 1 / 12) - 1;

@@ -163,3 +163,35 @@ CREATE POLICY "Anyone can view referrals"
 
 CREATE POLICY "Service role full access referrals"
   ON public.referrals FOR ALL USING (true);
+
+-- ============================================================
+-- 6. MARKETPLACE ORDERS TABLE (100 Pool & 2-Buyer Matching Queue)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS public.marketplace_orders (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  order_id text UNIQUE NOT NULL,            -- Hidden background Order ID (e.g. GIGA-ORD-XXXXXX)
+  sell_order_code text NOT NULL,            -- Display Sell Code (e.g. #SELL-XXXXXX)
+  seller_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE,
+  seller_email text NOT NULL,
+  seller_username text,
+  amount numeric(18, 4) DEFAULT 1.0000,
+  unit_price numeric(18, 2) DEFAULT 30.00,
+  profit_amount numeric(18, 2) DEFAULT 50.00,
+  matched_buyers int DEFAULT 0,            -- Current buyers matched (0, 1, or 2)
+  required_buyers int DEFAULT 2,           -- Requires 2 buyers to complete sell
+  buyer_ids jsonb DEFAULT '[]'::jsonb,     -- Buyer IDs who purchased
+  status text DEFAULT 'pending',           -- 'pending' or 'completed'
+  created_at timestamp with time zone DEFAULT timezone('utc', now()) NOT NULL,
+  completed_at timestamp with time zone DEFAULT null
+);
+
+ALTER TABLE public.marketplace_orders ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Anyone can view marketplace orders" ON public.marketplace_orders;
+DROP POLICY IF EXISTS "Service role full access marketplace orders" ON public.marketplace_orders;
+
+CREATE POLICY "Anyone can view marketplace orders"
+  ON public.marketplace_orders FOR SELECT USING (true);
+
+CREATE POLICY "Service role full access marketplace orders"
+  ON public.marketplace_orders FOR ALL USING (true);
