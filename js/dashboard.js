@@ -547,44 +547,6 @@ function initDepositModal() {
       }
     });
   }
-
-  // Developer / Demo Test Simulation Button
-  const devTestBtn = document.getElementById('devTestDepositBtn');
-  if (devTestBtn) {
-    devTestBtn.addEventListener('click', async () => {
-      const curKey = assetSelect ? assetSelect.value : 'usdtbsc';
-      const meta = NETWORK_META[curKey] || NETWORK_META.usdtbsc;
-      const amount = 30.00;
-
-      currentUser.usdtBalance = (currentUser.usdtBalance || 0) + amount;
-      updateBalanceDisplays();
-
-      const txHash = generateTxHash();
-      addTransactionRow('Deposit (Demo)', `$${amount.toFixed(2)} USDT`, `+$${amount.toFixed(2)}`, txHash, 'Just now', 'Completed');
-
-      // Call process-deposit to sync DB
-      try {
-        await fetch('/api/process-deposit', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            user_id: currentUser ? currentUser.id : null,
-            email: currentUser ? currentUser.email : null,
-            amount: amount,
-            currency: curKey,
-            tx_hash: txHash
-          })
-        });
-      } catch (e) {}
-
-      closeDeposit();
-      showDepositSuccessModal({
-        amount: amount,
-        networkName: meta.name + ' (Demo)',
-        txHash: txHash
-      });
-    });
-  }
 }
 
 /* --------------------------------------------------------------------------
