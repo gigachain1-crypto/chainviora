@@ -763,6 +763,8 @@ function initAuthModal() {
   function updateAuthStateUI(user) {
     const heroLoginBtn = document.getElementById('heroLoginBtn');
     const heroSignUpBtn = document.getElementById('heroSignUpBtn');
+    const navDashboardLink = document.getElementById('navDashboardLink');
+    const mobileDashboardLink = document.getElementById('mobileDashboardLink');
 
     if (user && user.email) {
       if (navUserBadge) {
@@ -773,6 +775,10 @@ function initAuthModal() {
         const displayUsername = user.user_metadata?.username || localStorage.getItem('gigachain_username') || user.email.split('@')[0];
         navUserEmail.textContent = displayUsername;
       }
+
+      // ✅ Show Dashboard link when logged in
+      if (navDashboardLink) navDashboardLink.classList.remove('hidden');
+      if (mobileDashboardLink) mobileDashboardLink.classList.remove('hidden');
 
       // Update hero buttons for logged-in user
       if (heroLoginBtn) {
@@ -797,6 +803,10 @@ function initAuthModal() {
         navUserBadge.classList.add('hidden');
         navUserBadge.classList.remove('flex');
       }
+
+      // ✅ Hide Dashboard link when logged out
+      if (navDashboardLink) navDashboardLink.classList.add('hidden');
+      if (mobileDashboardLink) mobileDashboardLink.classList.add('hidden');
 
       if (heroLoginBtn) {
         heroLoginBtn.innerHTML = `
