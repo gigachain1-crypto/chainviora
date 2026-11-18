@@ -172,6 +172,64 @@ body {
 }
 
 /* ==========================================================================
+   PREMIUM PORTFOLIO CARDS (3 Dark-Rich Cards with Glow & Depth)
+   ========================================================================== */
+
+/* Card 1: GIGA Token — Deep Dark Gold */
+.portfolio-card-giga {
+  background: linear-gradient(135deg, #1a0f00 0%, #2d1a04 40%, #1f130a 70%, #0f0800 100%);
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.45),
+    0 1px 0 rgba(255, 220, 100, 0.08) inset,
+    0 0 0 1px rgba(212, 175, 55, 0.08) inset;
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
+}
+.portfolio-card-giga:hover {
+  transform: translateY(-3px);
+  box-shadow:
+    0 12px 32px rgba(212, 175, 55, 0.22),
+    0 4px 12px rgba(0, 0, 0, 0.5);
+  border-color: rgba(212, 175, 55, 0.55);
+}
+
+/* Card 2: USDT — Deep Dark Emerald/Teal */
+.portfolio-card-usdt {
+  background: linear-gradient(135deg, #00180d 0%, #022c1a 40%, #011a10 70%, #00110a 100%);
+  border: 1px solid rgba(52, 211, 153, 0.30);
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.45),
+    0 1px 0 rgba(110, 231, 183, 0.07) inset,
+    0 0 0 1px rgba(52, 211, 153, 0.07) inset;
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
+}
+.portfolio-card-usdt:hover {
+  transform: translateY(-3px);
+  box-shadow:
+    0 12px 32px rgba(16, 185, 129, 0.22),
+    0 4px 12px rgba(0, 0, 0, 0.5);
+  border-color: rgba(52, 211, 153, 0.52);
+}
+
+/* Card 3: Total Profit — Deep Violet-to-Rose */
+.portfolio-card-profit {
+  background: linear-gradient(135deg, #160823 0%, #200d31 40%, #2a0a1e 70%, #110516 100%);
+  border: 1px solid rgba(236, 72, 153, 0.30);
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.45),
+    0 1px 0 rgba(249, 168, 212, 0.07) inset,
+    0 0 0 1px rgba(167, 139, 250, 0.07) inset;
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
+}
+.portfolio-card-profit:hover {
+  transform: translateY(-3px);
+  box-shadow:
+    0 12px 32px rgba(236, 72, 153, 0.22),
+    0 4px 12px rgba(0, 0, 0, 0.5);
+  border-color: rgba(236, 72, 153, 0.52);
+}
+
+/* ==========================================================================
    MOBILE RESPONSIVENESS TWEAKS
    ========================================================================== */
 @media (max-width: 640px) {
