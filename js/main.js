@@ -109,7 +109,7 @@ function initSwapWidget() {
   const swapBtn = document.getElementById('executeSwapBtn');
   const switchBtn = document.getElementById('switchTokensBtn');
 
-  const GIGA_RATE = 3.42; // 1 GIGA = 3.42 USDT
+  const GIGA_RATE = 30.00; // 1 GIGA = 30.00 USDT
   let isUsdtToGiga = true;
 
   function calculate() {
@@ -189,7 +189,7 @@ function initStakingCalculator() {
     const monthlyTokens = annualTokens / 12;
     const dailyTokens = annualTokens / 365;
 
-    const tokenPrice = 3.42;
+    const tokenPrice = 30.00;
 
     if (dailyReward) {
       dailyReward.innerHTML = `<span class="font-bold text-slate-800">${dailyTokens.toFixed(2)} GIGA</span> <span class="text-xs text-slate-500">($${(dailyTokens * tokenPrice).toFixed(2)})</span>`;

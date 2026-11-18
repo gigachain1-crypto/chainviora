@@ -152,7 +152,7 @@ window.updateStakingChartData = function(stakedAmount, apyRate) {
   if (!stakingChartInstance) return;
 
   const monthlyRate = Math.pow(1 + apyRate / 100, 1 / 12) - 1;
-  const tokenPrice = 3.42; // Simulated GIGA token price
+  const tokenPrice = 30.00; // Fixed GIGA token price ($30.00)
   const initialValue = stakedAmount * tokenPrice;
 
   const newData = [];

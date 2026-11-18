@@ -38,7 +38,7 @@ function getOrCreateUserId() {
   return uid;
 }
 
-const GIGA_PRICE = 3.42;
+const GIGA_PRICE = 30.00;
 
 /* --------------------------------------------------------------------------
    1. User Session & Balance Display
