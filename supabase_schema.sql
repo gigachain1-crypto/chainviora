@@ -26,10 +26,12 @@ create table if not exists public.profiles (
 alter table public.profiles enable row level security;
 
 -- Policies: users can view and update only their own profile
+drop policy if exists "Users can view own profile" on public.profiles;
 create policy "Users can view own profile" 
   on public.profiles for select 
   using (auth.uid() = id);
 
+drop policy if exists "Users can update own profile" on public.profiles;
 create policy "Users can update own profile" 
   on public.profiles for update 
   using (auth.uid() = id);
@@ -67,6 +69,7 @@ create table if not exists public.stakes (
 
 alter table public.stakes enable row level security;
 
+drop policy if exists "Users can view and create own stakes" on public.stakes;
 create policy "Users can view and create own stakes"
   on public.stakes for all
   using (auth.uid() = user_id);
@@ -87,6 +90,7 @@ create table if not exists public.transactions (
 
 alter table public.transactions enable row level security;
 
+drop policy if exists "Users can view and insert own transactions" on public.transactions;
 create policy "Users can view and insert own transactions"
   on public.transactions for all
   using (auth.uid() = user_id);
