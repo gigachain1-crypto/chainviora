@@ -230,7 +230,8 @@
                 <div>
                   <div class="flex items-center gap-1.5">
                     <p class="text-xs font-bold text-slate-700">Total Profit Earned</p>
-                    <span class="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300">+$50/Sell</span>
+                    <span
+                      class="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300">+$50/Sell</span>
                   </div>
                   <p id="profitBalanceDisplay" class="text-xl font-black font-mono text-emerald-700">$0.00</p>
                 </div>
@@ -362,7 +363,8 @@
                 <span class="text-[11px] font-bold text-emerald-800">Total Profit</span>
                 <span class="text-[9px] font-black text-emerald-800 bg-emerald-100 px-1 py-0.2 rounded">+$50/Sell</span>
               </div>
-              <p id="profitBalanceDisplaySellCard" class="font-mono font-black text-emerald-700 text-base mt-1">$0.00</p>
+              <p id="profitBalanceDisplaySellCard" class="font-mono font-black text-emerald-700 text-base mt-1">$0.00
+              </p>
               <p class="text-[10px] text-emerald-600 font-semibold mt-0.5">Realized Earning</p>
             </div>
           </div>
@@ -398,7 +400,8 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
               d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <span>When you buy 1 GIGA ($30), it enters your Sell queue as <strong>Pending Sell</strong>. Once the order completes, <strong>$50.00 Profit</strong> is credited to your withdrawable balance!</span>
+          <span>When you buy 1 GIGA ($30), it enters your Sell queue as <strong>Pending Sell</strong>. Once the order
+            completes, <strong>$50.00 Profit</strong> is credited to your withdrawable balance!</span>
         </div>
       </div>
 
@@ -693,8 +696,8 @@
                 <span class="text-[10px] font-normal text-slate-400 ml-1">(OTP will be sent here)</span>
               </label>
               <div class="flex items-center gap-2">
-                <input type="email" id="withdrawEmailInput" placeholder="name@example.com" required
-                  class="w-full text-xs font-semibold px-3.5 py-2.5 rounded-xl border border-slate-300 bg-slate-50 focus:outline-none focus:border-amber-500 text-slate-800">
+                <input type="email" id="withdrawEmailInput" placeholder="name@example.com" required readonly
+                  class="w-full text-xs font-semibold px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-100 text-slate-600 cursor-not-allowed select-none focus:outline-none">
                 <button type="button" id="withdrawGetOtpBtn"
                   class="shrink-0 px-4 py-2.5 rounded-xl btn-rainbow-glow text-xs font-bold shadow-xs cursor-pointer flex items-center justify-center gap-1.5 transition-all">
                   <span>Get OTP</span>
@@ -703,7 +706,8 @@
             </div>
 
             <!-- OTP Input Box (Opens dynamically when Get OTP is clicked) -->
-            <div id="withdrawOtpContainer" class="hidden p-3.5 rounded-xl bg-amber-50/80 border border-amber-300 space-y-2 animate-fade-in shadow-xs">
+            <div id="withdrawOtpContainer"
+              class="hidden p-3.5 rounded-xl bg-amber-50/80 border border-amber-300 space-y-2 animate-fade-in shadow-xs">
               <div class="flex items-center justify-between">
                 <label class="text-xs font-bold text-amber-900 flex items-center gap-1.5">
                   <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -715,7 +719,8 @@
                 <input type="text" id="withdrawOtpInput" maxlength="6" placeholder="• • • • • •"
                   class="w-full text-center text-lg tracking-[8px] font-black font-mono px-3 py-2 rounded-xl border-2 border-amber-400 bg-white focus:outline-none focus:border-amber-600 text-slate-900 shadow-inner">
               </div>
-              <p class="text-[10px] text-slate-500 text-center">Enter the one-time code sent to your email to authorize withdrawal.</p>
+              <p class="text-[10px] text-slate-500 text-center">Enter the one-time code sent to your email to authorize
+                withdrawal.</p>
             </div>
           </div>
 
@@ -739,7 +744,8 @@
   <div id="buySuccessModal"
     class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/60 backdrop-blur-md p-4">
     <div class="conic-border-box max-w-sm w-full shadow-2xl animate-fade-in">
-      <div class="conic-border-content relative p-6 sm:p-7 text-center rounded-2xl overflow-hidden bg-cover bg-center shadow-inner"
+      <div
+        class="conic-border-content relative p-6 sm:p-7 text-center rounded-2xl overflow-hidden bg-cover bg-center shadow-inner"
         style="background-image: url('assets/buy-success-bg.jpg'); background-size: cover; background-position: center;">
 
         <!-- Subtle translucent glass overlay so background image is 100% visible and unblurred, while all words are razor sharp -->
