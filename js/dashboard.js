@@ -109,6 +109,50 @@ function initDashboardUser() {
   }
 }
 
+// ─── Supabase Balance Sync (saves to backend after each action) ───────────────
+async function syncBalanceToSupabase(action = 'update') {
+  try {
+    const supabaseUserId = localStorage.getItem('supabase_user_id') || currentUser.id;
+    if (!supabaseUserId) return;
+    await fetch('/api/update-balance', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_id: supabaseUserId,
+        usdt_balance: currentUser.usdtBalance,
+        giga_balance: currentUser.gigaBalance,
+        lifetime_profit: currentUser.lifetimeProfit,
+        action
+      })
+    });
+  } catch (e) {
+    console.warn('Balance sync skipped (offline or error):', e.message);
+  }
+}
+
+// ─── Record Transaction to Supabase ─────────────────────────────────────────
+async function recordTxToSupabase(type, amountUsdt, amountGiga, orderId, notes) {
+  try {
+    const supabaseUserId = localStorage.getItem('supabase_user_id') || currentUser.id;
+    if (!supabaseUserId) return;
+    await fetch('/api/record-transaction', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_id: supabaseUserId,
+        type,
+        amount_usdt: amountUsdt || 0,
+        amount_giga: amountGiga || 0,
+        order_id: orderId || null,
+        status: 'completed',
+        notes: notes || null
+      })
+    });
+  } catch (e) {
+    console.warn('Transaction record skipped:', e.message);
+  }
+}
+
 function updateBalanceDisplays() {
   const gigaDisplay = document.getElementById('gigaBalanceDisplay');
   const gigaUsdDisplay = document.getElementById('gigaUsdDisplay');
@@ -1206,6 +1250,11 @@ function initBuySellMarket() {
     const txHash = generateTxHash();
     addTransactionRow('Buy GIGA', '1 GIGA ($30.00)', '-$30.00', txHash, 'Just now', 'Completed');
 
+    // ✅ Save balance + transaction to Supabase
+    localStorage.setItem('gigachain_current_user', JSON.stringify(currentUser));
+    syncBalanceToSupabase('buy_giga');
+    recordTxToSupabase('buy_giga', 30.00, 1, sellOrderId, 'Bought 1 GIGA for $30.00');
+
     // Re-render UI
     renderPoolTable(searchInput ? searchInput.value : '');
     renderPendingSells();
@@ -1252,6 +1301,11 @@ function initBuySellMarket() {
       updateBalanceDisplays();
       renderPendingSells();
 
+      // ✅ Save updated balance + sell transaction to Supabase
+      localStorage.setItem('gigachain_current_user', JSON.stringify(currentUser));
+      syncBalanceToSupabase('sell_complete');
+      recordTxToSupabase('sell_complete', 50.00, 0, targetOrder.orderId, 'Sell completed — +$50 profit credited');
+
       // Add to transaction history table
       const txHash = generateTxHash();
       addTransactionRow('Sell Complete', '1 GIGA ($50.00)', '+$50.00', txHash, 'Just now', 'Completed');
@@ -1266,10 +1320,13 @@ function initBuySellMarket() {
     }, delayMs);
   }
 
-  // Periodic background matching interval (every 16s)
-  setInterval(() => {
-    processNextBackgroundBuyer();
-  }, 16000);
+  // On page load: resume any pending orders that were left mid-matching
+  // (e.g. user refreshed browser while order was pending)
+  const resumePending = getPendingSells();
+  const hasUnfinished = resumePending.some(o => o.status !== 'Completed' && (o.matchedBuyers || 0) < 2);
+  if (hasUnfinished) {
+    scheduleBackgroundBuyer(5000); // Resume after 5s on page load
+  }
 
   // 7. Buy Success Modal Handlers
   const successModal = document.getElementById('buySuccessModal');

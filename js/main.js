@@ -862,17 +862,33 @@ function initAuthModal() {
 
       try {
         let user = null;
-        if (window.gigachainAuth) {
-          try {
-            const data = await window.gigachainAuth.signIn(email, password);
-            user = data.user;
-          } catch (authErr) {
-            console.warn('Supabase signIn note:', authErr.message);
-            // Fallback for seamless testing if email not yet confirmed
-            user = { email: email, user_metadata: {} };
+
+        // STRICT REAL SUPABASE LOGIN — no fallback bypass allowed
+        if (!window.gigachainAuth) {
+          showToast('Authentication service not available. Please refresh the page.', 'error');
+          if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = origBtnHtml; }
+          return;
+        }
+
+        try {
+          const data = await window.gigachainAuth.signIn(email, password);
+          user = data.user;
+          if (!user) throw new Error('No user returned from authentication.');
+        } catch (authErr) {
+          console.error('Login failed:', authErr.message);
+          // Show meaningful error to user — no silent bypass
+          const msg = authErr.message || '';
+          if (msg.includes('Invalid login credentials') || msg.includes('invalid_credentials')) {
+            showToast('Incorrect email or password. Please try again.', 'error');
+          } else if (msg.includes('Email not confirmed')) {
+            showToast('Please verify your email address before logging in. Check your inbox.', 'error');
+          } else if (msg.includes('User not found') || msg.includes('No user')) {
+            showToast('No account found with this email. Please sign up first.', 'error');
+          } else {
+            showToast(msg || 'Login failed. Please check your credentials.', 'error');
           }
-        } else {
-          user = { email: email, user_metadata: {} };
+          if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = origBtnHtml; }
+          return;
         }
 
         // Automatic Username Generation (GIGA + 6 digits) if not already assigned

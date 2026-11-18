@@ -1,97 +1,134 @@
 -- ==============================================================================
--- GIGACHAIN - Supabase Database Schema
--- Run this in your Supabase Dashboard: SQL Editor -> New query -> Paste & Run (Ctrl+Enter)
+-- CHAINVIORA - Complete Supabase Database Schema (Updated)
+-- Run this FULLY in Supabase Dashboard → SQL Editor → New Query → Paste → Run
 -- ==============================================================================
 
--- 1. Create Profiles Table (Linked with Supabase Auth Users)
-create table if not exists public.profiles (
-  id uuid references auth.users on delete cascade primary key,
+-- ============================================================
+-- 1. PROFILES TABLE (User accounts + balances)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS public.profiles (
+  id uuid REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
   full_name text,
+  username text,
   email text,
-  wallet_address text default '0x71C8A6987C2188B6Fa08779a1F04bE1049b4b9C3',
-  deposit_address text default null,              -- Unique permanent NOWPayments deposit address
-  deposit_address_currency text default null,      -- e.g. 'usdtbsc'
-  deposit_addresses jsonb default '{}'::jsonb,    -- Map of { "usdtbsc": "0x...", "usdttrc20": "T...", "sol": "...", "btc": "...", "eth": "0x..." }
-  balance_giga numeric(18, 4) default 0.0000,
-  balance_usdt numeric(18, 2) default 0.00,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+  wallet_address text DEFAULT '0x71C8A6987C2188B6Fa08779a1F04bE1049b4b9C3',
+
+  -- Balances (synced from dashboard)
+  usdt_balance numeric(18, 2) DEFAULT 0.00,
+  giga_balance numeric(18, 4) DEFAULT 0.0000,
+  lifetime_profit numeric(18, 2) DEFAULT 0.00,
+  last_updated timestamp with time zone DEFAULT now(),
+
+  -- Deposit addresses
+  deposit_address text DEFAULT null,
+  deposit_address_currency text DEFAULT null,
+  deposit_addresses jsonb DEFAULT '{}'::jsonb,
+
+  -- Referral
+  referral_code text DEFAULT null,
+  referred_by text DEFAULT null,
+
+  created_at timestamp with time zone DEFAULT timezone('utc', now()) NOT NULL
 );
 
--- In case profiles table already exists, run these migration statements:
--- ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS deposit_address text DEFAULT null;
--- ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS deposit_address_currency text DEFAULT null;
--- ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS deposit_addresses jsonb DEFAULT '{}'::jsonb;
+-- Migration (safe — if table existed before):
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS usdt_balance numeric(18, 2) DEFAULT 0.00;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS giga_balance numeric(18, 4) DEFAULT 0.0000;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS lifetime_profit numeric(18, 2) DEFAULT 0.00;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS last_updated timestamp with time zone DEFAULT now();
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS username text;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS deposit_address text DEFAULT null;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS deposit_address_currency text DEFAULT null;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS deposit_addresses jsonb DEFAULT '{}'::jsonb;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS referral_code text DEFAULT null;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS referred_by text DEFAULT null;
 
--- Enable Row Level Security (RLS) for data protection
-alter table public.profiles enable row level security;
+-- Enable RLS
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
--- Policies: users can view and update only their own profile
-drop policy if exists "Users can view own profile" on public.profiles;
-create policy "Users can view own profile" 
-  on public.profiles for select 
-  using (auth.uid() = id);
+DROP POLICY IF EXISTS "Users can view own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Service role full access" ON public.profiles;
 
-drop policy if exists "Users can update own profile" on public.profiles;
-create policy "Users can update own profile" 
-  on public.profiles for update 
-  using (auth.uid() = id);
+CREATE POLICY "Users can view own profile"
+  ON public.profiles FOR SELECT USING (auth.uid() = id);
 
--- 2. Trigger: Automatically create profile when a new user signs up
-create or replace function public.handle_new_user()
-returns trigger as $$
-begin
-  insert into public.profiles (id, full_name, email)
-  values (
+CREATE POLICY "Users can update own profile"
+  ON public.profiles FOR UPDATE USING (auth.uid() = id);
+
+CREATE POLICY "Service role full access"
+  ON public.profiles FOR ALL USING (true);
+
+-- ============================================================
+-- 2. AUTO-CREATE PROFILE ON SIGNUP (Trigger)
+-- ============================================================
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger AS $$
+BEGIN
+  INSERT INTO public.profiles (id, full_name, email, username)
+  VALUES (
     new.id,
-    coalesce(new.raw_user_meta_data->>'full_name', 'Gigachain Member'),
-    new.email
-  );
-  return new;
-end;
-$$ language plpgsql security definer;
+    COALESCE(new.raw_user_meta_data->>'full_name', 'Chainviora Member'),
+    new.email,
+    'GIGA' || LPAD(FLOOR(RANDOM() * 900000 + 100000)::text, 6, '0')
+  )
+  ON CONFLICT (id) DO NOTHING;
+  RETURN new;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Attach trigger to auth.users
-drop trigger if exists on_auth_user_created on auth.users;
-create trigger on_auth_user_created
-  after insert on auth.users
-  for each row execute procedure public.handle_new_user();
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
 
--- 3. Staking Table (Liquid Staking Pool Records)
-create table if not exists public.stakes (
-  id uuid default gen_random_uuid() primary key,
-  user_id uuid references public.profiles(id) on delete cascade not null,
-  amount_giga numeric(18, 4) not null,
-  apy_rate numeric(5, 2) default 18.5,
-  daily_yield numeric(18, 4) not null,
-  staked_at timestamp with time zone default timezone('utc'::text, now()) not null,
-  status text default 'active' check (status in ('active', 'unstaked'))
+-- ============================================================
+-- 3. TRANSACTIONS TABLE (Buy GIGA, Sell Complete, Deposit, Withdrawal)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS public.transactions (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  type text NOT NULL,         -- 'buy_giga', 'sell_complete', 'deposit', 'withdrawal'
+  amount_usdt numeric(18, 2) DEFAULT 0.00,
+  amount_giga numeric(18, 4) DEFAULT 0.0000,
+  order_id text DEFAULT null,
+  status text DEFAULT 'completed',
+  notes text DEFAULT null,
+  created_at timestamp with time zone DEFAULT timezone('utc', now()) NOT NULL
 );
 
-alter table public.stakes enable row level security;
+-- Migration if table existed:
+ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS amount_usdt numeric(18, 2) DEFAULT 0.00;
+ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS amount_giga numeric(18, 4) DEFAULT 0.0000;
+ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS order_id text DEFAULT null;
+ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS notes text DEFAULT null;
 
-drop policy if exists "Users can view and create own stakes" on public.stakes;
-create policy "Users can view and create own stakes"
-  on public.stakes for all
-  using (auth.uid() = user_id);
+ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
 
--- 4. Transactions Table (Swap and Staking Transaction History)
-create table if not exists public.transactions (
-  id uuid default gen_random_uuid() primary key,
-  user_id uuid references public.profiles(id) on delete cascade not null,
-  tx_hash text not null,
-  type text not null, -- 'swap', 'stake', 'unstake'
-  from_token text,
-  to_token text,
-  amount_in numeric(18, 4),
-  amount_out numeric(18, 4),
-  status text default 'confirmed',
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+DROP POLICY IF EXISTS "Users can view own transactions" ON public.transactions;
+DROP POLICY IF EXISTS "Service role full access transactions" ON public.transactions;
+
+CREATE POLICY "Users can view own transactions"
+  ON public.transactions FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Service role full access transactions"
+  ON public.transactions FOR ALL USING (true);
+
+-- ============================================================
+-- 4. STAKES TABLE (Liquid staking records)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS public.stakes (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  amount_giga numeric(18, 4) NOT NULL,
+  apy_rate numeric(5, 2) DEFAULT 18.5,
+  daily_yield numeric(18, 4) NOT NULL,
+  staked_at timestamp with time zone DEFAULT timezone('utc', now()) NOT NULL,
+  status text DEFAULT 'active' CHECK (status IN ('active', 'unstaked'))
 );
 
-alter table public.transactions enable row level security;
+ALTER TABLE public.stakes ENABLE ROW LEVEL SECURITY;
 
-drop policy if exists "Users can view and insert own transactions" on public.transactions;
-create policy "Users can view and insert own transactions"
-  on public.transactions for all
-  using (auth.uid() = user_id);
-
+DROP POLICY IF EXISTS "Users can view and create own stakes" ON public.stakes;
+CREATE POLICY "Users can view and create own stakes"
+  ON public.stakes FOR ALL USING (auth.uid() = user_id);
