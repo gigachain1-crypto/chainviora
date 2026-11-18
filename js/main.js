@@ -703,19 +703,34 @@ function initAuthModal() {
           return;
         }
 
-        // Automatic Username Generation (GIGA + 6 digits) if not already assigned
-        let storedUsername = localStorage.getItem(`giga_user_${email}`);
+        // Persistent Username & Referral Code across all devices
+        let storedUsername = null;
+        let storedRefCode = null;
+
+        if (window.gigachainAuth && window.gigachainAuth.getProfileByEmail) {
+          try {
+            const prof = await window.gigachainAuth.getProfileByEmail(email);
+            if (prof && prof.username) storedUsername = prof.username;
+            if (prof && prof.referral_code) storedRefCode = prof.referral_code;
+          } catch (e) { }
+        }
+
+        if (!storedUsername) {
+          storedUsername = localStorage.getItem(`giga_user_${email}`);
+        }
         if (!storedUsername) {
           const randomDigits = Math.floor(100000 + Math.random() * 900000);
           storedUsername = `GIGA${randomDigits}`;
-          localStorage.setItem(`giga_user_${email}`, storedUsername);
         }
+        localStorage.setItem(`giga_user_${email}`, storedUsername);
 
-        let storedRefCode = localStorage.getItem(`giga_ref_${email}`);
+        if (!storedRefCode) {
+          storedRefCode = localStorage.getItem(`giga_ref_${email}`);
+        }
         if (!storedRefCode) {
           storedRefCode = Math.floor(100000 + Math.random() * 900000).toString();
-          localStorage.setItem(`giga_ref_${email}`, storedRefCode);
         }
+        localStorage.setItem(`giga_ref_${email}`, storedRefCode);
 
         const userSession = {
           email: email,
@@ -912,20 +927,48 @@ function initAuthModal() {
           }
         }
 
-        // Automatic Username Generation (GIGA + 6 digits) if not already assigned
-        let storedUsername = localStorage.getItem(`giga_user_${email}`) || user.user_metadata?.username;
-        if (!storedUsername) {
-          const randomDigits = Math.floor(100000 + Math.random() * 900000);
-          storedUsername = `GIGA${randomDigits}`;
-          localStorage.setItem(`giga_user_${email}`, storedUsername);
+        // ✅ Username Priority: Supabase metadata FIRST, then profiles table (cross-device), then device cache
+        let storedUsername = user.user_metadata?.username;
+
+        if (!storedUsername && window.gigachainAuth) {
+          try {
+            const prof = await window.gigachainAuth.getProfile(user.id);
+            if (prof && prof.username) storedUsername = prof.username;
+          } catch (pErr) { }
         }
 
-        // Automatic 6-Digit Referral Code
-        let storedRefCode = localStorage.getItem(`giga_ref_${email}`) || user.user_metadata?.referral_code;
+        if (!storedUsername) {
+          storedUsername = localStorage.getItem(`giga_user_${email}`);
+        }
+
+        if (!storedUsername) {
+          // If no username found anywhere, generate ONCE and sync to Supabase
+          const randomDigits = Math.floor(100000 + Math.random() * 900000);
+          storedUsername = `GIGA${randomDigits}`;
+          fetch('/api/confirm-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: email, username: storedUsername })
+          }).catch(() => {});
+        }
+        // Always cache locally too for fast access
+        localStorage.setItem(`giga_user_${email}`, storedUsername);
+
+        // ✅ Referral Code Priority: Supabase metadata/profile first, then device cache
+        let storedRefCode = user.user_metadata?.referral_code;
+        if (!storedRefCode && window.gigachainAuth) {
+          try {
+            const prof = await window.gigachainAuth.getProfile(user.id);
+            if (prof && prof.referral_code) storedRefCode = prof.referral_code;
+          } catch (pErr) { }
+        }
+        if (!storedRefCode) {
+          storedRefCode = localStorage.getItem(`giga_ref_${email}`);
+        }
         if (!storedRefCode) {
           storedRefCode = Math.floor(100000 + Math.random() * 900000).toString();
-          localStorage.setItem(`giga_ref_${email}`, storedRefCode);
         }
+        localStorage.setItem(`giga_ref_${email}`, storedRefCode);
 
         const userSession = {
           email: email,
@@ -1047,6 +1090,7 @@ function initAuthModal() {
       // Generate Unique Automatic Username: GIGA + 6 Digits
       const randomDigits = Math.floor(100000 + Math.random() * 900000);
       const autoUsername = `GIGA${randomDigits}`;
+      const newReferralCode = Math.floor(100000 + Math.random() * 900000).toString();
 
       const origBtnHtml = submitBtn ? submitBtn.innerHTML : '';
       if (submitBtn) {
@@ -1061,23 +1105,27 @@ function initAuthModal() {
         let user = null;
         if (window.gigachainAuth) {
           try {
-            const data = await window.gigachainAuth.signUp(email, password, fullName);
+            // ✅ Pass autoUsername and newReferralCode to Supabase — stored in user_metadata permanently
+            const data = await window.gigachainAuth.signUp(email, password, fullName, autoUsername, newReferralCode);
             user = data.user;
           } catch (signUpErr) {
             console.warn('Supabase signUp note:', signUpErr.message);
-            user = { email: email, user_metadata: { full_name: fullName, username: autoUsername } };
+            user = { email: email, user_metadata: { full_name: fullName, username: autoUsername, referral_code: newReferralCode } };
           }
         } else {
-          user = { email: email, user_metadata: { full_name: fullName, username: autoUsername } };
+          user = { email: email, user_metadata: { full_name: fullName, username: autoUsername, referral_code: newReferralCode } };
         }
 
-        // ✅ Auto-confirm email via backend (so user doesn't need to click Supabase's email)
-        // Our OTP already verified the email, so this is safe
+        // ✅ Auto-confirm email via backend and lock permanent username in DB
         try {
           await fetch('/api/confirm-email', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: email })
+            body: JSON.stringify({
+              email: email,
+              username: autoUsername,
+              referral_code: newReferralCode
+            })
           });
         } catch (confirmErr) {
           console.warn('Auto-confirm skipped:', confirmErr.message);
@@ -1085,9 +1133,6 @@ function initAuthModal() {
 
         const refInput = document.getElementById('signupReferralInput');
         const refCodeEntered = refInput ? refInput.value.trim().toUpperCase() : '';
-
-        // Generate Unique 6-Digit Referral Code for this new user
-        const newReferralCode = Math.floor(100000 + Math.random() * 900000).toString();
 
         // If referred by someone, increment referrer's count in localStorage
         if (refCodeEntered && refCodeEntered.length === 6) {

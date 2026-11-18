@@ -65,14 +65,17 @@ CREATE POLICY "Service role full access"
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
 BEGIN
-  INSERT INTO public.profiles (id, full_name, email, username)
+  INSERT INTO public.profiles (id, full_name, email, username, referral_code)
   VALUES (
     new.id,
     COALESCE(new.raw_user_meta_data->>'full_name', 'Chainviora Member'),
     new.email,
-    'GIGA' || LPAD(FLOOR(RANDOM() * 900000 + 100000)::text, 6, '0')
+    COALESCE(new.raw_user_meta_data->>'username', 'GIGA' || LPAD(FLOOR(RANDOM() * 900000 + 100000)::text, 6, '0')),
+    COALESCE(new.raw_user_meta_data->>'referral_code', FLOOR(RANDOM() * 900000 + 100000)::text)
   )
-  ON CONFLICT (id) DO NOTHING;
+  ON CONFLICT (id) DO UPDATE SET
+    username = COALESCE(public.profiles.username, EXCLUDED.username),
+    referral_code = COALESCE(public.profiles.referral_code, EXCLUDED.referral_code);
   RETURN new;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

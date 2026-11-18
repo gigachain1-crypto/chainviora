@@ -28,7 +28,7 @@ function getOrCreateUserId() {
   let uid = localStorage.getItem('chainviora_user_uid');
   if (!uid) {
     // Generate a UUID v4-like string
-    uid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    uid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
       const r = Math.random() * 16 | 0;
       const v = c === 'x' ? r : (r & 0x3 | 0x8);
       return v.toString(16);
@@ -52,7 +52,7 @@ function initDashboardUser() {
     try {
       const parsed = JSON.parse(savedUserJson);
       if (parsed.username) currentUser.username = parsed.username;
-      if (parsed.email)    currentUser.email    = parsed.email;
+      if (parsed.email) currentUser.email = parsed.email;
       if (parsed.referralCode) currentUser.referralCode = parsed.referralCode;
 
       // ✅ FULL DATA ISOLATION: Use email-keyed localStorage for balances
@@ -66,18 +66,18 @@ function initDashboardUser() {
       if (savedBal) {
         try {
           const bal = JSON.parse(savedBal);
-          currentUser.gigaBalance    = parseFloat(bal.giga)   || 0;
-          currentUser.usdtBalance    = parseFloat(bal.usdt)   || 0;
+          currentUser.gigaBalance = parseFloat(bal.giga) || 0;
+          currentUser.usdtBalance = parseFloat(bal.usdt) || 0;
           currentUser.lifetimeProfit = parseFloat(bal.profit) || 0;
         } catch (e) {
-          currentUser.gigaBalance    = 0;
-          currentUser.usdtBalance    = 0;
+          currentUser.gigaBalance = 0;
+          currentUser.usdtBalance = 0;
           currentUser.lifetimeProfit = 0;
         }
       } else {
         // Brand new user on this device — start at zero
-        currentUser.gigaBalance    = 0;
-        currentUser.usdtBalance    = 0;
+        currentUser.gigaBalance = 0;
+        currentUser.usdtBalance = 0;
         currentUser.lifetimeProfit = 0;
         localStorage.setItem(KEY_BAL, JSON.stringify({ giga: 0, usdt: 0, profit: 0 }));
       }
@@ -87,13 +87,13 @@ function initDashboardUser() {
 
     } catch (e) {
       console.warn('Error reading saved session:', e);
-      currentUser.gigaBalance    = 0;
-      currentUser.usdtBalance    = 0;
+      currentUser.gigaBalance = 0;
+      currentUser.usdtBalance = 0;
       currentUser.lifetimeProfit = 0;
     }
   } else {
-    currentUser.gigaBalance    = 0;
-    currentUser.usdtBalance    = 0;
+    currentUser.gigaBalance = 0;
+    currentUser.usdtBalance = 0;
     currentUser.lifetimeProfit = 0;
   }
 
@@ -205,8 +205,8 @@ function updateBalanceDisplays() {
   localStorage.setItem('gigachain_current_user', JSON.stringify(currentUser));
   if (currentUser._emailKey) {
     localStorage.setItem(`cv_balance_${currentUser._emailKey}`, JSON.stringify({
-      giga:   currentUser.gigaBalance,
-      usdt:   currentUser.usdtBalance,
+      giga: currentUser.gigaBalance,
+      usdt: currentUser.usdtBalance,
       profit: currentUser.lifetimeProfit
     }));
   }
@@ -1007,8 +1007,8 @@ function initBuySellMarket() {
 
   // ✅ User-specific localStorage key prefix — ensures total data isolation
   const userEmail = currentUser.email ? currentUser.email.toLowerCase().replace(/[^a-z0-9]/g, '_') : 'guest';
-  const KEY_POOL    = `cv_pool_${userEmail}`;
-  const KEY_SELLS   = `cv_sells_${userEmail}`;
+  const KEY_POOL = `cv_pool_${userEmail}`;
+  const KEY_SELLS = `cv_sells_${userEmail}`;
   const KEY_BALANCE = `cv_balance_${userEmail}`;
 
   // 1. Get or generate 100 GIGA buy pool (user-specific)

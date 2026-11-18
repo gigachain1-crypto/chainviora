@@ -14,11 +14,15 @@ module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const { email } = req.body;
+    const { email, username, referral_code } = req.body;
     if (!email) return res.status(400).json({ error: 'email is required' });
 
     if (!SUPABASE_SERVICE_KEY) {
-      return res.status(200).json({ success: true, note: 'Service key not set, skipping confirm' });
+      return res.status(200).json({
+        success: true,
+        note: 'Service key not set, skipping confirm',
+        username: username || null
+      });
     }
 
     const { createClient } = require('@supabase/supabase-js');
@@ -38,10 +42,24 @@ module.exports = async (req, res) => {
       return res.status(404).json({ error: 'User not found', note: 'May not be registered yet' });
     }
 
-    // Auto-confirm the email using admin updateUserById
+    // Determine permanent username (existing metadata wins so it NEVER changes)
+    const existingMeta = targetUser.user_metadata || {};
+    const finalUsername = existingMeta.username || username || null;
+    const finalRefCode = existingMeta.referral_code || referral_code || null;
+
+    const updatePayload = {
+      email_confirm: true,
+      user_metadata: {
+        ...existingMeta,
+        ...(finalUsername ? { username: finalUsername } : {}),
+        ...(finalRefCode ? { referral_code: finalRefCode } : {})
+      }
+    };
+
+    // Auto-confirm the email & update metadata
     const { data: updated, error: updateErr } = await supabase.auth.admin.updateUserById(
       targetUser.id,
-      { email_confirm: true }
+      updatePayload
     );
 
     if (updateErr) {
@@ -49,11 +67,29 @@ module.exports = async (req, res) => {
       return res.status(500).json({ error: updateErr.message });
     }
 
-    console.log('Email auto-confirmed for:', email, 'userId:', targetUser.id);
+    // Also persist username into public.profiles table
+    if (finalUsername) {
+      try {
+        await supabase
+          .from('profiles')
+          .upsert({
+            id: targetUser.id,
+            email: targetUser.email,
+            username: finalUsername,
+            ...(finalRefCode ? { referral_code: finalRefCode } : {})
+          }, { onConflict: 'id' });
+      } catch (profErr) {
+        console.warn('Profile upsert note in confirm-email:', profErr.message);
+      }
+    }
+
+    console.log('Email confirmed & metadata locked for:', email, 'userId:', targetUser.id, 'username:', finalUsername);
     return res.status(200).json({
       success: true,
       message: 'Email confirmed successfully',
-      userId: targetUser.id
+      userId: targetUser.id,
+      username: finalUsername,
+      referral_code: finalRefCode
     });
 
   } catch (err) {

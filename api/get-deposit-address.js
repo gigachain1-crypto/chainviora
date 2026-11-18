@@ -7,11 +7,11 @@ const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 // Network metadata
 const NETWORK_META = {
-  usdtbsc:   { nowCurrency: 'usdtbsc',    label: 'BEP20', prefix: '0x' },
-  usdttrc20: { nowCurrency: 'usdttrc20',  label: 'TRC20', prefix: 'T'  },
-  sol:       { nowCurrency: 'sol',         label: 'SOL',   prefix: ''   },
-  btc:       { nowCurrency: 'btc',         label: 'BTC',   prefix: 'bc1q' },
-  eth:       { nowCurrency: 'eth',         label: 'ETH',   prefix: '0x' }
+  usdtbsc: { nowCurrency: 'usdtbsc', label: 'BEP20', prefix: '0x' },
+  usdttrc20: { nowCurrency: 'usdttrc20', label: 'TRC20', prefix: 'T' },
+  sol: { nowCurrency: 'sol', label: 'SOL', prefix: '' },
+  btc: { nowCurrency: 'btc', label: 'BTC', prefix: 'bc1q' },
+  eth: { nowCurrency: 'eth', label: 'ETH', prefix: '0x' }
 };
 
 // Deterministic address fallback (same user+currency = same address always)

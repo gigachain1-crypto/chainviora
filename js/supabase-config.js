@@ -20,9 +20,9 @@ if (window.supabase && typeof window.supabase.createClient === 'function') {
 // ------------------------------------------------------------------------------
 
 /**
- * Register a new user in Supabase
+ * Register a new user in Supabase with permanent username & referral code
  */
-async function signUpUser(email, password, fullName) {
+async function signUpUser(email, password, fullName, username, referralCode) {
   if (!supabaseClient) throw new Error('Supabase client is not initialized');
 
   const { data, error } = await supabaseClient.auth.signUp({
@@ -30,7 +30,9 @@ async function signUpUser(email, password, fullName) {
     password: password,
     options: {
       data: {
-        full_name: fullName.trim()
+        full_name: fullName.trim(),
+        username: username || ('GIGA' + Math.floor(100000 + Math.random() * 900000)),
+        referral_code: referralCode || Math.floor(100000 + Math.random() * 900000).toString()
       }
     }
   });
@@ -91,6 +93,28 @@ async function fetchUserProfile(userId) {
 }
 
 /**
+ * Fetch profile data by user email (cross-device lookup)
+ */
+async function fetchProfileByEmail(email) {
+  if (!supabaseClient || !email) return null;
+  try {
+    const { data, error } = await supabaseClient
+      .from('profiles')
+      .select('*')
+      .eq('email', email.trim().toLowerCase())
+      .maybeSingle();
+
+    if (error) {
+      console.warn('Profile fetch by email notice:', error.message);
+      return null;
+    }
+    return data;
+  } catch (err) {
+    return null;
+  }
+}
+
+/**
  * Save a new staking record to Supabase
  */
 async function recordStakeToSupabase(userId, amount, apy = 18.5, dailyYield = 0) {
@@ -148,6 +172,7 @@ window.gigachainAuth = {
   signOut: signOutUser,
   getUser: getCurrentUser,
   getProfile: fetchUserProfile,
+  getProfileByEmail: fetchProfileByEmail,
   recordStake: recordStakeToSupabase,
   recordTx: recordTransactionToSupabase
 };
