@@ -122,17 +122,12 @@
        ======================================================================== -->
   <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8">
 
-    <!-- Welcome Header Banner -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-6 border-b border-amber-200/60">
-      <div>
-        <div class="flex items-center gap-2">
-          <h1 class="text-2xl sm:text-3xl font-display font-black text-slate-900">
-            Welcome, <span id="welcomeUsername" class="text-rainbow-gradient">GIGA000000</span>! ðŸš€
-          </h1>
-        </div>
-        <p class="text-xs sm:text-sm text-slate-500 mt-1">
-          Manage your Gigachain cryptocurrency portfolio, fast deposits & withdrawals.
-        </p>
+    <!-- Dashboard Header (Username Display) -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-5 border-b border-amber-200/60">
+      <div class="flex items-center gap-3">
+        <h1 class="text-2xl sm:text-3xl font-display font-black text-slate-900 leading-tight">
+          Username: <span id="welcomeUsername" class="text-rainbow-gradient font-mono">GIGA000000</span>
+        </h1>
       </div>
     </div>
 
@@ -179,7 +174,7 @@
         <!-- Token Balance & Profit Breakdown Grid (3 Premium Cards) -->
         <div class="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
 
-          <!-- CARD 1: GIGA Token — Dark Gold Premium -->
+          <!-- CARD 1: GIGA Buy (Total Purchased GIGA) — Dark Gold Premium -->
           <div class="portfolio-card-giga relative overflow-hidden rounded-2xl p-4 flex flex-col justify-between min-h-[130px] cursor-default select-none">
             <div class="absolute -top-6 -right-6 w-28 h-28 bg-amber-400/20 rounded-full blur-2xl pointer-events-none"></div>
             <div class="flex items-start justify-between">
@@ -188,8 +183,8 @@
                   <img src="assets/icon-giga-token.svg" alt="GIGA" class="w-8 h-8 object-contain">
                 </div>
                 <div>
-                  <p class="text-[11px] font-bold text-amber-200/80 uppercase tracking-wider leading-tight">$GIGA Token</p>
-                  <p id="gigaBalanceDisplay" class="text-2xl font-black font-mono text-white leading-tight mt-0.5">0.0000</p>
+                  <p class="text-[11px] font-bold text-amber-200/80 uppercase tracking-wider leading-tight">Total GIGA Buy</p>
+                  <p id="gigaBalanceDisplay" class="text-2xl font-black font-mono text-white leading-tight mt-0.5">0 GIGA</p>
                 </div>
               </div>
               <span class="text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded-full bg-amber-400/20 text-amber-200 border border-amber-400/30">LIVE</span>

@@ -171,6 +171,24 @@ async function recordTxToSupabase(type, amountUsdt, amountGiga, orderId, notes) 
   }
 }
 
+// ─── Calculate Total GIGA Bought by User (from sells history or balance) ───
+function getUserTotalGigaBought() {
+  try {
+    const userEmail = currentUser.email ? currentUser.email.toLowerCase().replace(/[^a-z0-9]/g, '_') : (currentUser._emailKey || 'guest');
+    const saved = localStorage.getItem(`cv_sells_${userEmail}`);
+    let sellsCount = 0;
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) {
+        sellsCount = parsed.reduce((sum, item) => sum + (parseFloat(item.amount) || 1), 0);
+      }
+    }
+    return Math.max(currentUser.totalGigaBought || 0, sellsCount, currentUser.gigaBalance || 0);
+  } catch (e) {
+    return currentUser.totalGigaBought || currentUser.gigaBalance || 0;
+  }
+}
+
 function updateBalanceDisplays() {
   const gigaDisplay = document.getElementById('gigaBalanceDisplay');
   const gigaUsdDisplay = document.getElementById('gigaUsdDisplay');
@@ -180,11 +198,13 @@ function updateBalanceDisplays() {
   const profitDisplay = document.getElementById('profitBalanceDisplay');
   const profitDisplaySell = document.getElementById('profitBalanceDisplaySellCard');
 
-  const gigaVal = currentUser.gigaBalance * GIGA_PRICE;
+  // Total GIGA bought by the user
+  const totalGigaBought = getUserTotalGigaBought();
+  const gigaVal = totalGigaBought * GIGA_PRICE;
   const usdtVal = currentUser.usdtBalance;
   const totalUsd = gigaVal + usdtVal;
 
-  if (gigaDisplay) gigaDisplay.textContent = currentUser.gigaBalance.toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+  if (gigaDisplay) gigaDisplay.textContent = `${totalGigaBought} GIGA`;
   if (gigaUsdDisplay) gigaUsdDisplay.textContent = `$${gigaVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   if (usdtDisplay) usdtDisplay.textContent = currentUser.usdtBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   if (usdtUsdDisplay) usdtUsdDisplay.textContent = `$${usdtVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -198,7 +218,7 @@ function updateBalanceDisplays() {
     const usdtOpt = withdrawAssetSelect.querySelector('option[value="USDT"]');
     const gigaOpt = withdrawAssetSelect.querySelector('option[value="GIGA"]');
     if (usdtOpt) usdtOpt.textContent = `USDT (Available: ${currentUser.usdtBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT)`;
-    if (gigaOpt) gigaOpt.textContent = `GIGA Token (Available: ${currentUser.gigaBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} GIGA)`;
+    if (gigaOpt) gigaOpt.textContent = `GIGA (Available: ${totalGigaBought} GIGA)`;
   }
 
   // Save updated balance to localStorage (user-specific key)
@@ -1423,6 +1443,7 @@ function initBuySellMarket() {
     const profitDisplaySell = document.getElementById('profitBalanceDisplaySellCard');
     if (profitDisplay) profitDisplay.textContent = `$${currentUser.lifetimeProfit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     if (profitDisplaySell) profitDisplaySell.textContent = `$${currentUser.lifetimeProfit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    updateBalanceDisplays();
 
     if (!pendingContainer) return;
 
@@ -1513,8 +1534,10 @@ function initBuySellMarket() {
       return;
     }
 
-    // Deduct $30 from user's USDT balance
+    // Deduct $30 from user's USDT balance and record purchased GIGA
     currentUser.usdtBalance = Math.max(0, currentUser.usdtBalance - cost);
+    currentUser.totalGigaBought = (currentUser.totalGigaBought || 0) + 1;
+    currentUser.gigaBalance = currentUser.totalGigaBought;
     updateBalanceDisplays();
 
     // Create user's Pending Sell record
@@ -1533,6 +1556,7 @@ function initBuySellMarket() {
       status: 'Pending'
     });
     savePendingSells(pending);
+    updateBalanceDisplays();
 
     // Re-blend purchased GIGA back into 100 pool
     const pool = getPool();
