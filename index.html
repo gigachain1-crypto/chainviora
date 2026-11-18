@@ -615,12 +615,10 @@
       <div class="conic-border-content p-6 sm:p-8 bg-white">
 
         <!-- Top Header & Close Button -->
-        <div class="flex items-center justify-between pb-4 border-b border-slate-100">
-          <div class="flex items-center gap-2">
-            <img src="assets/gigachain-logo.png" alt="Gigachain" class="h-16 w-auto">
-          </div>
+        <div class="relative flex items-center justify-center pb-4 border-b border-slate-100">
+          <img src="assets/gigachain-logo.png" alt="Gigachain" class="h-16 w-auto mx-auto">
           <button id="closeAuthModal"
-            class="p-2 text-slate-400 hover:text-slate-700 rounded-lg transition-colors cursor-pointer">
+            class="absolute right-0 p-2 text-slate-400 hover:text-slate-700 rounded-lg transition-colors cursor-pointer">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -875,8 +873,7 @@
           <!-- Referral Code Input (Optional / Auto-filled from Referral Link) -->
           <div>
             <div class="flex items-center justify-between mb-1">
-              <label class="block text-xs font-bold text-slate-700">Referral Code <span
-                  class="text-slate-400 font-normal">(Optional)</span></label>
+              <label class="block text-xs font-bold text-slate-700">Referral Code</label>
               <span id="refAppliedBadge"
                 class="hidden text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
                 ✓ Code Applied
