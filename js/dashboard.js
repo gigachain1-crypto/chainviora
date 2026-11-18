@@ -1493,8 +1493,8 @@ function initBuySellMarket() {
         card.className = 'p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between hover:border-amber-300 transition-colors shadow-2xs';
         card.innerHTML = `
           <div class="flex items-center gap-2.5">
-            <div class="w-8 h-8 rounded-lg ${matched === 1 ? 'bg-amber-100 text-amber-800' : 'bg-slate-200 text-slate-600'} flex items-center justify-center font-black text-xs shadow-xs">
-              ${matched === 1 ? '½' : '⏳'}
+            <div class="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center font-black text-xs shadow-xs">
+              ⏳
             </div>
             <div>
               <div class="flex items-center gap-1.5">
@@ -1505,11 +1505,12 @@ function initBuySellMarket() {
             </div>
           </div>
           <div class="text-right">
-            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md ${matched === 1 ? 'bg-amber-100 text-amber-900 border-amber-300' : 'bg-slate-100 text-slate-700 border-slate-300'} font-bold text-[10px] border">
-              <span class="w-1.5 h-1.5 rounded-full bg-amber-500 ${matched === 1 ? 'animate-pulse' : ''}"></span>
-              ${matched === 1 ? '1/2 Buyers Matched' : 'Pending Sell'}
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 border-amber-300 font-bold text-[10px] border">
+              <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+              Pending Sell
             </span>
-            <p class="text-[10px] font-mono font-bold ${matched === 1 ? 'text-amber-700' : 'text-slate-500'} mt-0.5">
+            <!-- Hidden from UI, preserved in background and DOM -->
+            <p class="hidden text-[10px] font-mono font-bold text-slate-500 mt-0.5" data-matched="${matched}">
               ${matched === 1 ? 'Waiting for 2nd Buyer' : 'In Queue (0/2)'}
             </p>
           </div>
