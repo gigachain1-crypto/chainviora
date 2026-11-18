@@ -133,12 +133,105 @@ function initDepositModal() {
   const closeBtn = document.getElementById('closeDepositModal');
   const copyAddrBtn = document.getElementById('copyDepositAddrBtn');
   const addrInput = document.getElementById('depositAddressInput');
-  const simulateBtn = document.getElementById('simulateDepositBtn');
+  const qrBox = document.getElementById('depositQRBox');
+  const addrNote = document.getElementById('depositAddrNote');
+
+  // Cache: once address is loaded, don't reload
+  let addressLoaded = false;
+
+  // Generate QR code using QRCode.js library
+  function renderQRCode(address) {
+    if (!qrBox) return;
+    // Clear loading spinner & old QR
+    qrBox.innerHTML = '';
+    try {
+      new QRCode(qrBox, {
+        text: address,
+        width: 128,
+        height: 128,
+        colorDark: '#1e293b',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.M
+      });
+    } catch (e) {
+      // Fallback: show address as QR API image
+      qrBox.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=128x128&data=${encodeURIComponent(address)}" class="w-full h-full rounded-lg" alt="QR Code">`;
+    }
+  }
+
+  // Fetch or retrieve permanent deposit address from NOWPayments via backend
+  async function loadDepositAddress() {
+    if (addressLoaded) return; // Already loaded, skip
+
+    if (addrNote) addrNote.textContent = '⏳ Fetching your permanent wallet address...';
+    if (addrInput) addrInput.placeholder = 'Generating your address...';
+
+    try {
+      const user = currentUser;
+      if (!user || !user.id) {
+        if (addrNote) addrNote.textContent = '⚠️ Please log in to get your deposit address.';
+        return;
+      }
+
+      const response = await fetch('/api/get-deposit-address', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: user.id,
+          email: user.email
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.address) {
+        // Set the address in input
+        if (addrInput) addrInput.value = data.address;
+
+        // Update note
+        if (addrNote) {
+          addrNote.textContent = data.cached
+            ? '✅ Your permanent TRC20 deposit address (USDT only)'
+            : '✅ New permanent address generated for your account';
+          addrNote.className = 'text-[10px] text-emerald-600 mt-1 font-medium';
+        }
+
+        // Render real QR code
+        renderQRCode(data.address);
+
+        // Update network badge based on currency
+        const badge = document.getElementById('depositNetworkBadge');
+        if (badge) {
+          const cur = (data.currency || 'usdttrc20').toUpperCase();
+          badge.textContent = cur.includes('TRC') ? 'TRC20' : cur.includes('ERC') ? 'ERC20' : cur;
+        }
+
+        addressLoaded = true;
+      } else {
+        console.error('Failed to get deposit address:', data);
+        if (addrNote) {
+          addrNote.textContent = '⚠️ Failed to load address. Please try again.';
+          addrNote.className = 'text-[10px] text-red-500 mt-1';
+        }
+        // Retry after 3 seconds
+        setTimeout(loadDepositAddress, 3000);
+      }
+    } catch (err) {
+      console.error('Deposit address fetch error:', err);
+      if (addrNote) {
+        addrNote.textContent = '⚠️ Network error. Retrying...';
+        addrNote.className = 'text-[10px] text-red-500 mt-1';
+      }
+      setTimeout(loadDepositAddress, 4000);
+    }
+  }
 
   function openDeposit() {
     if (modal) {
       modal.classList.remove('hidden');
       modal.classList.add('flex');
+      // Load address each time modal opens (but skip if already loaded)
+      loadDepositAddress();
     }
   }
 
@@ -160,24 +253,13 @@ function initDepositModal() {
 
   if (copyAddrBtn && addrInput) {
     copyAddrBtn.addEventListener('click', () => {
+      if (!addrInput.value || addrInput.value === '') {
+        showToast('Address not loaded yet. Please wait...', 'error');
+        return;
+      }
       navigator.clipboard.writeText(addrInput.value).then(() => {
         showToast('Deposit address copied to clipboard! 📋', 'success');
       });
-    });
-  }
-
-  // Simulate Deposit Action
-  if (simulateBtn) {
-    simulateBtn.addEventListener('click', () => {
-      const depositAmount = 250.00;
-      currentUser.usdtBalance += depositAmount;
-      updateBalanceDisplays();
-
-      // Add to transaction table
-      addTransactionRow('Deposit', 'USDT (TRC20)', `+${depositAmount.toFixed(2)}`, generateTxHash(), 'Just now', 'Confirmed');
-
-      closeDeposit();
-      showToast(`Deposit confirmed! +${depositAmount} USDT credited to your Vault 🚀`, 'success');
     });
   }
 }

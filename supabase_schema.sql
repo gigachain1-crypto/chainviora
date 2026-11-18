@@ -9,6 +9,8 @@ create table if not exists public.profiles (
   full_name text,
   email text,
   wallet_address text default '0x71C8A6987C2188B6Fa08779a1F04bE1049b4b9C3',
+  deposit_address text default null,              -- Unique permanent NOWPayments deposit address
+  deposit_address_currency text default null,      -- e.g. 'usdttrc20'
   balance_giga numeric(18, 4) default 0.0000,
   balance_usdt numeric(18, 2) default 0.00,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
