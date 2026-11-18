@@ -52,50 +52,49 @@ function initDashboardUser() {
     try {
       const parsed = JSON.parse(savedUserJson);
       if (parsed.username) currentUser.username = parsed.username;
-      if (parsed.email) currentUser.email = parsed.email;
+      if (parsed.email)    currentUser.email    = parsed.email;
       if (parsed.referralCode) currentUser.referralCode = parsed.referralCode;
 
-      // ✅ User-Switch Guard: if email changed on this device, clear old history
-      const lastDashEmail = localStorage.getItem('chainviora_dash_user_email');
-      if (lastDashEmail && parsed.email && lastDashEmail.toLowerCase() !== parsed.email.toLowerCase()) {
-        localStorage.removeItem('chainviora_user_pending_sells');
-        localStorage.removeItem('chainviora_buy_pool_100');
-        localStorage.removeItem('chainviora_zero_data_v2');
-        localStorage.removeItem('chainviora_user_uid');
-        currentUser.gigaBalance = 0.00;
-        currentUser.usdtBalance = 0.00;
-        currentUser.lifetimeProfit = 0.00;
-        parsed.gigaBalance = 0.00;
-        parsed.usdtBalance = 0.00;
-        parsed.lifetimeProfit = 0.00;
-        localStorage.setItem('gigachain_current_user', JSON.stringify(parsed));
-      }
-      if (parsed.email) {
-        localStorage.setItem('chainviora_dash_user_email', parsed.email.toLowerCase());
+      // ✅ FULL DATA ISOLATION: Use email-keyed localStorage for balances
+      const emailKey = parsed.email
+        ? parsed.email.toLowerCase().replace(/[^a-z0-9]/g, '_')
+        : 'guest';
+
+      const KEY_BAL = `cv_balance_${emailKey}`;
+      const savedBal = localStorage.getItem(KEY_BAL);
+
+      if (savedBal) {
+        try {
+          const bal = JSON.parse(savedBal);
+          currentUser.gigaBalance    = parseFloat(bal.giga)   || 0;
+          currentUser.usdtBalance    = parseFloat(bal.usdt)   || 0;
+          currentUser.lifetimeProfit = parseFloat(bal.profit) || 0;
+        } catch (e) {
+          currentUser.gigaBalance    = 0;
+          currentUser.usdtBalance    = 0;
+          currentUser.lifetimeProfit = 0;
+        }
+      } else {
+        // Brand new user on this device — start at zero
+        currentUser.gigaBalance    = 0;
+        currentUser.usdtBalance    = 0;
+        currentUser.lifetimeProfit = 0;
+        localStorage.setItem(KEY_BAL, JSON.stringify({ giga: 0, usdt: 0, profit: 0 }));
       }
 
-      // Reset all mock balances to zero for all users (first time)
-      if (!localStorage.getItem('chainviora_zero_data_v2')) {
-        currentUser.gigaBalance = 0.00;
-        currentUser.usdtBalance = 0.00;
-        currentUser.lifetimeProfit = 0.00;
-        parsed.gigaBalance = 0.00;
-        parsed.usdtBalance = 0.00;
-        parsed.lifetimeProfit = 0.00;
-        localStorage.setItem('gigachain_current_user', JSON.stringify(parsed));
-        localStorage.setItem('chainviora_zero_data_v2', 'true');
-      } else {
-        if (parsed.gigaBalance !== undefined) currentUser.gigaBalance = parseFloat(parsed.gigaBalance) || 0;
-        if (parsed.usdtBalance !== undefined) currentUser.usdtBalance = parseFloat(parsed.usdtBalance) || 0;
-        if (parsed.lifetimeProfit !== undefined) currentUser.lifetimeProfit = parseFloat(parsed.lifetimeProfit) || 0;
-      }
+      // Store current email key for balance saves
+      currentUser._emailKey = emailKey;
+
     } catch (e) {
       console.warn('Error reading saved session:', e);
+      currentUser.gigaBalance    = 0;
+      currentUser.usdtBalance    = 0;
+      currentUser.lifetimeProfit = 0;
     }
   } else {
-    currentUser.gigaBalance = 0.00;
-    currentUser.usdtBalance = 0.00;
-    currentUser.lifetimeProfit = 0.00;
+    currentUser.gigaBalance    = 0;
+    currentUser.usdtBalance    = 0;
+    currentUser.lifetimeProfit = 0;
   }
 
   // Ensure user always has a 6-digit referral code
@@ -202,8 +201,15 @@ function updateBalanceDisplays() {
     if (gigaOpt) gigaOpt.textContent = `GIGA Token (Available: ${currentUser.gigaBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} GIGA)`;
   }
 
-  // Save updated balance to localStorage
+  // Save updated balance to localStorage (user-specific key)
   localStorage.setItem('gigachain_current_user', JSON.stringify(currentUser));
+  if (currentUser._emailKey) {
+    localStorage.setItem(`cv_balance_${currentUser._emailKey}`, JSON.stringify({
+      giga:   currentUser.gigaBalance,
+      usdt:   currentUser.usdtBalance,
+      profit: currentUser.lifetimeProfit
+    }));
+  }
 }
 
 /* --------------------------------------------------------------------------
@@ -999,10 +1005,16 @@ function initBuySellMarket() {
   const pendingCountDisplay = document.getElementById('pendingCountDisplay');
   const pendingValueDisplay = document.getElementById('pendingValueDisplay');
 
-  // 1. Get or generate 100 GIGA buy pool
+  // ✅ User-specific localStorage key prefix — ensures total data isolation
+  const userEmail = currentUser.email ? currentUser.email.toLowerCase().replace(/[^a-z0-9]/g, '_') : 'guest';
+  const KEY_POOL    = `cv_pool_${userEmail}`;
+  const KEY_SELLS   = `cv_sells_${userEmail}`;
+  const KEY_BALANCE = `cv_balance_${userEmail}`;
+
+  // 1. Get or generate 100 GIGA buy pool (user-specific)
   function getPool() {
     let pool = [];
-    const saved = localStorage.getItem('chainviora_buy_pool_100');
+    const saved = localStorage.getItem(KEY_POOL);
     if (saved) {
       try {
         pool = JSON.parse(saved);
@@ -1018,19 +1030,19 @@ function initBuySellMarket() {
           status: 'Available'
         });
       }
-      localStorage.setItem('chainviora_buy_pool_100', JSON.stringify(pool));
+      localStorage.setItem(KEY_POOL, JSON.stringify(pool));
     }
     return pool;
   }
 
   function savePool(pool) {
-    localStorage.setItem('chainviora_buy_pool_100', JSON.stringify(pool));
+    localStorage.setItem(KEY_POOL, JSON.stringify(pool));
   }
 
-  // 2. Get user's pending sell list
+  // 2. Get user's pending sell list (user-specific)
   function getPendingSells() {
     let pending = [];
-    const saved = localStorage.getItem('chainviora_user_pending_sells');
+    const saved = localStorage.getItem(KEY_SELLS);
     if (saved) {
       try {
         pending = JSON.parse(saved);
@@ -1052,7 +1064,7 @@ function initBuySellMarket() {
   }
 
   function savePendingSells(pending) {
-    localStorage.setItem('chainviora_user_pending_sells', JSON.stringify(pending));
+    localStorage.setItem(KEY_SELLS, JSON.stringify(pending));
   }
 
   // 3. Render the 100 GIGA buy table
