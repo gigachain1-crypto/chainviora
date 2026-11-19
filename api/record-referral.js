@@ -22,20 +22,11 @@ module.exports = async (req, res) => {
     const cleanEmail = referred_email.trim().toLowerCase();
     const cleanUsername = referred_username ? referred_username.trim() : null;
 
-    if (!SUPABASE_SERVICE_KEY) {
-      return res.status(200).json({
-        success: true,
-        note: 'Supabase service key not set, saved locally',
-        referral: {
-          referrer_code: cleanRef,
-          referred_email: cleanEmail,
-          referred_username: cleanUsername
-        }
-      });
-    }
-
     const { createClient } = require('@supabase/supabase-js');
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+    const supabase = createClient(
+      SUPABASE_URL,
+      SUPABASE_SERVICE_KEY || 'sb_publishable_HwMEDaihTWj54hP1s90VDA_ndMsJnJY'
+    );
 
     // 1. Update referred_by in profiles for the referred user if they exist
     try {

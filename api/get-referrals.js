@@ -18,19 +18,11 @@ module.exports = async (req, res) => {
 
     const cleanRef = code.trim().toUpperCase().slice(0, 6);
 
-    if (!SUPABASE_SERVICE_KEY) {
-      return res.status(200).json({
-        success: true,
-        referrer_code: cleanRef,
-        referrals: [],
-        total_invited: 0,
-        total_earned: 0.00,
-        note: 'Supabase service key not set'
-      });
-    }
-
     const { createClient } = require('@supabase/supabase-js');
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+    const supabase = createClient(
+      SUPABASE_URL,
+      SUPABASE_SERVICE_KEY || 'sb_publishable_HwMEDaihTWj54hP1s90VDA_ndMsJnJY'
+    );
 
     // 1. Fetch from referrals table
     let refList = [];
@@ -52,15 +44,23 @@ module.exports = async (req, res) => {
 
       if (profiles && profiles.length > 0) {
         profiles.forEach(p => {
+          const userBal = parseFloat(p.usdt_balance || 0);
+          const isQual = userBal >= 30;
           const exists = refList.find(r => r.referred_email?.toLowerCase() === p.email?.toLowerCase());
-          if (!exists) {
+          if (exists) {
+            exists.deposit_amount = Math.max(parseFloat(exists.deposit_amount || 0), userBal);
+            if (isQual) {
+              exists.bonus_awarded = true;
+              exists.bonus_amount = 5.00;
+            }
+          } else {
             refList.push({
               referrer_code: cleanRef,
               referred_email: p.email,
               referred_username: p.username,
-              deposit_amount: parseFloat(p.usdt_balance || 0),
-              bonus_awarded: parseFloat(p.usdt_balance || 0) >= 30,
-              bonus_amount: parseFloat(p.usdt_balance || 0) >= 30 ? 5.00 : 0.00,
+              deposit_amount: userBal,
+              bonus_awarded: isQual,
+              bonus_amount: isQual ? 5.00 : 0.00,
               created_at: p.created_at
             });
           }

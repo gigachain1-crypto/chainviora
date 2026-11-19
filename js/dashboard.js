@@ -151,10 +151,19 @@ function initDashboardUser() {
         if (data.full_name) currentUser.fullName = data.full_name;
         if (data.created_at) currentUser.createdAt = data.created_at;
         if (data.email) currentUser.email = data.email;
+        if (data.referral_code) currentUser.referralCode = data.referral_code;
 
         // 2. Balances & Counters sync
         if (data.usdt_balance !== undefined) {
           currentUser.usdtBalance = parseFloat(data.usdt_balance);
+        }
+        if (data.referral_earned !== undefined) {
+          const earnedEl = document.getElementById('totalReferralEarned');
+          if (earnedEl) earnedEl.textContent = `$${parseFloat(data.referral_earned).toFixed(2)}`;
+        }
+        if (data.referral_count !== undefined) {
+          const countEl = document.getElementById('totalReferralsCount');
+          if (countEl) countEl.textContent = data.referral_count;
         }
         if (data.lifetime_profit !== undefined) {
           currentUser.lifetimeProfit = parseFloat(data.lifetime_profit);
@@ -1713,6 +1722,13 @@ function initReferralSystem() {
     modalCodeDisplay.textContent = currentUser.referralCode;
   }
 
+  // Pre-fill cached stats immediately to avoid layout flicker
+  const emailKey = currentUser.email ? currentUser.email.toLowerCase().replace(/[^a-z0-9]/g, '_') : 'guest';
+  const cachedEarned = localStorage.getItem(`cv_ref_earned_${emailKey}`);
+  const cachedCount = localStorage.getItem(`cv_ref_count_${emailKey}`);
+  if (cachedEarned && refEarnedEl) refEarnedEl.textContent = `$${parseFloat(cachedEarned).toFixed(2)}`;
+  if (cachedCount && refCountEl) refCountEl.textContent = cachedCount;
+
   // Construct referral link using current origin or production domain
   let baseUrl = window.location.origin;
   if (!baseUrl.includes('localhost') && !baseUrl.includes('127.0.0.1')) {
@@ -1784,30 +1800,25 @@ function initReferralSystem() {
     if (modalEarnedEl) modalEarnedEl.textContent = `$${totalEarned.toFixed(2)}`;
     if (modalQualifiedEl) modalQualifiedEl.textContent = `${qualifiedCount} Qualified`;
 
-    // ✅ AUTO-CREDIT REFERRAL BONUS TO MAIN BALANCE:
-    // Check if new bonuses were earned that haven't been credited locally yet
+    // Persist to localStorage
+    const userEmailKey = currentUser.email ? currentUser.email.toLowerCase().replace(/[^a-z0-9]/g, '_') : 'guest';
+    localStorage.setItem(`cv_ref_earned_${userEmailKey}`, totalEarned.toString());
+    localStorage.setItem(`cv_ref_count_${userEmailKey}`, totalInvited.toString());
+
+    // Check if new bonuses were earned that haven't been notified yet
     const creditedKey = `cv_ref_bonus_credited_${currentUser.referralCode}`;
     const alreadyCredited = parseFloat(localStorage.getItem(creditedKey) || '0');
 
     if (totalEarned > alreadyCredited) {
       const bonusDiff = totalEarned - alreadyCredited;
-      currentUser.usdtBalance = (currentUser.usdtBalance || 0) + bonusDiff;
       localStorage.setItem(creditedKey, totalEarned.toString());
 
-      updateBalanceDisplays();
-      syncBalanceToSupabase('referral_bonus');
-      const refTxHash = generateTxHash();
-      logUserActivity({
-        type: 'Referral Bonus',
-        asset: 'USDT',
-        amount: `+$${bonusDiff.toFixed(2)} USDT`,
-        rawAmount: bonusDiff,
-        txHash: refTxHash,
-        status: 'Completed',
-        notes: `Referral Bonus: +$${bonusDiff.toFixed(2)} USDT from invited friends`
-      });
+      // Trigger cross-device sync to pull in the permanently credited server balance
+      if (typeof syncCrossDeviceState === 'function') {
+        syncCrossDeviceState();
+      }
 
-      showToast(`🎉 +$${bonusDiff.toFixed(2)} Referral Bonus credited to your main balance from invited friends' deposit!`, 'success');
+      showToast(`🎉 +$${bonusDiff.toFixed(2)} Referral Bonus credited to your account from invited friends!`, 'success');
     }
 
     return list;

@@ -182,6 +182,23 @@ module.exports = async (req, res) => {
               } catch (txInsertErr) {
                 console.warn('transactions insert notice:', txInsertErr.message);
               }
+
+              // Update referrals table if user was referred by someone
+              if (profile.referred_by) {
+                try {
+                  const refCode = profile.referred_by.toString().trim().toUpperCase().slice(0, 6);
+                  await supabase.from('referrals').upsert({
+                    referrer_code: refCode,
+                    referred_email: profile.email.toLowerCase().trim(),
+                    referred_username: profile.username || 'Member',
+                    deposit_amount: creditAmount,
+                    bonus_awarded: creditAmount >= 30,
+                    bonus_amount: creditAmount >= 30 ? 5.00 : 0.00
+                  }, { onConflict: 'referred_email' });
+                } catch (refUpsertErr) {
+                  console.warn('referrals upsert notice:', refUpsertErr.message);
+                }
+              }
             }
           }
         } catch (dbErr) {

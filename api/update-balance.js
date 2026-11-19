@@ -1,8 +1,146 @@
 // api/update-balance.js
 // 100% Cross-Device Real-Time Sync between Desktop & Mobile via Supabase Database
+// Includes Server-Authoritative Balances & Automatic Referral Bonus Crediting
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://bhcddgzlzyzovecccmrj.supabase.co';
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+
+// Helper to verify and permanently credit qualified $5 referral bonuses on the server
+async function ensureReferralBonusesCredited(supabase, profile) {
+  if (!profile || !profile.referral_code) return profile;
+
+  try {
+    const cleanRef = profile.referral_code.toString().trim().toUpperCase().slice(0, 6);
+
+    // 1. Fetch all users who registered with this user's referral code
+    const { data: referredUsers } = await supabase
+      .from('profiles')
+      .select('id, email, username, usdt_balance, created_at')
+      .eq('referred_by', cleanRef);
+
+    // 2. Also check referrals table
+    let referralsTableRows = [];
+    try {
+      const { data: rows } = await supabase
+        .from('referrals')
+        .select('*')
+        .eq('referrer_code', cleanRef);
+      if (rows) referralsTableRows = rows;
+    } catch (e) { }
+
+    const existingMap = (profile.deposit_addresses && typeof profile.deposit_addresses === 'object')
+      ? profile.deposit_addresses
+      : {};
+    const existingSync = existingMap.sync_state || {};
+    const creditedUsersMap = existingSync.credited_referral_users || {};
+
+    let newlyCreditedBonus = 0;
+    const updatedCreditedUsers = { ...creditedUsersMap };
+
+    const candidates = [];
+    if (referredUsers && Array.isArray(referredUsers)) {
+      referredUsers.forEach(u => candidates.push(u));
+    }
+    referralsTableRows.forEach(r => {
+      if (!candidates.find(c => c.email && r.referred_email && c.email.toLowerCase() === r.referred_email.toLowerCase())) {
+        candidates.push({
+          email: r.referred_email,
+          username: r.referred_username,
+          usdt_balance: parseFloat(r.deposit_amount || 0),
+          bonus_awarded: r.bonus_awarded
+        });
+      }
+    });
+
+    for (const refUser of candidates) {
+      const refEmail = (refUser.email || '').toLowerCase().trim();
+      if (!refEmail) continue;
+
+      const userBal = parseFloat(refUser.usdt_balance || 0);
+      // Qualified if user deposited >= 30 USDT or bonus_awarded is true
+      const isQualified = userBal >= 30 || refUser.bonus_awarded === true;
+
+      if (isQualified && !updatedCreditedUsers[refEmail]) {
+        newlyCreditedBonus += 5.00;
+        updatedCreditedUsers[refEmail] = {
+          time: new Date().toISOString(),
+          amount: 5.00,
+          referred_user: refUser.username || refEmail
+        };
+
+        // Ensure referrals table is marked awarded
+        try {
+          await supabase.from('referrals').upsert({
+            referrer_code: cleanRef,
+            referred_email: refEmail,
+            referred_username: refUser.username || 'Member',
+            deposit_amount: userBal,
+            bonus_awarded: true,
+            bonus_amount: 5.00
+          }, { onConflict: 'referred_email' });
+        } catch (e) { }
+      }
+    }
+
+    if (newlyCreditedBonus > 0) {
+      const currentBal = parseFloat(profile.usdt_balance || 0);
+      const newBal = currentBal + newlyCreditedBonus;
+
+      const newActivities = Array.isArray(existingSync.activities) ? [...existingSync.activities] : [];
+      newActivities.unshift({
+        id: 'ref_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+        time: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ', ' + new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+        type: 'Referral Bonus',
+        asset: 'USDT',
+        amount: `+$${newlyCreditedBonus.toFixed(2)} USDT`,
+        status: 'Completed',
+        notes: `Referral Bonus: +$${newlyCreditedBonus.toFixed(2)} USDT from qualified referral deposit ($30+ USDT)`,
+        rawAmount: newlyCreditedBonus
+      });
+
+      const newSyncState = {
+        ...existingSync,
+        usdt_balance: newBal,
+        credited_referral_users: updatedCreditedUsers,
+        activities: newActivities.slice(0, 50)
+      };
+
+      const updatePayload = {
+        usdt_balance: newBal,
+        deposit_addresses: {
+          ...existingMap,
+          sync_state: newSyncState
+        },
+        last_updated: new Date().toISOString()
+      };
+
+      await supabase
+        .from('profiles')
+        .update(updatePayload)
+        .eq('id', profile.id);
+
+      // Record in transactions table
+      try {
+        await supabase.from('transactions').insert({
+          user_id: profile.id,
+          type: 'referral_bonus',
+          amount_usdt: newlyCreditedBonus,
+          amount_giga: 0,
+          status: 'completed',
+          notes: `Referral Bonus: +$${newlyCreditedBonus.toFixed(2)} USDT from qualified referral deposit`,
+          created_at: new Date().toISOString()
+        });
+      } catch (e) { }
+
+      profile.usdt_balance = newBal;
+      profile.deposit_addresses = { ...existingMap, sync_state: newSyncState };
+    }
+  } catch (err) {
+    console.warn('ensureReferralBonusesCredited error:', err.message);
+  }
+
+  return profile;
+}
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -36,7 +174,7 @@ module.exports = async (req, res) => {
         query = query.eq('id', userId);
       }
 
-      const { data: profile, error } = await query.maybeSingle();
+      let { data: profile, error } = await query.maybeSingle();
 
       if (error || !profile) {
         return res.status(200).json({
@@ -44,6 +182,9 @@ module.exports = async (req, res) => {
           message: 'Profile not found'
         });
       }
+
+      // Check and permanently credit any qualified referral bonuses on the server
+      profile = await ensureReferralBonusesCredited(supabase, profile);
 
       const syncState = (profile.deposit_addresses && profile.deposit_addresses.sync_state)
         ? profile.deposit_addresses.sync_state
@@ -69,6 +210,20 @@ module.exports = async (req, res) => {
         ? parseInt(syncState.total_giga_sold, 10)
         : 0;
 
+      // Calculate total referral stats to return directly to frontend
+      let totalReferralEarned = 0;
+      let totalInvitedCount = 0;
+      if (profile.referral_code) {
+        const cleanRef = profile.referral_code.toString().trim().toUpperCase().slice(0, 6);
+        const { data: refs } = await supabase.from('profiles').select('email, usdt_balance').eq('referred_by', cleanRef);
+        if (refs) {
+          totalInvitedCount = refs.length;
+          refs.forEach(r => {
+            if (parseFloat(r.usdt_balance || 0) >= 30) totalReferralEarned += 5.00;
+          });
+        }
+      }
+
       return res.status(200).json({
         success: true,
         user_id: profile.id,
@@ -82,6 +237,8 @@ module.exports = async (req, res) => {
         giga_balance: parseFloat(profile.giga_balance || 0),
         total_giga_bought: isNaN(gigaBought) ? 0 : gigaBought,
         total_giga_sold: isNaN(gigaSold) ? 0 : gigaSold,
+        referral_earned: totalReferralEarned,
+        referral_count: totalInvitedCount,
         pending_sells: Array.isArray(syncState.pending_sells) ? syncState.pending_sells : [],
         activities: Array.isArray(syncState.activities) ? syncState.activities : []
       });
@@ -107,11 +264,14 @@ module.exports = async (req, res) => {
         query = query.eq('id', userId);
       }
 
-      const { data: profile } = await query.maybeSingle();
+      let { data: profile } = await query.maybeSingle();
 
       if (!profile) {
         return res.status(200).json({ success: true, note: 'Profile not found' });
       }
+
+      // Check and permanently credit any qualified referral bonuses on the server
+      profile = await ensureReferralBonusesCredited(supabase, profile);
 
       const existingMap = (profile.deposit_addresses && typeof profile.deposit_addresses === 'object')
         ? profile.deposit_addresses
@@ -121,16 +281,13 @@ module.exports = async (req, res) => {
 
       // 🔒 TAMPER-PROOF SECURITY: BALANCES ARE 100% SERVER-AUTHORITATIVE!
       // Clients are STRICTLY FORBIDDEN from dictating or altering their own balances via POST!
-      // Balances can ONLY ever be changed by:
-      // 1) /api/check-deposit-status (Verified on-chain blockchain deposits)
-      // 2) /api/marketplace-buy (Verified server-side GIGA order transactions)
-      // 3) /api/admin (Cryptographically signed Administrator adjustments)
-      //
-      // Any balance numbers sent in body.usdt_balance, body.giga_balance, or
-      // body.lifetime_profit are COMPLETELY DISCARDED by the server.
       const authoritativeUsdt = parseFloat(profile.usdt_balance || 0.00);
       const authoritativeGiga = parseFloat(profile.giga_balance || 0);
       const authoritativeProfit = parseFloat(profile.lifetime_profit || 0.00);
+
+      const defaultUsername = profile.email
+        ? 'GIGA' + (profile.email.split('@')[0].replace(/[^0-9]/g, '').slice(-6) || Math.floor(100000 + Math.random() * 900000))
+        : 'GIGA' + Math.floor(100000 + Math.random() * 900000);
 
       const newSyncState = {
         ...existingSync,
