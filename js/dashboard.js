@@ -193,6 +193,25 @@ function getUserTotalGigaBought() {
   }
 }
 
+// ─── Calculate Total GIGA Sold by User (from completed sell queue or lifetime profit) ───
+function getUserTotalGigaSold() {
+  try {
+    const userEmail = currentUser.email ? currentUser.email.toLowerCase().replace(/[^a-z0-9]/g, '_') : (currentUser._emailKey || 'guest');
+    const saved = localStorage.getItem(`cv_sells_${userEmail}`);
+    let completedCount = 0;
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) {
+        completedCount = parsed.filter(item => item.status === 'Completed' || (item.matchedBuyers >= 2)).length;
+      }
+    }
+    const profitBased = Math.floor((currentUser.lifetimeProfit || 0) / 50);
+    return Math.max(currentUser.totalGigaSold || 0, completedCount, profitBased);
+  } catch (e) {
+    return currentUser.totalGigaSold || Math.floor((currentUser.lifetimeProfit || 0) / 50) || 0;
+  }
+}
+
 function updateBalanceDisplays() {
   const gigaDisplay = document.getElementById('gigaBalanceDisplay');
   const gigaUsdDisplay = document.getElementById('gigaUsdDisplay');
@@ -201,12 +220,18 @@ function updateBalanceDisplays() {
   const totalUsdDisplay = document.getElementById('totalUsdBalance');
   const profitDisplay = document.getElementById('profitBalanceDisplay');
   const profitDisplaySell = document.getElementById('profitBalanceDisplaySellCard');
+  const gigaSellDisplay = document.getElementById('gigaSellDisplay');
+  const gigaSellUsdDisplay = document.getElementById('gigaSellUsdDisplay');
 
   // Total GIGA bought by the user
   const totalGigaBought = getUserTotalGigaBought();
   const gigaVal = totalGigaBought * GIGA_PRICE;
   const usdtVal = currentUser.usdtBalance;
   const totalUsd = gigaVal + usdtVal;
+
+  // Total GIGA sold by the user
+  const totalGigaSold = getUserTotalGigaSold();
+  const soldVal = totalGigaSold * 50.00;
 
   if (gigaDisplay) gigaDisplay.textContent = `${totalGigaBought} GIGA`;
   if (gigaUsdDisplay) gigaUsdDisplay.textContent = `$${gigaVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -215,6 +240,8 @@ function updateBalanceDisplays() {
   if (totalUsdDisplay) totalUsdDisplay.textContent = `$${totalUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   if (profitDisplay) profitDisplay.textContent = `$${currentUser.lifetimeProfit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   if (profitDisplaySell) profitDisplaySell.textContent = `$${currentUser.lifetimeProfit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  if (gigaSellDisplay) gigaSellDisplay.textContent = `${totalGigaSold} GIGA`;
+  if (gigaSellUsdDisplay) gigaSellUsdDisplay.textContent = `$${soldVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   // Update withdrawal modal options dynamically
   const withdrawAssetSelect = document.getElementById('withdrawAssetSelect');
@@ -1909,6 +1936,7 @@ function initBuySellMarket() {
         // Credit $50.00 profit to user's withdrawable USDT balance and lifetime profit!
         currentUser.lifetimeProfit = (currentUser.lifetimeProfit || 0) + 50.00;
         currentUser.usdtBalance = (currentUser.usdtBalance || 0) + 50.00;
+        currentUser.totalGigaSold = (currentUser.totalGigaSold || 0) + 1;
         updateBalanceDisplays();
 
         const profitTxHash = generateTxHash();

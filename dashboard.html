@@ -183,8 +183,8 @@
           </div>
         </div>
 
-        <!-- GIGA Balance & Profit Breakdown Grid (2 cols mobile, 3 cols desktop) -->
-        <div class="mt-3.5 sm:mt-6 grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4">
+        <!-- GIGA Balance & Profit Breakdown Grid (2 cols mobile, 4 cols desktop) -->
+        <div class="mt-3.5 sm:mt-6 grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
 
           <!-- CARD 1: GIGA Buy (Total Purchased GIGA) — Dark Gold Premium -->
           <div
@@ -243,7 +243,7 @@
 
           <!-- CARD 3: Total Profit — Premium Violet/Rose -->
           <div
-            class="portfolio-card-profit col-span-2 sm:col-span-1 relative overflow-hidden rounded-xl sm:rounded-2xl p-2.5 sm:p-4 flex flex-col justify-between min-h-[75px] sm:min-h-[130px] cursor-default select-none">
+            class="portfolio-card-profit col-span-1 relative overflow-hidden rounded-xl sm:rounded-2xl p-2.5 sm:p-4 flex flex-col justify-between min-h-[105px] sm:min-h-[130px] cursor-default select-none">
             <div class="absolute -top-8 -right-8 w-24 sm:w-32 h-24 sm:h-32 bg-pink-500/20 rounded-full blur-xl sm:blur-2xl pointer-events-none">
             </div>
             <div class="absolute bottom-0 left-0 w-20 h-20 bg-violet-500/15 rounded-full blur-2xl pointer-events-none">
@@ -257,7 +257,7 @@
                 <div>
                   <p class="text-[9px] sm:text-[11px] font-bold text-pink-200/80 uppercase tracking-wider leading-tight">Total Profit
                   </p>
-                  <p id="profitBalanceDisplay" class="text-lg sm:text-2xl font-black font-mono text-white leading-tight mt-0.5">
+                  <p id="profitBalanceDisplay" class="text-base sm:text-2xl font-black font-mono text-white leading-tight mt-0.5">
                     $0.00</p>
                 </div>
               </div>
@@ -269,7 +269,35 @@
               <div class="flex items-center gap-1 font-semibold text-pink-200">
                 <span class="text-[10px] font-bold text-pink-300/90">+$50.00</span>
                 <span class="text-[10px] text-white/40">/</span>
-                <span class="text-[10px] text-pink-200/70">Completed Queue</span>
+                <span class="text-[10px] text-pink-200/70">Order</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- CARD 4: SELL GIGA — Deep Royal Sapphire Premium -->
+          <div
+            class="portfolio-card-sell col-span-1 relative overflow-hidden rounded-xl sm:rounded-2xl p-2.5 sm:p-4 flex flex-col justify-between min-h-[105px] sm:min-h-[130px] cursor-default select-none">
+            <div class="absolute -top-6 -right-6 w-20 sm:w-28 h-20 sm:h-28 bg-blue-400/20 rounded-full blur-xl sm:blur-2xl pointer-events-none">
+            </div>
+            <div class="flex items-start justify-between gap-1">
+              <div class="flex items-center gap-2 sm:gap-3">
+                <div
+                  class="w-7 h-7 sm:w-11 sm:h-11 rounded-lg sm:rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center shadow-inner shrink-0">
+                  <img src="assets/icon-sell-queue.svg" alt="Sell GIGA" class="w-5 h-5 sm:w-8 sm:h-8 object-contain">
+                </div>
+                <div>
+                  <p class="text-[9px] sm:text-[11px] font-bold text-blue-200/80 uppercase tracking-wider leading-tight">Sell GIGA</p>
+                  <p id="gigaSellDisplay" class="text-base sm:text-2xl font-black font-mono text-white leading-tight mt-0.5">0 GIGA</p>
+                </div>
+              </div>
+              <span
+                class="hidden sm:inline-block text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-blue-400/20 text-blue-200 border border-blue-400/30 whitespace-nowrap">MATCHED</span>
+            </div>
+            <div class="mt-2 sm:mt-3 flex items-center justify-between pt-1.5 sm:pt-2.5 border-t border-white/10 text-[10px] sm:text-[11px]">
+              <span class="text-blue-200/60 font-medium">Sold Value</span>
+              <div class="flex items-center gap-1 font-mono font-bold text-blue-100">
+                <span class="text-blue-300/60">&#8776;</span>
+                <span id="gigaSellUsdDisplay">$0.00</span>
               </div>
             </div>
           </div>
