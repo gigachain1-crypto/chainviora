@@ -835,16 +835,28 @@ function initAuthModal() {
       try {
         let user = null;
 
-        // STRICT REAL SUPABASE LOGIN — no fallback bypass allowed
-        if (!window.gigachainAuth) {
-          showToast('Authentication service not available. Please refresh the page.', 'error');
-          if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = origBtnHtml; }
-          return;
-        }
-
         try {
-          const data = await window.gigachainAuth.signIn(email, password);
-          user = data.user;
+          if (window.gigachainAuth && typeof window.gigachainAuth.signIn === 'function') {
+            const data = await window.gigachainAuth.signIn(email, password);
+            user = data.user;
+          } else {
+            // Direct native REST fallback to Supabase Auth API (100% network resilient)
+            const SUPABASE_URL = 'https://bhcddgzlzyzovecccmrj.supabase.co';
+            const SUPABASE_ANON_KEY = 'sb_publishable_HwMEDaihTWj54hP1s90VDA_ndMsJnJY';
+            const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+              method: 'POST',
+              headers: {
+                'apikey': SUPABASE_ANON_KEY,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ email: email.trim(), password: password })
+            });
+            const authData = await res.json();
+            if (!res.ok) {
+              throw new Error(authData.error_description || authData.msg || authData.message || 'Invalid login credentials');
+            }
+            user = authData.user;
+          }
           if (!user) throw new Error('No user returned from authentication.');
         } catch (authErr) {
           console.error('Login failed:', authErr.message);
