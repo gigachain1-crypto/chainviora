@@ -250,8 +250,14 @@ body {
 
   /* Compact padding for cards on mobile */
   .multi-border-card {
-    padding: 1.25rem !important;
-    border-radius: 0.75rem !important;
+    padding: 0.875rem !important;
+    border-radius: 0.85rem !important;
+  }
+
+  .portfolio-card-giga,
+  .portfolio-card-usdt,
+  .portfolio-card-profit {
+    border-radius: 0.85rem !important;
   }
 
   .conic-border-box {

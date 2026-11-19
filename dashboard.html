@@ -58,14 +58,14 @@
        TOP NAVIGATION BAR
        ======================================================================== -->
   <header class="sticky top-0 z-40 glass-gold-nav transition-all duration-300">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex items-center justify-between h-20">
+    <div class="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16 sm:h-20">
 
         <!-- Logo -->
         <a href="index.html"
           class="flex items-center gap-2 group transition-transform duration-300 group-hover:scale-105">
-          <img src="assets/gigachain-logo.png" alt="Gigachain Logo" class="h-16 w-auto drop-shadow-md">
-          <span class="font-black tracking-widest text-lg leading-none select-none"
+          <img src="assets/gigachain-logo.png" alt="Gigachain Logo" class="h-10 sm:h-16 w-auto drop-shadow-md">
+          <span class="font-black tracking-widest text-base sm:text-lg leading-none select-none"
             style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 40%, #fbbf24 70%, #b45309 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; text-shadow: none; letter-spacing: 0.08em;">GIGACHAIN</span>
         </a>
 
@@ -86,7 +86,7 @@
         </div>
 
         <!-- Right Side: Email, Main Site Link & Logout -->
-        <div class="flex items-center gap-3 sm:gap-4">
+        <div class="flex items-center gap-2.5 sm:gap-4">
           <div class="hidden md:flex flex-col text-right">
             <span id="headerUserEmail" class="text-xs font-bold text-slate-800 font-mono">user@example.com</span>
             <span class="text-[11px] text-emerald-600 font-semibold flex items-center justify-end">
@@ -104,8 +104,8 @@
           </a>
 
           <button id="logoutBtn"
-            class="btn-rainbow-light px-3.5 py-2 text-xs font-bold flex items-center gap-1.5 text-red-600 hover:text-red-700 cursor-pointer">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            class="btn-rainbow-light px-3 sm:px-3.5 py-1.5 sm:py-2 text-xs font-bold flex items-center gap-1.5 text-red-600 hover:text-red-700 cursor-pointer">
+            <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>
@@ -120,40 +120,52 @@
   <!-- ========================================================================
        MAIN DASHBOARD CONTENT
        ======================================================================== -->
-  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8">
+  <main class="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 pt-3 sm:pt-8">
 
     <!-- Dashboard Header (Username Display) -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-5 border-b border-amber-200/60">
-      <div class="flex items-center gap-3">
-        <h1 class="text-2xl sm:text-3xl font-display font-black text-slate-900 leading-tight">
-          Username: <span id="welcomeUsername" class="text-rainbow-gradient font-mono">GIGA000000</span>
-        </h1>
+    <div class="flex items-center justify-between pb-2.5 sm:pb-5 border-b border-amber-200/50">
+      <div class="flex items-center gap-2 sm:gap-3">
+        <div class="w-7 h-7 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl bg-gradient-to-tr from-amber-400 to-amber-600 text-white flex items-center justify-center font-black text-xs shadow-xs">
+          <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+        </div>
+        <div class="flex items-baseline gap-1.5">
+          <span class="text-[11px] sm:text-xs text-slate-400 font-bold uppercase tracking-wider">Username:</span>
+          <h1 class="text-base sm:text-2xl font-display font-black text-slate-900 leading-none">
+            <span id="welcomeUsername" class="text-rainbow-gradient font-mono">GIGA000000</span>
+          </h1>
+        </div>
+      </div>
+      <div class="flex items-center gap-1.5">
+        <span class="text-[10px] sm:text-xs font-bold text-emerald-700 bg-emerald-50 px-2 sm:px-2.5 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+          Vault Active
+        </span>
       </div>
     </div>
 
     <!-- ====================================================================
          PORTFOLIO BALANCE & ACTION BUTTONS (Deposit & Withdrawal)
          ==================================================================== -->
-    <div class="mt-6 sm:mt-8">
+    <div class="mt-3 sm:mt-8">
 
       <!-- Primary Balance Card (Full Width) -->
-      <div class="multi-border-card p-5 sm:p-8 bg-white shadow-xl">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-100">
+      <div class="multi-border-card p-3.5 sm:p-8 bg-white shadow-xl">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 pb-3.5 sm:pb-6 border-b border-slate-100">
           <div>
-            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Total Portfolio Balance</span>
-            <div class="mt-1 flex items-baseline gap-2">
+            <span class="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-400">Total Portfolio Balance</span>
+            <div class="mt-0.5 sm:mt-1 flex items-baseline gap-2">
               <span id="totalUsdBalance"
                 class="text-3xl sm:text-5xl font-black font-display text-slate-900">$0.00</span>
               <span
-                class="text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200">+0.0%
+                class="text-[10px] sm:text-xs font-bold text-emerald-600 bg-emerald-50 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-md border border-emerald-200">+0.0%
                 (24h)</span>
             </div>
           </div>
 
           <!-- PRIMARY ACTION BUTTONS: DEPOSIT & WITHDRAWAL -->
-          <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 w-full sm:w-auto">
+          <div class="grid grid-cols-2 sm:flex sm:flex-row items-center gap-2 sm:gap-3 w-full sm:w-auto">
             <button id="openDepositBtn"
-              class="btn-rainbow-glow w-full sm:w-auto px-6 py-3 text-sm font-bold shadow-lg flex items-center justify-center gap-2 cursor-pointer">
+              class="btn-rainbow-glow w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm font-bold shadow-lg flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer">
               <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
                   d="M19 14l-7 7m0 0l-7-7m7 7V3" />
@@ -162,7 +174,7 @@
             </button>
 
             <button id="openWithdrawBtn"
-              class="btn-rainbow-light w-full sm:w-auto px-6 py-3 text-sm font-bold shadow-md flex items-center justify-center gap-2 cursor-pointer">
+              class="btn-rainbow-light w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm font-bold shadow-md flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer">
               <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 10l7-7m0 0l7 7m-7-7v18" />
               </svg>
@@ -171,102 +183,93 @@
           </div>
         </div>
 
-        <!-- GIGA Balance & Profit Breakdown Grid (3 Premium Cards) -->
-        <div class="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+        <!-- GIGA Balance & Profit Breakdown Grid (2 cols mobile, 3 cols desktop) -->
+        <div class="mt-3.5 sm:mt-6 grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4">
 
           <!-- CARD 1: GIGA Buy (Total Purchased GIGA) — Dark Gold Premium -->
           <div
-            class="portfolio-card-giga relative overflow-hidden rounded-2xl p-4 flex flex-col justify-between min-h-[130px] cursor-default select-none">
-            <div class="absolute -top-6 -right-6 w-28 h-28 bg-amber-400/20 rounded-full blur-2xl pointer-events-none">
+            class="portfolio-card-giga col-span-1 relative overflow-hidden rounded-xl sm:rounded-2xl p-2.5 sm:p-4 flex flex-col justify-between min-h-[105px] sm:min-h-[130px] cursor-default select-none">
+            <div class="absolute -top-6 -right-6 w-20 sm:w-28 h-20 sm:h-28 bg-amber-400/20 rounded-full blur-xl sm:blur-2xl pointer-events-none">
             </div>
-            <div class="flex items-start justify-between">
-              <div class="flex items-center gap-3">
+            <div class="flex items-start justify-between gap-1">
+              <div class="flex items-center gap-2 sm:gap-3">
                 <div
-                  class="w-11 h-11 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center shadow-inner flex-shrink-0">
-                  <img src="assets/icon-giga-token.svg" alt="GIGA" class="w-8 h-8 object-contain">
+                  class="w-7 h-7 sm:w-11 sm:h-11 rounded-lg sm:rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center shadow-inner shrink-0">
+                  <img src="assets/icon-giga-token.svg" alt="GIGA" class="w-5 h-5 sm:w-8 sm:h-8 object-contain">
                 </div>
                 <div>
-                  <p class="text-[11px] font-bold text-amber-200/80 uppercase tracking-wider leading-tight">Total GIGA
-                    Buy</p>
-                  <p id="gigaBalanceDisplay" class="text-2xl font-black font-mono text-white leading-tight mt-0.5">0
-                    GIGA</p>
+                  <p class="text-[9px] sm:text-[11px] font-bold text-amber-200/80 uppercase tracking-wider leading-tight">GIGA Buy</p>
+                  <p id="gigaBalanceDisplay" class="text-base sm:text-2xl font-black font-mono text-white leading-tight mt-0.5">0 GIGA</p>
                 </div>
               </div>
               <span
-                class="text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded-full bg-amber-400/20 text-amber-200 border border-amber-400/30">LIVE</span>
+                class="hidden sm:inline-block text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-200 border border-amber-400/30">LIVE</span>
             </div>
-            <div class="mt-3 flex items-center justify-between pt-2.5 border-t border-white/10">
-              <span class="text-[11px] font-semibold text-amber-200/60">Value in USD</span>
-              <div class="flex items-center gap-1.5">
-                <span class="text-[10px] text-amber-300/60">&#8776;</span>
-                <span id="gigaUsdDisplay" class="text-sm font-black font-mono text-amber-100">$0.00</span>
+            <div class="mt-2 sm:mt-3 flex items-center justify-between pt-1.5 sm:pt-2.5 border-t border-white/10 text-[10px] sm:text-[11px]">
+              <span class="text-amber-200/60 font-medium">Value</span>
+              <div class="flex items-center gap-1 font-mono font-bold text-amber-100">
+                <span class="text-amber-300/60">&#8776;</span>
+                <span id="gigaUsdDisplay">$0.00</span>
               </div>
             </div>
           </div>
 
           <!-- CARD 2: USDT — Deep Emerald Premium -->
           <div
-            class="portfolio-card-usdt relative overflow-hidden rounded-2xl p-4 flex flex-col justify-between min-h-[130px] cursor-default select-none">
-            <div class="absolute -top-6 -right-6 w-28 h-28 bg-emerald-400/20 rounded-full blur-2xl pointer-events-none">
+            class="portfolio-card-usdt col-span-1 relative overflow-hidden rounded-xl sm:rounded-2xl p-2.5 sm:p-4 flex flex-col justify-between min-h-[105px] sm:min-h-[130px] cursor-default select-none">
+            <div class="absolute -top-6 -right-6 w-20 sm:w-28 h-20 sm:h-28 bg-emerald-400/20 rounded-full blur-xl sm:blur-2xl pointer-events-none">
             </div>
-            <div class="flex items-start justify-between">
-              <div class="flex items-center gap-3">
+            <div class="flex items-start justify-between gap-1">
+              <div class="flex items-center gap-2 sm:gap-3">
                 <div
-                  class="w-11 h-11 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center shadow-inner flex-shrink-0">
-                  <img src="assets/icon-usdt-token.svg" alt="USDT" class="w-8 h-8 object-contain">
+                  class="w-7 h-7 sm:w-11 sm:h-11 rounded-lg sm:rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center shadow-inner shrink-0">
+                  <img src="assets/icon-usdt-token.svg" alt="USDT" class="w-5 h-5 sm:w-8 sm:h-8 object-contain">
                 </div>
                 <div>
-                  <p class="text-[11px] font-bold text-emerald-200/80 uppercase tracking-wider leading-tight">USDT
-                    Balance</p>
-                  <p id="usdtBalanceDisplay" class="text-2xl font-black font-mono text-white leading-tight mt-0.5">0.00
-                  </p>
+                  <p class="text-[9px] sm:text-[11px] font-bold text-emerald-200/80 uppercase tracking-wider leading-tight">USDT Vault</p>
+                  <p id="usdtBalanceDisplay" class="text-base sm:text-2xl font-black font-mono text-white leading-tight mt-0.5">0.00</p>
                 </div>
               </div>
               <span
-                class="text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded-full bg-emerald-400/20 text-emerald-200 border border-emerald-400/30 whitespace-nowrap">WITHDRAW</span>
+                class="hidden sm:inline-block text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-400/20 text-emerald-200 border border-emerald-400/30 whitespace-nowrap">WITHDRAW</span>
             </div>
-            <div class="mt-3 flex items-center justify-between pt-2.5 border-t border-white/10">
-              <span class="text-[11px] font-semibold text-emerald-200/60">Withdrawable</span>
-              <div class="flex items-center gap-1.5">
-                <svg class="w-3.5 h-3.5 text-emerald-300" fill="currentColor" viewBox="0 0 20 20">
-                  <path fill-rule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z"
-                    clip-rule="evenodd" />
-                </svg>
-                <span id="usdtUsdDisplay" class="text-sm font-black font-mono text-emerald-100">$0.00</span>
+            <div class="mt-2 sm:mt-3 flex items-center justify-between pt-1.5 sm:pt-2.5 border-t border-white/10 text-[10px] sm:text-[11px]">
+              <span class="text-emerald-200/60 font-medium">Withdrawable</span>
+              <div class="flex items-center gap-1 font-mono font-bold text-emerald-100">
+                <span id="usdtUsdDisplay">$0.00</span>
               </div>
             </div>
           </div>
 
           <!-- CARD 3: Total Profit — Premium Violet/Rose -->
           <div
-            class="portfolio-card-profit relative overflow-hidden rounded-2xl p-4 flex flex-col justify-between min-h-[130px] cursor-default select-none">
-            <div class="absolute -top-8 -right-8 w-32 h-32 bg-pink-500/20 rounded-full blur-2xl pointer-events-none">
+            class="portfolio-card-profit col-span-2 sm:col-span-1 relative overflow-hidden rounded-xl sm:rounded-2xl p-2.5 sm:p-4 flex flex-col justify-between min-h-[75px] sm:min-h-[130px] cursor-default select-none">
+            <div class="absolute -top-8 -right-8 w-24 sm:w-32 h-24 sm:h-32 bg-pink-500/20 rounded-full blur-xl sm:blur-2xl pointer-events-none">
             </div>
             <div class="absolute bottom-0 left-0 w-20 h-20 bg-violet-500/15 rounded-full blur-2xl pointer-events-none">
             </div>
-            <div class="flex items-start justify-between">
-              <div class="flex items-center gap-3">
+            <div class="flex items-center sm:items-start justify-between">
+              <div class="flex items-center gap-2 sm:gap-3">
                 <div
-                  class="w-11 h-11 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center shadow-inner flex-shrink-0">
-                  <img src="assets/icon-profit-earned.svg" alt="Profit" class="w-8 h-8 object-contain">
+                  class="w-7 h-7 sm:w-11 sm:h-11 rounded-lg sm:rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center shadow-inner shrink-0">
+                  <img src="assets/icon-profit-earned.svg" alt="Profit" class="w-5 h-5 sm:w-8 sm:h-8 object-contain">
                 </div>
                 <div>
-                  <p class="text-[11px] font-bold text-pink-200/80 uppercase tracking-wider leading-tight">Total Profit
+                  <p class="text-[9px] sm:text-[11px] font-bold text-pink-200/80 uppercase tracking-wider leading-tight">Total Profit
                   </p>
-                  <p id="profitBalanceDisplay" class="text-2xl font-black font-mono text-white leading-tight mt-0.5">
+                  <p id="profitBalanceDisplay" class="text-lg sm:text-2xl font-black font-mono text-white leading-tight mt-0.5">
                     $0.00</p>
                 </div>
               </div>
               <span
-                class="text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded-full bg-pink-400/20 text-pink-200 border border-pink-400/30 whitespace-nowrap">+$50/SELL</span>
+                class="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 sm:py-1 rounded-full bg-pink-400/20 text-pink-200 border border-pink-400/30 whitespace-nowrap">+$50/SELL</span>
             </div>
-            <div class="mt-3 flex items-center justify-between pt-2.5 border-t border-white/10">
-              <span class="text-[11px] font-semibold text-pink-200/60">Realized Earning</span>
-              <div class="flex items-center gap-1">
-                <span class="text-[10px] font-bold text-pink-300/70">+$50.00</span>
+            <div class="mt-2 sm:mt-3 flex items-center justify-between pt-1.5 sm:pt-2.5 border-t border-white/10 text-[10px] sm:text-[11px]">
+              <span class="text-pink-200/60 font-medium">Realized Earning</span>
+              <div class="flex items-center gap-1 font-semibold text-pink-200">
+                <span class="text-[10px] font-bold text-pink-300/90">+$50.00</span>
                 <span class="text-[10px] text-white/40">/</span>
-                <span class="text-[10px] font-semibold text-pink-200/60">Order</span>
+                <span class="text-[10px] text-pink-200/70">Completed Queue</span>
               </div>
             </div>
           </div>
@@ -280,10 +283,10 @@
     <!-- ====================================================================
          GIGA BUY & SELL MARKETPLACE (100 POOL & PENDING SELL QUEUE)
          ==================================================================== -->
-    <div class="mt-8 sm:mt-10 grid grid-cols-1 lg:grid-cols-12 gap-6">
+    <div class="mt-4 sm:mt-10 grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
 
       <!-- BUY BOX (Col 8 / Left Pane: 100 GIGA List @ $30 each) -->
-      <div class="lg:col-span-8 multi-border-card p-5 sm:p-7 bg-white shadow-xl flex flex-col justify-between">
+      <div class="lg:col-span-8 multi-border-card p-3.5 sm:p-7 bg-white shadow-xl flex flex-col justify-between">
         <div>
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
             <div class="flex items-center gap-3">
@@ -350,7 +353,7 @@
       </div>
 
       <!-- SELL BOX (Col 4 / Right Pane: My Pending Sell Queue) -->
-      <div class="lg:col-span-4 multi-border-card p-5 sm:p-7 bg-white shadow-xl flex flex-col justify-between">
+      <div class="lg:col-span-4 multi-border-card p-3.5 sm:p-7 bg-white shadow-xl flex flex-col justify-between">
         <div>
           <div class="flex items-center justify-between pb-4 border-b border-slate-100">
             <div class="flex items-center gap-3">
@@ -432,7 +435,7 @@
     <!-- ====================================================================
          REFER & EARN BOX (Placed Below Buy & Sell Marketplace)
          ==================================================================== -->
-    <div class="mt-8 sm:mt-10 multi-border-card p-5 sm:p-7 bg-white shadow-xl">
+    <div class="mt-4 sm:mt-10 multi-border-card p-3.5 sm:p-7 bg-white shadow-xl">
       <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 gap-3">
         <div class="flex items-center gap-3">
           <div
@@ -526,14 +529,16 @@
     <!-- ====================================================================
          RECENT ACTIVITY & TRANSACTIONS TABLE
          ==================================================================== -->
-    <div class="mt-10 multi-border-card p-6 sm:p-8 bg-white shadow-xl">
+    <div class="mt-4 sm:mt-10 multi-border-card p-3.5 sm:p-8 bg-white shadow-xl">
       <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 gap-2">
         <div>
           <h2 class="text-lg font-bold font-display text-slate-900">Recent Transactions History</h2>
           <p class="text-xs text-slate-500">Live records of your deposits, withdrawals, and realized earnings</p>
         </div>
         <div class="flex items-center gap-2">
-          <span id="txCountBadge" class="text-xs text-slate-600 font-bold bg-slate-100 px-2.5 py-1 rounded-full border border-slate-200">0 Activities</span>
+          <span id="txCountBadge"
+            class="text-xs text-slate-600 font-bold bg-slate-100 px-2.5 py-1 rounded-full border border-slate-200">0
+            Activities</span>
         </div>
       </div>
 
