@@ -115,32 +115,9 @@ async function fetchProfileByEmail(email) {
 }
 
 /**
- * Save a new staking record to Supabase
- */
-async function recordStakeToSupabase(userId, amount, apy = 18.5, dailyYield = 0) {
-  if (!supabaseClient) return null;
-  const { data, error } = await supabaseClient
-    .from('stakes')
-    .insert([
-      {
-        user_id: userId,
-        amount_giga: amount,
-        apy_rate: apy,
-        daily_yield: dailyYield
-      }
-    ])
-    .select();
-
-  if (error) {
-    console.error('Error recording stake:', error.message);
-  }
-  return data;
-}
-
-/**
  * Record a Swap transaction to Supabase
  */
-async function recordTransactionToSupabase(userId, fromToken, toToken, amountIn, amountOut, txHash) {
+async function recordTransactionToSupabase(userId, fromAsset, toAsset, amountIn, amountOut, txHash) {
   if (!supabaseClient) return null;
   const { data, error } = await supabaseClient
     .from('transactions')
@@ -149,8 +126,8 @@ async function recordTransactionToSupabase(userId, fromToken, toToken, amountIn,
         user_id: userId,
         tx_hash: txHash,
         type: 'swap',
-        from_token: fromToken,
-        to_token: toToken,
+        from_token: fromAsset,
+        to_token: toAsset,
         amount_in: amountIn,
         amount_out: amountOut,
         status: 'confirmed'

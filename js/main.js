@@ -6,7 +6,6 @@ document.addEventListener('DOMContentLoaded', () => {
   initParticleNetwork();
   initCryptoTicker();
   initSwapWidget();
-  initStakingCalculator();
   initWalletModal();
   initAuthModal();
   initFaqAccordion();
@@ -161,7 +160,7 @@ function initSwapWidget() {
           swapBtn.innerHTML = `<span>Swap Successfully Completed! 🚀</span>`;
           showToast(`Swap confirmed! Transaction Hash: 0x9f...a41b`, 'success');
           setTimeout(() => {
-            swapBtn.innerHTML = `<span>Swap Tokens Now</span>`;
+            swapBtn.innerHTML = `<span>Swap Now</span>`;
           }, 3000);
         }, 2200);
       }
@@ -170,50 +169,7 @@ function initSwapWidget() {
 }
 
 /* --------------------------------------------------------------------------
-   4. Staking APY Calculator
-   -------------------------------------------------------------------------- */
-function initStakingCalculator() {
-  const slider = document.getElementById('stakeAmountSlider');
-  const amountDisplay = document.getElementById('stakeAmountDisplay');
-  const dailyReward = document.getElementById('dailyRewardDisplay');
-  const monthlyReward = document.getElementById('monthlyRewardDisplay');
-  const annualReward = document.getElementById('annualRewardDisplay');
-  const apyRate = 18.5; // 18.5% APY
-
-  function updateRewards() {
-    if (!slider) return;
-    const amount = parseFloat(slider.value) || 0;
-    if (amountDisplay) amountDisplay.textContent = Number(amount).toLocaleString();
-
-    const annualTokens = (amount * (apyRate / 100));
-    const monthlyTokens = annualTokens / 12;
-    const dailyTokens = annualTokens / 365;
-
-    const tokenPrice = 30.00;
-
-    if (dailyReward) {
-      dailyReward.innerHTML = `<span class="font-bold text-slate-800">${dailyTokens.toFixed(2)} GIGA</span> <span class="text-xs text-slate-500">($${(dailyTokens * tokenPrice).toFixed(2)})</span>`;
-    }
-    if (monthlyReward) {
-      monthlyReward.innerHTML = `<span class="font-bold text-slate-800">${monthlyTokens.toFixed(2)} GIGA</span> <span class="text-xs text-slate-500">($${(monthlyTokens * tokenPrice).toFixed(2)})</span>`;
-    }
-    if (annualReward) {
-      annualReward.innerHTML = `<span class="font-bold text-emerald-600">${annualTokens.toFixed(2)} GIGA</span> <span class="text-xs text-slate-500">($${(annualTokens * tokenPrice).toFixed(2)})</span>`;
-    }
-
-    if (window.updateStakingChartData) {
-      window.updateStakingChartData(amount, apyRate);
-    }
-  }
-
-  if (slider) {
-    slider.addEventListener('input', updateRewards);
-    updateRewards();
-  }
-}
-
-/* --------------------------------------------------------------------------
-   5. Web3 Wallet Connection Modal Simulation
+   4. Web3 Wallet Connection Modal Simulation
    -------------------------------------------------------------------------- */
 function initWalletModal() {
   const modal = document.getElementById('walletModal');

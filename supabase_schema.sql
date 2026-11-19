@@ -120,7 +120,7 @@ CREATE POLICY "Service role full access transactions"
   ON public.transactions FOR ALL USING (true);
 
 -- ============================================================
--- 4. STAKES TABLE (Liquid staking records)
+-- 4. STAKES TABLE (Ecosystem records)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS public.stakes (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
