@@ -1178,8 +1178,8 @@ function initWithdrawModal() {
           amount: `-${amount.toFixed(2)} ${asset}`,
           rawAmount: amount,
           txHash: txHash,
-          status: 'Confirmed',
-          notes: `Withdrawal of ${receive.toFixed(2)} ${asset} (fee: ${fee.toFixed(2)} ${asset})`
+          status: 'Pending',
+          notes: `Address: ${destination} | Net: ${receive.toFixed(2)} ${asset} | Fee: ${fee.toFixed(2)} ${asset}`
         });
         syncBalanceToSupabase('withdrawal');
 
@@ -2487,6 +2487,37 @@ function initNotificationSystem() {
       closeNotif();
     }
   });
+
+  // Load public broadcast announcements from Admin Panel
+  try {
+    fetch('/api/admin?action=get_public_notifications')
+      .then(r => r.json())
+      .then(data => {
+        if (data && data.success && Array.isArray(data.notifications) && data.notifications.length > 0) {
+          if (listContainer) {
+            listContainer.innerHTML = '';
+            data.notifications.forEach(n => {
+              const item = document.createElement('div');
+              item.className = 'p-4 rounded-xl bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-300 shadow-2xs';
+              item.innerHTML = `
+                <div class="flex items-start justify-between gap-2">
+                  <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full ${n.priority === 'high' ? 'bg-rose-500' : 'bg-amber-500'} animate-pulse"></span>
+                    <span class="text-xs font-bold text-amber-950 uppercase tracking-wide">${n.type || 'Broadcast'}</span>
+                  </div>
+                  <span class="text-[10px] text-slate-400 font-mono">${n.created_at ? new Date(n.created_at).toLocaleDateString() : 'Active'}</span>
+                </div>
+                <h4 class="text-sm font-bold text-slate-900 mt-2 leading-snug">${n.title || ''}</h4>
+                <p class="text-xs text-slate-600 mt-1 leading-relaxed">${n.message || ''}</p>
+              `;
+              listContainer.appendChild(item);
+            });
+            if (notifBadge) notifBadge.style.opacity = '1';
+          }
+        }
+      })
+      .catch(() => {});
+  } catch (e) {}
 
   // Global helper ready for Admin Panel integration
   window.showAdminBroadcast = function (data) {

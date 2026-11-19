@@ -1,0 +1,3 @@
+User-agent: *
+Disallow: /giga/
+Disallow: /api/admin

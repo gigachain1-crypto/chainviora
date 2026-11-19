@@ -1,0 +1,1915 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-950">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
+  <meta name="googlebot" content="noindex, nofollow, noarchive, nosnippet">
+  <title>GIGACHAIN Protocol — Operations Control</title>
+  <link rel="icon" type="image/png" href="/images/logo.png">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- QRCode.js for Google Authenticator QR setup -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap"
+    rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace']
+          },
+          colors: {
+            brand: {
+              50: '#fffbeb',
+              100: '#fef3c7',
+              400: '#fbbf24',
+              500: '#f59e0b',
+              600: '#d97706',
+              700: '#b45309'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    }
+
+    .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Custom scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.6);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: rgba(100, 116, 139, 0.4);
+      border-radius: 9999px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(245, 158, 11, 0.6);
+    }
+
+    /* Rainbow Gradient Border */
+    .rainbow-border {
+      position: relative;
+      background: #0f172a;
+      border-radius: 1rem;
+    }
+
+    .rainbow-border::before {
+      content: '';
+      position: absolute;
+      inset: -1.5px;
+      border-radius: 1.1rem;
+      background: linear-gradient(135deg, #f59e0b, #ef4444, #8b5cf6, #3b82f6, #10b981);
+      z-index: -1;
+      opacity: 0.85;
+    }
+  </style>
+</head>
+
+<body class="h-full bg-slate-950 text-slate-100 flex flex-col antialiased selection:bg-amber-500 selection:text-black">
+
+  <!-- ========================================================================
+       SECTION 1: HIGH-SECURITY LOGIN GATEKEEPER
+       ======================================================================== -->
+  <div id="loginScreen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950 p-4 overflow-y-auto">
+    <!-- Subtle Ambient Background Glow -->
+    <div
+      class="absolute w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none -top-20 -left-20 animate-pulse">
+    </div>
+    <div
+      class="absolute w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none -bottom-20 -right-20 animate-pulse">
+    </div>
+
+    <div class="rainbow-border max-w-md w-full p-6 sm:p-8 shadow-2xl relative z-10 backdrop-blur-xl">
+      <div class="text-center mb-6">
+        <div class="inline-flex items-center justify-center p-3 rounded-2xl bg-slate-900 border border-amber-500/30 mb-3 shadow-lg">
+          <img src="/images/logo.png" alt="GigaChain Logo" class="w-12 h-12 object-contain"
+            onerror="this.src='/images/logo.png'">
+        </div>
+        <h2 class="text-xl sm:text-2xl font-black text-white tracking-tight">GIGACHAIN Operations</h2>
+        <p class="text-xs text-slate-400 mt-1">Authorized Protocol Management Gateway</p>
+      </div>
+
+      <!-- Login Alert / Error Banner -->
+      <div id="loginAlert"
+        class="hidden mb-4 p-3 rounded-xl text-xs font-semibold border flex items-center gap-2"></div>
+
+      <form id="adminLoginForm" class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Username</label>
+          <div class="relative">
+            <input type="text" id="loginUsername" required autocomplete="username"
+              placeholder="Enter admin username"
+              class="w-full px-4 py-2.5 rounded-xl bg-slate-900/80 border border-slate-700 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 text-sm font-mono text-white placeholder-slate-500 transition-colors">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Password</label>
+          <div class="relative">
+            <input type="password" id="loginPassword" required autocomplete="current-password"
+              placeholder="••••••••••••"
+              class="w-full px-4 py-2.5 rounded-xl bg-slate-900/80 border border-slate-700 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 text-sm font-mono text-white placeholder-slate-500 transition-colors">
+          </div>
+        </div>
+
+        <!-- Google 2FA Field (Only shown when 2FA is active) -->
+        <div id="login2FAContainer" class="hidden">
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="block text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+              Google Authenticator 2FA
+            </label>
+            <span class="text-[10px] text-slate-400 font-mono">6 digits</span>
+          </div>
+          <input type="text" id="login2FACode" maxlength="6" inputmode="numeric" pattern="[0-9]*"
+            placeholder="000000"
+            class="w-full px-4 py-2.5 rounded-xl bg-slate-900/80 border border-amber-500/60 focus:border-amber-400 text-center text-lg font-mono tracking-widest text-amber-400 placeholder-slate-600 transition-colors">
+        </div>
+
+        <button type="submit" id="loginSubmitBtn"
+          class="w-full mt-2 py-3 px-4 rounded-xl font-black text-xs sm:text-sm tracking-wide uppercase bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-400 hover:to-orange-500 text-slate-950 shadow-lg shadow-amber-500/20 active:scale-98 transition-all flex items-center justify-center gap-2 cursor-pointer">
+          <span>Authenticate & Access</span>
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+          </svg>
+        </button>
+      </form>
+
+      <div class="mt-6 pt-4 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-500 font-mono">
+        <span class="flex items-center gap-1.5">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+          256-Bit TLS Secured
+        </span>
+        <span>Build v3.2</span>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ========================================================================
+       SECTION 2: MAIN ADMIN WORKSPACE (SHOWN AFTER SUCCESSFUL LOGIN)
+       ======================================================================== -->
+  <div id="adminWorkspace" class="hidden h-full flex-col">
+
+    <!-- Top Navigation Bar -->
+    <header class="bg-slate-900/90 border-b border-slate-800 backdrop-blur-md px-4 sm:px-6 py-3 shrink-0 flex items-center justify-between z-20">
+      <div class="flex items-center gap-3">
+        <!-- Mobile Sidebar Toggle -->
+        <button id="mobileMenuBtn" class="lg:hidden p-2 text-slate-400 hover:text-white rounded-lg">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+
+        <div class="flex items-center gap-2.5">
+          <img src="/images/logo.png" alt="GIGACHAIN Logo" class="w-8 h-8 object-contain">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="font-black text-sm sm:text-base tracking-wider text-white">GIGACHAIN</span>
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/30">ADMIN</span>
+            </div>
+            <span class="text-[10px] text-slate-400 font-mono block -mt-0.5">Control Center</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Controls: Live Sync Indicator, Role, Settings, Logout -->
+      <div class="flex items-center gap-2 sm:gap-3">
+        <!-- Live Realtime Telemetry Pulse -->
+        <div class="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-950/60 border border-emerald-500/30 text-emerald-400 text-xs font-mono">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span>Live 5s Poller</span>
+        </div>
+
+        <!-- Manual Refresh Button -->
+        <button id="refreshDataBtn" title="Sync All Tables Now"
+          class="p-2 text-slate-400 hover:text-amber-400 bg-slate-800/80 hover:bg-slate-800 rounded-xl transition-colors cursor-pointer border border-slate-700/60">
+          <svg id="refreshIcon" class="w-4 h-4 transition-transform duration-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+        </button>
+
+        <!-- Current User Profile Pill -->
+        <div class="flex items-center gap-2 pl-2 border-l border-slate-800">
+          <div class="hidden md:flex flex-col text-right">
+            <span id="navAdminName" class="text-xs font-bold text-white">Super Administrator</span>
+            <span id="navAdminRole" class="text-[10px] text-amber-400 font-mono">Role: Superadmin</span>
+          </div>
+
+          <button id="navSettingsBtn" title="Admin Security & Settings"
+            class="p-2 text-slate-400 hover:text-white bg-slate-800/80 hover:bg-slate-800 rounded-xl transition-colors cursor-pointer border border-slate-700/60">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          </button>
+
+          <button id="adminLogoutBtn" title="Logout"
+            class="px-3 py-1.5 text-xs font-bold text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 rounded-xl transition-colors cursor-pointer flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            <span class="hidden sm:inline">Logout</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Content Workspace: Left Sidebar + Tab Views -->
+    <div class="flex-1 flex overflow-hidden">
+
+      <!-- Left Sidebar -->
+      <aside id="adminSidebar"
+        class="w-64 bg-slate-900/95 border-r border-slate-800 flex flex-col justify-between shrink-0 fixed inset-y-0 left-0 z-30 transform -translate-x-full lg:static lg:translate-x-0 transition-transform duration-200 ease-in-out pt-16 lg:pt-0">
+        <div class="p-4 space-y-1 overflow-y-auto">
+          <div class="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-slate-500">Navigation</div>
+
+          <!-- Tab: Overview -->
+          <button data-tab="overview"
+            class="nav-tab-btn active w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold text-slate-300 hover:text-white hover:bg-slate-800 transition-colors text-left cursor-pointer">
+            <svg class="w-4 h-4 text-amber-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+            <span>Overview</span>
+          </button>
+
+          <!-- Tab: Users -->
+          <button data-tab="users" data-perm="users"
+            class="nav-tab-btn w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold text-slate-300 hover:text-white hover:bg-slate-800 transition-colors text-left cursor-pointer">
+            <div class="flex items-center gap-3">
+              <svg class="w-4 h-4 text-blue-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+              </svg>
+              <span>User Manage</span>
+            </div>
+            <span id="badgeUsersCount" class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-800 text-slate-300">0</span>
+          </button>
+
+          <!-- Tab: Deposits -->
+          <button data-tab="deposits" data-perm="deposits"
+            class="nav-tab-btn w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold text-slate-300 hover:text-white hover:bg-slate-800 transition-colors text-left cursor-pointer">
+            <div class="flex items-center gap-3">
+              <svg class="w-4 h-4 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              <span>Deposits</span>
+            </div>
+            <span id="badgeDepositsCount" class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-950/70 border border-emerald-500/30 text-emerald-300">0</span>
+          </button>
+
+          <!-- Tab: Withdrawals -->
+          <button data-tab="withdrawals" data-perm="withdrawals"
+            class="nav-tab-btn w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold text-slate-300 hover:text-white hover:bg-slate-800 transition-colors text-left cursor-pointer">
+            <div class="flex items-center gap-3">
+              <svg class="w-4 h-4 text-amber-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+              </svg>
+              <span>Withdrawals</span>
+            </div>
+            <span id="badgeWithdrawalsCount" class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-950/70 border border-amber-500/30 text-amber-300">0</span>
+          </button>
+
+          <!-- Tab: GIGA Buy / Sell -->
+          <button data-tab="trades" data-perm="trades"
+            class="nav-tab-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold text-slate-300 hover:text-white hover:bg-slate-800 transition-colors text-left cursor-pointer">
+            <svg class="w-4 h-4 text-purple-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+            </svg>
+            <span>GIGA Buy / Sell</span>
+          </button>
+
+          <!-- Tab: Staff Create (Superadmin Only) -->
+          <button data-tab="staff" data-superadmin="true"
+            class="nav-tab-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold text-slate-300 hover:text-white hover:bg-slate-800 transition-colors text-left cursor-pointer">
+            <svg class="w-4 h-4 text-cyan-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+            </svg>
+            <span>Staff Create</span>
+          </button>
+
+          <!-- Tab: Notifications -->
+          <button data-tab="notifications" data-perm="notifications"
+            class="nav-tab-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold text-slate-300 hover:text-white hover:bg-slate-800 transition-colors text-left cursor-pointer">
+            <svg class="w-4 h-4 text-rose-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
+            <span>Notification Upload</span>
+          </button>
+
+          <!-- Tab: Security & Settings -->
+          <button data-tab="settings"
+            class="nav-tab-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold text-slate-300 hover:text-white hover:bg-slate-800 transition-colors text-left cursor-pointer">
+            <svg class="w-4 h-4 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+            <span>Security & 2FA</span>
+          </button>
+        </div>
+
+        <!-- Sidebar Footer -->
+        <div class="p-4 border-t border-slate-800 text-[11px] text-slate-500 font-mono">
+          <p class="font-bold text-slate-400">Node: Mainnet v2</p>
+          <p class="truncate text-[10px] mt-0.5">https://www.chainviora.com</p>
+        </div>
+      </aside>
+
+      <!-- Main Content View Area -->
+      <main class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 bg-slate-950">
+
+        <!-- ====================================================================
+             TAB 1: OVERVIEW
+             ==================================================================== -->
+        <div id="tabOverview" class="tab-content space-y-6">
+          <div>
+            <h1 class="text-xl sm:text-2xl font-black text-white tracking-tight">System Telemetry & Overview</h1>
+            <p class="text-xs sm:text-sm text-slate-400 mt-1">Real-time status of all balances, users, deposits, withdrawals, and queues.</p>
+          </div>
+
+          <!-- Aggregate Metric Cards -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <!-- Total Users -->
+            <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800 shadow-sm relative overflow-hidden">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Registered Users</span>
+                <span class="p-2 rounded-xl bg-blue-500/10 text-blue-400">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                </span>
+              </div>
+              <h3 id="statTotalUsers" class="text-2xl font-black text-white font-mono mt-3">0</h3>
+              <p class="text-[11px] text-slate-500 mt-1">Active on GIGACHAIN</p>
+            </div>
+
+            <!-- Total USDT Vault Balance -->
+            <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800 shadow-sm relative overflow-hidden">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Vault USDT</span>
+                <span class="p-2 rounded-xl bg-emerald-500/10 text-emerald-400">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                </span>
+              </div>
+              <h3 id="statTotalVaultUSDT" class="text-2xl font-black text-emerald-400 font-mono mt-3">$0.00</h3>
+              <p class="text-[11px] text-slate-500 mt-1">In user vault accounts</p>
+            </div>
+
+            <!-- Total GIGA Held -->
+            <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800 shadow-sm relative overflow-hidden">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Total GIGA Units</span>
+                <span class="p-2 rounded-xl bg-amber-500/10 text-amber-400">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                </span>
+              </div>
+              <h3 id="statTotalGigaHeld" class="text-2xl font-black text-amber-400 font-mono mt-3">0 GIGA</h3>
+              <p class="text-[11px] text-slate-500 mt-1">Circulating tokens</p>
+            </div>
+
+            <!-- Pending Withdrawals -->
+            <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800 shadow-sm relative overflow-hidden">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Pending Withdrawals</span>
+                <span class="p-2 rounded-xl bg-rose-500/10 text-rose-400">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                </span>
+              </div>
+              <h3 id="statPendingWithdrawals" class="text-2xl font-black text-rose-400 font-mono mt-3">0</h3>
+              <p class="text-[11px] text-slate-500 mt-1">Awaiting approval</p>
+            </div>
+          </div>
+
+          <!-- Quick Action Shortcuts -->
+          <div class="p-5 rounded-2xl bg-slate-900/60 border border-slate-800 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h4 class="text-sm font-bold text-white">Live Monitoring Active</h4>
+              <p class="text-xs text-slate-400 mt-0.5">Tables refresh automatically every 5 seconds. Sound and pulse alerts for new requests.</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button onclick="switchTab('deposits')"
+                class="px-3.5 py-2 text-xs font-bold bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-xl transition-colors cursor-pointer">
+                View Deposits →
+              </button>
+              <button onclick="switchTab('withdrawals')"
+                class="px-3.5 py-2 text-xs font-bold bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-xl transition-colors cursor-pointer">
+                View Withdrawals →
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ====================================================================
+             TAB 2: USER MANAGE
+             ==================================================================== -->
+        <div id="tabUsers" class="tab-content hidden space-y-6">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <h1 class="text-xl sm:text-2xl font-black text-white tracking-tight">User Management</h1>
+              <p class="text-xs sm:text-sm text-slate-400 mt-1">View, search, edit balances and monitor accounts.</p>
+            </div>
+            <!-- Search bar -->
+            <div class="w-full sm:w-72 relative">
+              <input type="text" id="userSearchInput" placeholder="Search email or username..."
+                class="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white placeholder-slate-500 focus:border-amber-500 focus:outline-none font-mono">
+              <svg class="w-4 h-4 text-slate-500 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+          </div>
+
+          <!-- Users Table -->
+          <div class="rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden shadow-sm">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs">
+                <thead class="bg-slate-950/70 text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800">
+                  <tr>
+                    <th class="py-3 px-4">User</th>
+                    <th class="py-3 px-4">Username</th>
+                    <th class="py-3 px-4">USDT Vault</th>
+                    <th class="py-3 px-4">GIGA Held</th>
+                    <th class="py-3 px-4">Profit</th>
+                    <th class="py-3 px-4">Register Date</th>
+                    <th class="py-3 px-4">Status</th>
+                    <th class="py-3 px-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="usersTableBody" class="divide-y divide-slate-800/80 font-mono text-slate-300">
+                  <tr>
+                    <td colspan="8" class="py-8 text-center text-slate-500">Loading users...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ====================================================================
+             TAB 3: DEPOSITS MONITORING
+             ==================================================================== -->
+        <div id="tabDeposits" class="tab-content hidden space-y-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <h1 class="text-xl sm:text-2xl font-black text-white tracking-tight">Real-Time Deposits</h1>
+              <p class="text-xs sm:text-sm text-slate-400 mt-1">Live incoming BEP20 payments credited to user vaults.</p>
+            </div>
+            <span class="px-3 py-1 rounded-full text-xs font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              Auto-Streaming
+            </span>
+          </div>
+
+          <!-- Deposits Table -->
+          <div class="rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden shadow-sm">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs">
+                <thead class="bg-slate-950/70 text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800">
+                  <tr>
+                    <th class="py-3 px-4">Time</th>
+                    <th class="py-3 px-4">User / Email</th>
+                    <th class="py-3 px-4">Amount (USDT)</th>
+                    <th class="py-3 px-4">Network</th>
+                    <th class="py-3 px-4">Tx Hash</th>
+                    <th class="py-3 px-4">Status</th>
+                  </tr>
+                </thead>
+                <tbody id="depositsTableBody" class="divide-y divide-slate-800/80 font-mono text-slate-300">
+                  <tr>
+                    <td colspan="6" class="py-8 text-center text-slate-500">Scanning for deposits...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ====================================================================
+             TAB 4: WITHDRAWALS MONITORING & PROCESSING
+             ==================================================================== -->
+        <div id="tabWithdrawals" class="tab-content hidden space-y-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <h1 class="text-xl sm:text-2xl font-black text-white tracking-tight">Real-Time Withdrawals</h1>
+              <p class="text-xs sm:text-sm text-slate-400 mt-1">Review requests, approve transactions, or refund invalid orders.</p>
+            </div>
+            <span class="px-3 py-1 rounded-full text-xs font-mono bg-amber-500/10 text-amber-400 border border-amber-500/30 flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+              6% Fee Verified
+            </span>
+          </div>
+
+          <!-- Withdrawals Table -->
+          <div class="rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden shadow-sm">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs">
+                <thead class="bg-slate-950/70 text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800">
+                  <tr>
+                    <th class="py-3 px-4">Time</th>
+                    <th class="py-3 px-4">User</th>
+                    <th class="py-3 px-4">Requested</th>
+                    <th class="py-3 px-4">Fee (6%)</th>
+                    <th class="py-3 px-4">Net (94%)</th>
+                    <th class="py-3 px-4">Destination BEP20</th>
+                    <th class="py-3 px-4">Status</th>
+                    <th class="py-3 px-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="withdrawalsTableBody" class="divide-y divide-slate-800/80 font-mono text-slate-300">
+                  <tr>
+                    <td colspan="8" class="py-8 text-center text-slate-500">Loading withdrawals...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ====================================================================
+             TAB 5: GIGA BUY / SELL MONITORING
+             ==================================================================== -->
+        <div id="tabTrades" class="tab-content hidden space-y-6">
+          <div>
+            <h1 class="text-xl sm:text-2xl font-black text-white tracking-tight">GIGA Trading & Queue Activity</h1>
+            <p class="text-xs sm:text-sm text-slate-400 mt-1">Live tracking of GIGA Purchases ($30) and Pending Sell Queues ($50).</p>
+          </div>
+
+          <!-- Trades Grid: Buy Orders & Sells Queue -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+            <!-- Completed Trades -->
+            <div class="rounded-2xl bg-slate-900 border border-slate-800 p-5 space-y-4">
+              <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+                <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                  Recent Buy & Sell Transactions
+                </h3>
+              </div>
+              <div class="max-h-96 overflow-y-auto space-y-2 pr-1" id="tradesListContainer">
+                <p class="text-xs text-slate-500 text-center py-6">No recent trade records</p>
+              </div>
+            </div>
+
+            <!-- Pending Sell Queues Across All Users -->
+            <div class="rounded-2xl bg-slate-900 border border-slate-800 p-5 space-y-4">
+              <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+                <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+                  Live Pending Sell Queue (Matching Engine)
+                </h3>
+                <span id="queueCountBadge" class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/30">0 Queued</span>
+              </div>
+              <div class="max-h-96 overflow-y-auto space-y-2 pr-1" id="sellQueueListContainer">
+                <p class="text-xs text-slate-500 text-center py-6">No units currently waiting in queue</p>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- ====================================================================
+             TAB 6: STAFF CREATE & RBAC (SUPERADMIN ONLY)
+             ==================================================================== -->
+        <div id="tabStaff" class="tab-content hidden space-y-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <h1 class="text-xl sm:text-2xl font-black text-white tracking-tight">Staff Management</h1>
+              <p class="text-xs sm:text-sm text-slate-400 mt-1">Create sub-admin logins and assign granular permissions.</p>
+            </div>
+            <button onclick="openCreateStaffModal()"
+              class="px-4 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-md transition-colors flex items-center gap-1.5 cursor-pointer">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+              <span>Create New Staff</span>
+            </button>
+          </div>
+
+          <!-- Staff Table -->
+          <div class="rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden shadow-sm">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs">
+                <thead class="bg-slate-950/70 text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800">
+                  <tr>
+                    <th class="py-3 px-4">Name</th>
+                    <th class="py-3 px-4">Username</th>
+                    <th class="py-3 px-4">Assigned Permissions</th>
+                    <th class="py-3 px-4">Created Date</th>
+                    <th class="py-3 px-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="staffTableBody" class="divide-y divide-slate-800/80 font-mono text-slate-300">
+                  <tr>
+                    <td colspan="5" class="py-8 text-center text-slate-500">Loading staff accounts...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ====================================================================
+             TAB 7: NOTIFICATION UPLOAD
+             ==================================================================== -->
+        <div id="tabNotifications" class="tab-content hidden space-y-6">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <h1 class="text-xl sm:text-2xl font-black text-white tracking-tight">Broadcast Notifications</h1>
+              <p class="text-xs sm:text-sm text-slate-400 mt-1">Publish alerts and announcements directly to user dashboards.</p>
+            </div>
+            <button onclick="openComposeNotifModal()"
+              class="px-4 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black shadow-md transition-colors flex items-center gap-1.5 cursor-pointer">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+              <span>Compose Broadcast</span>
+            </button>
+          </div>
+
+          <!-- Active Notifications List -->
+          <div class="rounded-2xl bg-slate-900 border border-slate-800 p-5 space-y-4">
+            <h3 class="text-sm font-bold text-white">Active System Broadcasts</h3>
+            <div id="adminNotifsList" class="space-y-3">
+              <p class="text-xs text-slate-500 text-center py-6">Loading broadcasts...</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- ====================================================================
+             TAB 8: SECURITY & SETTINGS (PASSWORD & GOOGLE 2FA)
+             ==================================================================== -->
+        <div id="tabSettings" class="tab-content hidden space-y-6">
+          <div>
+            <h1 class="text-xl sm:text-2xl font-black text-white tracking-tight">Security & Admin Settings</h1>
+            <p class="text-xs sm:text-sm text-slate-400 mt-1">Manage credentials and Google Authenticator Two-Factor Authentication.</p>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+            <!-- 1. Google Authenticator 2FA Card -->
+            <div class="rounded-2xl bg-slate-900 border border-slate-800 p-6 space-y-4 shadow-sm">
+              <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+                <div class="flex items-center gap-3">
+                  <div class="p-2.5 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 class="text-sm font-bold text-white">Google Authenticator (2FA)</h3>
+                    <p class="text-[11px] text-slate-400">RFC 6238 Time-based One-Time Password</p>
+                  </div>
+                </div>
+                <span id="twoFactorStatusBadge"
+                  class="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-800 text-slate-400">
+                  Disabled
+                </span>
+              </div>
+
+              <p class="text-xs text-slate-400 leading-relaxed">
+                Protect this administrative console by requiring a 6-digit verification code from your Google Authenticator or Authy app upon each sign-in.
+              </p>
+
+              <div id="twoFactorActionArea" class="pt-2">
+                <button id="setup2FABtn" type="button"
+                  class="w-full py-2.5 px-4 rounded-xl text-xs font-bold text-slate-950 bg-amber-500 hover:bg-amber-400 transition-colors shadow-sm cursor-pointer">
+                  Setup Google Authenticator
+                </button>
+              </div>
+            </div>
+
+            <!-- 2. Change Admin Password Card -->
+            <div class="rounded-2xl bg-slate-900 border border-slate-800 p-6 space-y-4 shadow-sm">
+              <div class="flex items-center gap-3 pb-3 border-b border-slate-800">
+                <div class="p-2.5 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 class="text-sm font-bold text-white">Change Admin Password</h3>
+                  <p class="text-[11px] text-slate-400">Update superadmin master access key</p>
+                </div>
+              </div>
+
+              <form id="changePasswordForm" class="space-y-3">
+                <div>
+                  <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Current Password</label>
+                  <input type="password" id="currentPasswordInput" required
+                    placeholder="Enter current password"
+                    class="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white font-mono focus:border-amber-500 focus:outline-none">
+                </div>
+                <div>
+                  <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">New Password</label>
+                  <input type="password" id="newPasswordInput" required minlength="6"
+                    placeholder="At least 6 characters"
+                    class="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white font-mono focus:border-amber-500 focus:outline-none">
+                </div>
+                <div>
+                  <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Confirm New Password</label>
+                  <input type="password" id="confirmNewPasswordInput" required minlength="6"
+                    placeholder="Re-enter new password"
+                    class="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white font-mono focus:border-amber-500 focus:outline-none">
+                </div>
+
+                <button type="submit" id="savePasswordBtn"
+                  class="w-full mt-2 py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-colors cursor-pointer">
+                  Update Master Password
+                </button>
+              </form>
+            </div>
+
+          </div>
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+
+  <!-- ========================================================================
+       MODALS: ACTIONS & FORMS
+       ======================================================================== -->
+
+  <!-- Modal 1: Edit User Balance -->
+  <div id="editBalanceModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+    <div class="rainbow-border max-w-md w-full p-6 shadow-2xl relative">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
+        <h3 class="text-sm font-bold text-white">Adjust User Balances</h3>
+        <button onclick="closeModal('editBalanceModal')" class="text-slate-400 hover:text-white p-1">✕</button>
+      </div>
+      <form id="editBalanceForm" class="space-y-3 font-mono text-xs">
+        <input type="hidden" id="editUserId">
+        <div>
+          <label class="block text-[11px] font-bold text-slate-400 mb-1 font-sans">User Email</label>
+          <input type="text" id="editUserEmail" readonly class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-400">
+        </div>
+        <div>
+          <label class="block text-[11px] font-bold text-slate-400 mb-1 font-sans">USDT Vault Balance ($)</label>
+          <input type="number" step="any" id="editUsdtBalance" required class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-emerald-400 font-bold focus:border-amber-500 focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-[11px] font-bold text-slate-400 mb-1 font-sans">GIGA Balance (Units)</label>
+          <input type="number" step="1" id="editGigaBalance" required class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-amber-400 font-bold focus:border-amber-500 focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-[11px] font-bold text-slate-400 mb-1 font-sans">Lifetime Realized Profit ($)</label>
+          <input type="number" step="any" id="editProfitBalance" required class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white font-bold focus:border-amber-500 focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-[11px] font-bold text-slate-400 mb-1 font-sans">Adjustment Reason / Note</label>
+          <input type="text" id="editReasonNote" placeholder="e.g. Manual correction" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-slate-300 font-sans focus:border-amber-500 focus:outline-none">
+        </div>
+        <div class="pt-2 flex items-center justify-end gap-2">
+          <button type="button" onclick="closeModal('editBalanceModal')" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white cursor-pointer">Cancel</button>
+          <button type="submit" class="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold cursor-pointer">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 2: Process Withdrawal -->
+  <div id="processWithdrawalModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+    <div class="rainbow-border max-w-md w-full p-6 shadow-2xl relative">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
+        <h3 class="text-sm font-bold text-white">Process Withdrawal Request</h3>
+        <button onclick="closeModal('processWithdrawalModal')" class="text-slate-400 hover:text-white p-1">✕</button>
+      </div>
+      <form id="processWithdrawalForm" class="space-y-3 font-mono text-xs">
+        <input type="hidden" id="processTxId">
+        <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
+          <div class="flex justify-between text-slate-400"><span>User:</span><span id="pwUserEmail" class="text-white"></span></div>
+          <div class="flex justify-between text-slate-400"><span>Net Amount:</span><span id="pwNetReceive" class="text-emerald-400 font-bold"></span></div>
+          <div class="flex justify-between text-slate-400"><span>Wallet:</span><span id="pwDestination" class="text-amber-400 text-[10px]"></span></div>
+        </div>
+
+        <div>
+          <label class="block text-[11px] font-bold text-slate-400 mb-1 font-sans">Action</label>
+          <select id="pwStatusSelect" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white font-sans focus:border-amber-500 focus:outline-none">
+            <option value="completed">Approve & Mark Completed (Send Funds)</option>
+            <option value="approved">Approve (Processing)</option>
+            <option value="rejected">Reject & Refund Back to User Vault</option>
+          </select>
+        </div>
+
+        <div id="pwTxHashContainer">
+          <label class="block text-[11px] font-bold text-slate-400 mb-1 font-sans">Blockchain Tx Hash (BEP20)</label>
+          <input type="text" id="pwTxHashInput" placeholder="0x..." class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white font-mono focus:border-amber-500 focus:outline-none">
+        </div>
+
+        <div id="pwRejectContainer" class="hidden">
+          <label class="block text-[11px] font-bold text-rose-400 mb-1 font-sans">Rejection Reason</label>
+          <input type="text" id="pwRejectReason" placeholder="Invalid destination wallet" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-slate-300 font-sans focus:border-amber-500 focus:outline-none">
+        </div>
+
+        <div class="pt-2 flex items-center justify-end gap-2">
+          <button type="button" onclick="closeModal('processWithdrawalModal')" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white cursor-pointer">Cancel</button>
+          <button type="submit" class="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold cursor-pointer">Submit Action</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 3: Setup Google 2FA Modal -->
+  <div id="setup2FAModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+    <div class="rainbow-border max-w-md w-full p-6 shadow-2xl relative text-center">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800 mb-4 text-left">
+        <h3 class="text-sm font-bold text-white">Setup Google Authenticator</h3>
+        <button onclick="closeModal('setup2FAModal')" class="text-slate-400 hover:text-white p-1">✕</button>
+      </div>
+
+      <p class="text-xs text-slate-400 mb-4">
+        Scan this QR code with Google Authenticator or Authy app, then enter the 6-digit code to activate.
+      </p>
+
+      <!-- QR Box -->
+      <div class="p-3 bg-white rounded-2xl inline-block shadow-lg mb-3">
+        <div id="qrcodeBox" class="w-40 h-40"></div>
+      </div>
+
+      <!-- Secret Key Copy -->
+      <div class="mb-4">
+        <span class="text-[10px] uppercase font-bold text-slate-500 block">Secret Key (Manual Entry):</span>
+        <div class="flex items-center justify-center gap-2 mt-1">
+          <code id="manualSecretKey" class="text-xs font-mono font-bold text-amber-400 bg-slate-900 px-3 py-1 rounded-lg border border-slate-800">--------</code>
+          <button type="button" id="copySecretKeyBtn" class="p-1 text-slate-400 hover:text-white text-xs">Copy</button>
+        </div>
+      </div>
+
+      <!-- Verify Code Input -->
+      <form id="verify2FAForm" class="space-y-3">
+        <input type="text" id="verify2FACode" maxlength="6" inputmode="numeric" required placeholder="000000"
+          class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-amber-500 text-center text-lg font-mono tracking-widest text-amber-400 placeholder-slate-600 focus:outline-none">
+
+        <button type="submit" class="w-full py-2.5 px-4 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 cursor-pointer shadow-md">
+          Verify & Activate 2FA
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 4: Create Staff Modal -->
+  <div id="createStaffModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+    <div class="rainbow-border max-w-md w-full p-6 shadow-2xl relative">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
+        <h3 class="text-sm font-bold text-white">Create Staff Account</h3>
+        <button onclick="closeModal('createStaffModal')" class="text-slate-400 hover:text-white p-1">✕</button>
+      </div>
+
+      <form id="createStaffForm" class="space-y-3 text-xs">
+        <div>
+          <label class="block text-[11px] font-bold text-slate-400 mb-1">Full Name</label>
+          <input type="text" id="staffNameInput" required placeholder="Staff Member Name" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-amber-500 focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-[11px] font-bold text-slate-400 mb-1">Username</label>
+          <input type="text" id="staffUsernameInput" required placeholder="e.g. staff_john" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white font-mono focus:border-amber-500 focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-[11px] font-bold text-slate-400 mb-1">Password</label>
+          <input type="password" id="staffPasswordInput" required minlength="6" placeholder="••••••••" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white font-mono focus:border-amber-500 focus:outline-none">
+        </div>
+
+        <div>
+          <label class="block text-[11px] font-bold text-slate-400 mb-1.5">Assign Permissions</label>
+          <div class="space-y-2 p-3 rounded-xl bg-slate-950 border border-slate-800">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" name="staffPerms" value="users" class="rounded text-amber-500 focus:ring-0">
+              <span class="text-slate-300">Manage Users (View & Edit balances)</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" name="staffPerms" value="deposits" checked class="rounded text-amber-500 focus:ring-0">
+              <span class="text-slate-300">Monitor Deposits (Real-time stream)</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" name="staffPerms" value="withdrawals" checked class="rounded text-amber-500 focus:ring-0">
+              <span class="text-slate-300">Process Withdrawals (Approve / Reject)</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" name="staffPerms" value="trades" class="rounded text-amber-500 focus:ring-0">
+              <span class="text-slate-300">Monitor GIGA Buy / Sell queues</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" name="staffPerms" value="notifications" class="rounded text-amber-500 focus:ring-0">
+              <span class="text-slate-300">Broadcast Notifications to users</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="pt-2 flex items-center justify-end gap-2">
+          <button type="button" onclick="closeModal('createStaffModal')" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white cursor-pointer">Cancel</button>
+          <button type="submit" class="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold cursor-pointer">Create Account</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 5: Compose Notification Modal -->
+  <div id="composeNotifModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+    <div class="rainbow-border max-w-md w-full p-6 shadow-2xl relative">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
+        <h3 class="text-sm font-bold text-white">Broadcast System Notification</h3>
+        <button onclick="closeModal('composeNotifModal')" class="text-slate-400 hover:text-white p-1">✕</button>
+      </div>
+
+      <form id="composeNotifForm" class="space-y-3 text-xs">
+        <div>
+          <label class="block text-[11px] font-bold text-slate-400 mb-1">Announcement Title</label>
+          <input type="text" id="notifTitleInput" required placeholder="e.g. System Maintenance Completed" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-amber-500 focus:outline-none">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[11px] font-bold text-slate-400 mb-1">Category</label>
+            <select id="notifTypeSelect" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-amber-500 focus:outline-none">
+              <option value="Network Announcement">Network Announcement</option>
+              <option value="Important Alert">Important Alert</option>
+              <option value="Bonus Event">Bonus Event</option>
+              <option value="Ecosystem Upgrade">Ecosystem Upgrade</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold text-slate-400 mb-1">Priority</label>
+            <select id="notifPrioritySelect" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-amber-500 focus:outline-none">
+              <option value="normal">Normal</option>
+              <option value="high">High (Red Alert)</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-[11px] font-bold text-slate-400 mb-1">Message Content</label>
+          <textarea id="notifMessageInput" required rows="4" placeholder="Enter message that will appear on all users' dashboards..." class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-amber-500 focus:outline-none resize-none"></textarea>
+        </div>
+
+        <div class="pt-2 flex items-center justify-end gap-2">
+          <button type="button" onclick="closeModal('composeNotifModal')" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white cursor-pointer">Cancel</button>
+          <button type="submit" class="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-bold cursor-pointer">Broadcast Now 🚀</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification Overlay -->
+  <div id="adminToastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- Audio Chime for Realtime Events (Web Audio API synthetic synth chime) -->
+  <script>
+    function playAlertChime() {
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
+        osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.15); // A5
+        gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.35);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.35);
+      } catch (e) {}
+    }
+  </script>
+
+  <!-- ========================================================================
+       SECTION 3: CLIENT APPLICATION JAVASCRIPT
+       ======================================================================== -->
+  <script>
+    // State
+    let authToken = sessionStorage.getItem('giga_admin_token') || localStorage.getItem('giga_admin_token');
+    let adminSession = null;
+    let pollInterval = null;
+    let pending2FASetupSecret = null;
+    let lastDepositsCount = 0;
+    let lastWithdrawalsCount = 0;
+
+    // Toast Notification Helper
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('adminToastContainer');
+      const toast = document.createElement('div');
+      const colors = {
+        success: 'bg-emerald-950/90 text-emerald-300 border-emerald-500/40',
+        error: 'bg-rose-950/90 text-rose-300 border-rose-500/40',
+        info: 'bg-amber-950/90 text-amber-300 border-amber-500/40'
+      };
+      toast.className = `px-4 py-2.5 rounded-xl text-xs font-semibold border shadow-2xl backdrop-blur-md transition-all duration-300 pointer-events-auto transform translate-y-2 opacity-0 ${colors[type] || colors.info}`;
+      toast.textContent = message;
+      container.appendChild(toast);
+
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      });
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+
+    // Modal Helpers
+    function openModal(id) {
+      const el = document.getElementById(id);
+      if (el) {
+        el.classList.remove('hidden');
+        el.classList.add('flex');
+      }
+    }
+
+    function closeModal(id) {
+      const el = document.getElementById(id);
+      if (el) {
+        el.classList.add('hidden');
+        el.classList.remove('flex');
+      }
+    }
+
+    // API Request Wrapper with Auto-Bearer
+    async function apiRequest(action, options = {}) {
+      const method = options.method || (options.body ? 'POST' : 'GET');
+      const headers = {
+        'Content-Type': 'application/json',
+        ...(options.headers || {})
+      };
+
+      if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`;
+      }
+
+      const url = `/api/admin?action=${encodeURIComponent(action)}`;
+      const res = await fetch(url, {
+        method,
+        headers,
+        body: options.body ? JSON.stringify(options.body) : undefined
+      });
+
+      if (res.status === 401) {
+        logout();
+        throw new Error('Session expired');
+      }
+
+      return res.json();
+    }
+
+    // ─── LOGIN FLOW ───────────────────────────────────────────────────────────
+    const loginForm = document.getElementById('adminLoginForm');
+    const loginAlert = document.getElementById('loginAlert');
+    const login2FAContainer = document.getElementById('login2FAContainer');
+
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const username = document.getElementById('loginUsername').value.trim();
+      const password = document.getElementById('loginPassword').value.trim();
+      const twoFactorCode = document.getElementById('login2FACode')?.value.trim();
+      const btn = document.getElementById('loginSubmitBtn');
+
+      btn.disabled = true;
+      btn.innerHTML = `<span>Verifying...</span>`;
+      loginAlert.classList.add('hidden');
+
+      try {
+        const res = await fetch('/api/admin?action=login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password, twoFactorCode })
+        });
+
+        const data = await res.json();
+
+        if (data.require2FA) {
+          login2FAContainer.classList.remove('hidden');
+          document.getElementById('login2FACode').focus();
+          loginAlert.className = 'mb-4 p-3 rounded-xl text-xs font-semibold border flex items-center gap-2 bg-amber-950/60 text-amber-300 border-amber-500/40';
+          loginAlert.textContent = data.message;
+          loginAlert.classList.remove('hidden');
+          btn.disabled = false;
+          btn.innerHTML = `<span>Verify 2FA & Access</span>`;
+          return;
+        }
+
+        if (data.success && data.token) {
+          authToken = data.token;
+          sessionStorage.setItem('giga_admin_token', data.token);
+          initAuthenticatedWorkspace(data);
+        } else {
+          loginAlert.className = 'mb-4 p-3 rounded-xl text-xs font-semibold border flex items-center gap-2 bg-rose-950/60 text-rose-300 border-rose-500/40';
+          loginAlert.textContent = data.message || 'Authentication failed.';
+          loginAlert.classList.remove('hidden');
+          btn.disabled = false;
+          btn.innerHTML = `<span>Authenticate & Access</span>`;
+        }
+      } catch (err) {
+        loginAlert.className = 'mb-4 p-3 rounded-xl text-xs font-semibold border flex items-center gap-2 bg-rose-950/60 text-rose-300 border-rose-500/40';
+        loginAlert.textContent = 'Server connection error. Please try again.';
+        loginAlert.classList.remove('hidden');
+        btn.disabled = false;
+        btn.innerHTML = `<span>Authenticate & Access</span>`;
+      }
+    });
+
+    function logout() {
+      authToken = null;
+      sessionStorage.removeItem('giga_admin_token');
+      localStorage.removeItem('giga_admin_token');
+      if (pollInterval) clearInterval(pollInterval);
+      document.getElementById('adminWorkspace').classList.add('hidden');
+      document.getElementById('loginScreen').classList.remove('hidden');
+    }
+
+    document.getElementById('adminLogoutBtn').addEventListener('click', logout);
+
+    // ─── INITIALIZE AUTHENTICATED WORKSPACE ────────────────────────────────────
+    async function initAuthenticatedWorkspace(sessionData) {
+      document.getElementById('loginScreen').classList.add('hidden');
+      document.getElementById('adminWorkspace').classList.remove('hidden');
+      document.getElementById('adminWorkspace').classList.add('flex');
+
+      // Update Nav
+      const adminNameEl = document.getElementById('navAdminName');
+      const adminRoleEl = document.getElementById('navAdminRole');
+      if (adminNameEl) adminNameEl.textContent = sessionData.name || sessionData.sub || 'Administrator';
+      if (adminRoleEl) adminRoleEl.textContent = `Role: ${sessionData.role === 'superadmin' ? 'Superadmin' : 'Staff'}`;
+
+      // RBAC: Hide restricted tabs if staff
+      const isSuper = sessionData.role === 'superadmin';
+      const perms = sessionData.permissions || [];
+
+      document.querySelectorAll('[data-superadmin="true"]').forEach(el => {
+        if (!isSuper) el.style.display = 'none';
+      });
+
+      document.querySelectorAll('[data-perm]').forEach(el => {
+        const p = el.getAttribute('data-perm');
+        if (!isSuper && !perms.includes(p)) {
+          el.style.display = 'none';
+        }
+      });
+
+      // Update 2FA badge
+      update2FABadge(sessionData.twoFactorEnabled);
+
+      // Load all data
+      await refreshAllData();
+
+      // Start 5-second real-time polling
+      if (pollInterval) clearInterval(pollInterval);
+      pollInterval = setInterval(runRealtimeSync, 5000);
+    }
+
+    function update2FABadge(enabled) {
+      const badge = document.getElementById('twoFactorStatusBadge');
+      const area = document.getElementById('twoFactorActionArea');
+      if (!badge || !area) return;
+
+      if (enabled) {
+        badge.className = 'px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/40';
+        badge.textContent = 'Active & Protected';
+        area.innerHTML = `
+          <button onclick="disable2FA()" class="w-full py-2.5 px-4 rounded-xl text-xs font-bold text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 transition-colors cursor-pointer">
+            Disable Google Authenticator
+          </button>
+        `;
+      } else {
+        badge.className = 'px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-800 text-slate-400';
+        badge.textContent = 'Disabled';
+        area.innerHTML = `
+          <button id="setup2FABtn" onclick="startSetup2FA()" class="w-full py-2.5 px-4 rounded-xl text-xs font-bold text-slate-950 bg-amber-500 hover:bg-amber-400 transition-colors shadow-sm cursor-pointer">
+            Setup Google Authenticator
+          </button>
+        `;
+      }
+    }
+
+    // ─── TAB NAVIGATION ───────────────────────────────────────────────────────
+    function switchTab(tabName) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.nav-tab-btn').forEach(btn => btn.classList.remove('active', 'bg-slate-800', 'text-white'));
+
+      const targetView = document.getElementById(`tab${tabName.charAt(0).toUpperCase() + tabName.slice(1)}`);
+      const targetBtn = document.querySelector(`[data-tab="${tabName}"]`);
+
+      if (targetView) targetView.classList.remove('hidden');
+      if (targetBtn) targetBtn.classList.add('active', 'bg-slate-800', 'text-white');
+
+      // Close mobile sidebar if open
+      document.getElementById('adminSidebar').classList.add('-translate-x-full');
+    }
+
+    document.querySelectorAll('.nav-tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => switchTab(btn.getAttribute('data-tab')));
+    });
+
+    document.getElementById('navSettingsBtn').addEventListener('click', () => switchTab('settings'));
+
+    // Mobile sidebar toggle
+    document.getElementById('mobileMenuBtn').addEventListener('click', () => {
+      const sidebar = document.getElementById('adminSidebar');
+      sidebar.classList.toggle('-translate-x-full');
+    });
+
+    // ─── REFRESH & REALTIME SYNC ──────────────────────────────────────────────
+    document.getElementById('refreshDataBtn').addEventListener('click', async () => {
+      const icon = document.getElementById('refreshIcon');
+      icon.classList.add('rotate-180');
+      await refreshAllData();
+      showToast('Data tables refreshed!', 'info');
+      setTimeout(() => icon.classList.remove('rotate-180'), 500);
+    });
+
+    async function refreshAllData() {
+      await Promise.all([
+        fetchOverview(),
+        fetchUsers(),
+        fetchDeposits(),
+        fetchWithdrawals(),
+        fetchTrades(),
+        fetchStaff(),
+        fetchNotifications()
+      ]).catch(e => console.warn('Refresh error:', e.message));
+    }
+
+    async function runRealtimeSync() {
+      // Lightweight background sync
+      Promise.all([
+        fetchOverview(),
+        fetchDeposits(true),
+        fetchWithdrawals(true)
+      ]).catch(() => {});
+    }
+
+    // ─── DATA FETCHERS ────────────────────────────────────────────────────────
+
+    // 1. Overview
+    async function fetchOverview() {
+      const data = await apiRequest('get_overview');
+      if (data && data.success && data.stats) {
+        const s = data.stats;
+        document.getElementById('statTotalUsers').textContent = s.totalUsers;
+        document.getElementById('statTotalVaultUSDT').textContent = `$${s.totalVaultUSDT.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+        document.getElementById('statTotalGigaHeld').textContent = `${s.totalGigaHeld} GIGA`;
+        document.getElementById('statPendingWithdrawals').textContent = s.pendingWithdrawalsCount;
+      }
+    }
+
+    // 2. Users
+    let allUsersCache = [];
+    async function fetchUsers() {
+      const data = await apiRequest('get_users').catch(() => null);
+      if (data && data.success && data.users) {
+        allUsersCache = data.users;
+        document.getElementById('badgeUsersCount').textContent = data.users.length;
+        renderUsersTable(data.users);
+      }
+    }
+
+    function renderUsersTable(users) {
+      const tbody = document.getElementById('usersTableBody');
+      if (!users || users.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="py-8 text-center text-slate-500">No users found</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = users.map(u => `
+        <tr class="hover:bg-slate-900/50 transition-colors">
+          <td class="py-3 px-4">
+            <div class="font-bold text-white text-xs font-sans">${escapeHtml(u.full_name || 'Member')}</div>
+            <div class="text-[11px] text-slate-400 truncate max-w-xs">${escapeHtml(u.email || '')}</div>
+          </td>
+          <td class="py-3 px-4 text-amber-400 font-bold">${escapeHtml(u.username || '')}</td>
+          <td class="py-3 px-4 text-emerald-400 font-bold">$${u.usdt_balance.toFixed(2)}</td>
+          <td class="py-3 px-4 text-amber-300 font-bold">${u.giga_balance} GIGA</td>
+          <td class="py-3 px-4 text-slate-300">+$${u.lifetime_profit.toFixed(2)}</td>
+          <td class="py-3 px-4 text-slate-400 text-[11px]">${formatDate(u.created_at)}</td>
+          <td class="py-3 px-4">
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${u.status === 'suspended' ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'}">
+              ${u.status}
+            </span>
+          </td>
+          <td class="py-3 px-4 text-right space-x-1">
+            <button onclick="openEditUserModal('${u.id}')" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-400 text-[11px] font-bold cursor-pointer transition-colors">Edit</button>
+            <button onclick="toggleUserStatus('${u.id}', '${u.status}')" class="px-2.5 py-1 rounded-lg ${u.status === 'suspended' ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20' : 'bg-rose-500/10 text-rose-400 hover:bg-rose-500/20'} text-[11px] font-bold cursor-pointer transition-colors">
+              ${u.status === 'suspended' ? 'Activate' : 'Suspend'}
+            </button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    // Search Users Filter
+    document.getElementById('userSearchInput').addEventListener('input', (e) => {
+      const q = e.target.value.toLowerCase().trim();
+      if (!q) {
+        renderUsersTable(allUsersCache);
+      } else {
+        const filtered = allUsersCache.filter(u =>
+          (u.email && u.email.toLowerCase().includes(q)) ||
+          (u.username && u.username.toLowerCase().includes(q)) ||
+          (u.full_name && u.full_name.toLowerCase().includes(q))
+        );
+        renderUsersTable(filtered);
+      }
+    });
+
+    // 3. Deposits
+    async function fetchDeposits(isBackground = false) {
+      const data = await apiRequest('get_deposits').catch(() => null);
+      if (data && data.success && data.deposits) {
+        const deps = data.deposits;
+        document.getElementById('badgeDepositsCount').textContent = deps.length;
+
+        // Chime on new incoming deposit!
+        if (deps.length > lastDepositsCount && isBackground) {
+          playAlertChime();
+          showToast(`🔔 New Deposit Detected: +$${deps[0].amount.toFixed(2)} USDT from ${deps[0].username}!`, 'success');
+        }
+        lastDepositsCount = deps.length;
+
+        const tbody = document.getElementById('depositsTableBody');
+        if (deps.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-slate-500">No deposits recorded yet</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = deps.map(d => `
+          <tr class="hover:bg-slate-900/50 transition-colors">
+            <td class="py-3 px-4 text-slate-400 text-[11px]">${formatDate(d.created_at)}</td>
+            <td class="py-3 px-4">
+              <div class="font-bold text-white">${escapeHtml(d.username)}</div>
+              <div class="text-[10px] text-slate-500">${escapeHtml(d.email)}</div>
+            </td>
+            <td class="py-3 px-4 text-emerald-400 font-bold">+$${d.amount.toFixed(2)} USDT</td>
+            <td class="py-3 px-4 text-slate-300 text-[11px]">
+              <span class="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30 font-bold">BEP20</span>
+            </td>
+            <td class="py-3 px-4">
+              <span class="text-[11px] text-slate-400 truncate max-w-xs block cursor-pointer hover:text-amber-400" onclick="navigator.clipboard.writeText('${d.tx_hash}'); showToast('Hash copied! 📋', 'info');" title="Click to copy">
+                ${d.tx_hash.slice(0, 14)}...${d.tx_hash.slice(-8)}
+              </span>
+            </td>
+            <td class="py-3 px-4">
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                ${d.status}
+              </span>
+            </td>
+          </tr>
+        `).join('');
+      }
+    }
+
+    // 4. Withdrawals
+    let allWithdrawalsCache = [];
+    async function fetchWithdrawals(isBackground = false) {
+      const data = await apiRequest('get_withdrawals').catch(() => null);
+      if (data && data.success && data.withdrawals) {
+        const wds = data.withdrawals;
+        allWithdrawalsCache = wds;
+        const pendingCount = wds.filter(w => w.status === 'pending').length;
+        document.getElementById('badgeWithdrawalsCount').textContent = pendingCount || wds.length;
+
+        // Chime on new withdrawal request!
+        if (wds.length > lastWithdrawalsCount && isBackground) {
+          playAlertChime();
+          showToast(`⚠️ New Withdrawal Request: $${wds[0].amount.toFixed(2)} USDT from ${wds[0].username}!`, 'info');
+        }
+        lastWithdrawalsCount = wds.length;
+
+        const tbody = document.getElementById('withdrawalsTableBody');
+        if (wds.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="8" class="py-8 text-center text-slate-500">No withdrawals recorded yet</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = wds.map(w => `
+          <tr class="hover:bg-slate-900/50 transition-colors">
+            <td class="py-3 px-4 text-slate-400 text-[11px]">${formatDate(w.created_at)}</td>
+            <td class="py-3 px-4">
+              <div class="font-bold text-white">${escapeHtml(w.username)}</div>
+              <div class="text-[10px] text-slate-500">${escapeHtml(w.email)}</div>
+            </td>
+            <td class="py-3 px-4 text-white font-bold">$${w.amount.toFixed(2)}</td>
+            <td class="py-3 px-4 text-amber-500">-$${w.fee.toFixed(2)}</td>
+            <td class="py-3 px-4 text-emerald-400 font-bold">$${w.receive.toFixed(2)}</td>
+            <td class="py-3 px-4">
+              <span class="text-[11px] text-amber-300 font-mono truncate max-w-[140px] block cursor-pointer hover:underline" onclick="navigator.clipboard.writeText('${w.destination}'); showToast('Wallet address copied! 📋', 'info');" title="Click to copy wallet address">
+                ${w.destination}
+              </span>
+            </td>
+            <td class="py-3 px-4">
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                w.status === 'completed' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
+                w.status === 'rejected' ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' :
+                'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+              }">
+                ${w.status}
+              </span>
+            </td>
+            <td class="py-3 px-4 text-right">
+              ${w.status === 'pending' || w.status === 'confirmed' ? `
+                <button onclick="openProcessWithdrawalModal('${w.id}')" class="px-3 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 text-[11px] font-bold cursor-pointer transition-colors shadow-xs">
+                  Process
+                </button>
+              ` : `
+                <span class="text-[10px] text-slate-500">Done</span>
+              `}
+            </td>
+          </tr>
+        `).join('');
+      }
+    }
+
+    // 5. Trades & Queue
+    async function fetchTrades() {
+      const data = await apiRequest('get_trades').catch(() => null);
+      if (data && data.success) {
+        // Render completed buy/sell trades
+        const tradesContainer = document.getElementById('tradesListContainer');
+        const trades = data.trades || [];
+        if (trades.length === 0) {
+          tradesContainer.innerHTML = `<p class="text-xs text-slate-500 text-center py-6">No recent trade activity</p>`;
+        } else {
+          tradesContainer.innerHTML = trades.map(t => `
+            <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between text-xs">
+              <div class="flex items-center gap-2.5">
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${t.type === 'BUY' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-purple-500/20 text-purple-400 border border-purple-500/30'}">
+                  ${t.type}
+                </span>
+                <div>
+                  <div class="font-bold text-white">${escapeHtml(t.username)} <span class="text-slate-400 font-normal">(${escapeHtml(t.email)})</span></div>
+                  <div class="text-[10px] text-slate-500 font-mono">${formatDate(t.created_at)}</div>
+                </div>
+              </div>
+              <div class="text-right">
+                <div class="font-bold font-mono ${t.type === 'BUY' ? 'text-emerald-400' : 'text-purple-400'}">${t.amount_giga} GIGA</div>
+                <div class="text-[10px] text-slate-400 font-mono">$${t.amount_usdt.toFixed(2)} USDT</div>
+              </div>
+            </div>
+          `).join('');
+        }
+
+        // Render Sell Queues
+        const queueContainer = document.getElementById('sellQueueListContainer');
+        const queue = data.pendingSellQueue || [];
+        document.getElementById('queueCountBadge').textContent = `${queue.length} Queued`;
+
+        if (queue.length === 0) {
+          queueContainer.innerHTML = `<p class="text-xs text-slate-500 text-center py-6">No units currently in matching queue</p>`;
+        } else {
+          queueContainer.innerHTML = queue.map(q => `
+            <div class="p-3 rounded-xl bg-slate-950 border border-amber-500/20 flex items-center justify-between text-xs">
+              <div>
+                <div class="font-bold text-white flex items-center gap-1.5">
+                  <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+                  ${escapeHtml(q.username)}
+                </div>
+                <div class="text-[10px] text-slate-400 font-mono">Queue ID: ${escapeHtml(q.id || 'ORDER')}</div>
+              </div>
+              <div class="text-right">
+                <div class="font-bold text-amber-400 font-mono">${q.amount || 1} GIGA</div>
+                <div class="text-[10px] text-emerald-400 font-mono">Value: $${((q.amount || 1) * 50).toFixed(2)}</div>
+              </div>
+            </div>
+          `).join('');
+        }
+      }
+    }
+
+    // 6. Staff Accounts
+    async function fetchStaff() {
+      const data = await apiRequest('get_staff').catch(() => null);
+      if (data && data.success && data.staff) {
+        const tbody = document.getElementById('staffTableBody');
+        if (data.staff.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-slate-500">No staff members created yet. Click "Create New Staff" above.</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = data.staff.map(s => `
+          <tr class="hover:bg-slate-900/50 transition-colors">
+            <td class="py-3 px-4 font-bold text-white">${escapeHtml(s.name)}</td>
+            <td class="py-3 px-4 text-amber-400">${escapeHtml(s.username)}</td>
+            <td class="py-3 px-4">
+              <div class="flex flex-wrap gap-1">
+                ${(s.permissions || []).map(p => `
+                  <span class="px-2 py-0.5 rounded-full text-[10px] bg-slate-800 text-slate-300 font-mono">${p}</span>
+                `).join('')}
+              </div>
+            </td>
+            <td class="py-3 px-4 text-slate-400 text-[11px]">${formatDate(s.created_at)}</td>
+            <td class="py-3 px-4 text-right">
+              <button onclick="deleteStaff('${s.username}')" class="px-2.5 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-[11px] font-bold cursor-pointer transition-colors">
+                Delete
+              </button>
+            </td>
+          </tr>
+        `).join('');
+      }
+    }
+
+    // 7. Notifications Broadcast
+    async function fetchNotifications() {
+      const data = await apiRequest('get_notifications').catch(() => null);
+      if (data && data.success && data.notifications) {
+        const container = document.getElementById('adminNotifsList');
+        if (data.notifications.length === 0) {
+          container.innerHTML = `<p class="text-xs text-slate-500 text-center py-6">No broadcasts posted yet</p>`;
+          return;
+        }
+
+        container.innerHTML = data.notifications.map(n => `
+          <div class="p-4 rounded-xl bg-slate-950 border ${n.priority === 'high' ? 'border-rose-500/40 bg-rose-950/20' : 'border-slate-800'} flex items-start justify-between gap-4">
+            <div class="space-y-1">
+              <div class="flex items-center gap-2">
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${n.priority === 'high' ? 'bg-rose-500/20 text-rose-400' : 'bg-amber-500/20 text-amber-400'}">
+                  ${escapeHtml(n.type || 'Announcement')}
+                </span>
+                <span class="text-[10px] text-slate-500 font-mono">${formatDate(n.created_at)}</span>
+              </div>
+              <h4 class="text-sm font-bold text-white mt-1">${escapeHtml(n.title)}</h4>
+              <p class="text-xs text-slate-400 leading-relaxed">${escapeHtml(n.message)}</p>
+            </div>
+            <button onclick="deleteNotification('${n.id}')" class="shrink-0 p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer" title="Delete Broadcast">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+            </button>
+          </div>
+        `).join('');
+      }
+    }
+
+    // ─── USER BALANCE & STATUS ACTIONS ────────────────────────────────────────
+    function openEditUserModal(userId) {
+      const u = allUsersCache.find(x => x.id === userId);
+      if (!u) return;
+
+      document.getElementById('editUserId').value = u.id;
+      document.getElementById('editUserEmail').value = `${u.email} (${u.username})`;
+      document.getElementById('editUsdtBalance').value = u.usdt_balance.toFixed(2);
+      document.getElementById('editGigaBalance').value = u.giga_balance;
+      document.getElementById('editProfitBalance').value = u.lifetime_profit.toFixed(2);
+      document.getElementById('editReasonNote').value = '';
+      openModal('editBalanceModal');
+    }
+
+    document.getElementById('editBalanceForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const userId = document.getElementById('editUserId').value;
+      const usdt = parseFloat(document.getElementById('editUsdtBalance').value);
+      const giga = parseFloat(document.getElementById('editGigaBalance').value);
+      const profit = parseFloat(document.getElementById('editProfitBalance').value);
+      const note = document.getElementById('editReasonNote').value;
+
+      try {
+        const res = await apiRequest('update_user_balance', {
+          body: { userId, usdt_balance: usdt, giga_balance: giga, lifetime_profit: profit, note }
+        });
+
+        if (res.success) {
+          showToast('User balances updated successfully!', 'success');
+          closeModal('editBalanceModal');
+          await fetchUsers();
+          await fetchOverview();
+        } else {
+          showToast(res.message || 'Update failed', 'error');
+        }
+      } catch (err) {
+        showToast('Error updating balance', 'error');
+      }
+    });
+
+    async function toggleUserStatus(userId, currentStatus) {
+      const newStatus = currentStatus === 'suspended' ? 'active' : 'suspended';
+      if (!confirm(`Are you sure you want to ${newStatus.toUpperCase()} this user?`)) return;
+
+      try {
+        const res = await apiRequest('toggle_user_status', {
+          body: { userId, status: newStatus }
+        });
+        if (res.success) {
+          showToast(`User status set to ${newStatus}`, 'success');
+          await fetchUsers();
+        }
+      } catch (err) {
+        showToast('Error updating status', 'error');
+      }
+    }
+
+    // ─── WITHDRAWAL PROCESSING ACTION ─────────────────────────────────────────
+    function openProcessWithdrawalModal(txId) {
+      const w = allWithdrawalsCache.find(x => x.id === txId);
+      if (!w) return;
+
+      document.getElementById('processTxId').value = w.id;
+      document.getElementById('pwUserEmail').textContent = `${w.email} (${w.username})`;
+      document.getElementById('pwNetReceive').textContent = `$${w.receive.toFixed(2)} USDT`;
+      document.getElementById('pwDestination').textContent = w.destination;
+      document.getElementById('pwTxHashInput').value = w.tx_hash && !w.tx_hash.includes('Pending') ? w.tx_hash : '';
+      openModal('processWithdrawalModal');
+    }
+
+    document.getElementById('pwStatusSelect').addEventListener('change', (e) => {
+      const isReject = e.target.value === 'rejected';
+      document.getElementById('pwRejectContainer').classList.toggle('hidden', !isReject);
+      document.getElementById('pwTxHashContainer').classList.toggle('hidden', isReject);
+    });
+
+    document.getElementById('processWithdrawalForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const transactionId = document.getElementById('processTxId').value;
+      const status = document.getElementById('pwStatusSelect').value;
+      const txHash = document.getElementById('pwTxHashInput').value.trim();
+      const refundReason = document.getElementById('pwRejectReason').value.trim();
+
+      try {
+        const res = await apiRequest('process_withdrawal', {
+          body: { transactionId, status, txHash, refundReason }
+        });
+
+        if (res.success) {
+          showToast(res.message || 'Withdrawal updated!', 'success');
+          closeModal('processWithdrawalModal');
+          await fetchWithdrawals();
+          await fetchOverview();
+        } else {
+          showToast(res.message || 'Action failed', 'error');
+        }
+      } catch (err) {
+        showToast('Error processing withdrawal', 'error');
+      }
+    });
+
+    // ─── STAFF CREATE & DELETE ────────────────────────────────────────────────
+    function openCreateStaffModal() {
+      document.getElementById('createStaffForm').reset();
+      openModal('createStaffModal');
+    }
+
+    document.getElementById('createStaffForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('staffNameInput').value.trim();
+      const username = document.getElementById('staffUsernameInput').value.trim();
+      const password = document.getElementById('staffPasswordInput').value.trim();
+
+      const checkboxes = document.querySelectorAll('input[name="staffPerms"]:checked');
+      const permissions = Array.from(checkboxes).map(c => c.value);
+
+      try {
+        const res = await apiRequest('create_staff', {
+          body: { name, username, password, permissions }
+        });
+
+        if (res.success) {
+          showToast('Staff member created successfully!', 'success');
+          closeModal('createStaffModal');
+          await fetchStaff();
+        } else {
+          showToast(res.error || res.message || 'Creation failed', 'error');
+        }
+      } catch (err) {
+        showToast('Error creating staff account', 'error');
+      }
+    });
+
+    async function deleteStaff(username) {
+      if (!confirm(`Delete staff account "${username}"?`)) return;
+      try {
+        const res = await apiRequest('delete_staff', { body: { username } });
+        if (res.success) {
+          showToast('Staff account deleted', 'info');
+          await fetchStaff();
+        }
+      } catch (e) {
+        showToast('Error deleting staff', 'error');
+      }
+    }
+
+    // ─── NOTIFICATION BROADCAST ACTIONS ───────────────────────────────────────
+    function openComposeNotifModal() {
+      document.getElementById('composeNotifForm').reset();
+      openModal('composeNotifModal');
+    }
+
+    document.getElementById('composeNotifForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const title = document.getElementById('notifTitleInput').value.trim();
+      const type = document.getElementById('notifTypeSelect').value;
+      const priority = document.getElementById('notifPrioritySelect').value;
+      const message = document.getElementById('notifMessageInput').value.trim();
+
+      try {
+        const res = await apiRequest('post_notification', {
+          body: { title, type, priority, message }
+        });
+
+        if (res.success) {
+          showToast('Broadcast published to all user dashboards! 🚀', 'success');
+          closeModal('composeNotifModal');
+          await fetchNotifications();
+        } else {
+          showToast(res.message || 'Broadcast failed', 'error');
+        }
+      } catch (e) {
+        showToast('Error publishing broadcast', 'error');
+      }
+    });
+
+    async function deleteNotification(id) {
+      if (!confirm('Remove this broadcast announcement?')) return;
+      try {
+        const res = await apiRequest('delete_notification', { body: { id } });
+        if (res.success) {
+          showToast('Broadcast deleted', 'info');
+          await fetchNotifications();
+        }
+      } catch (e) {
+        showToast('Error deleting broadcast', 'error');
+      }
+    }
+
+    // ─── GOOGLE 2FA ACTIONS ───────────────────────────────────────────────────
+    async function startSetup2FA() {
+      try {
+        const res = await apiRequest('setup_2fa', { method: 'POST' });
+        if (res.success && res.secret) {
+          pending2FASetupSecret = res.secret;
+          document.getElementById('manualSecretKey').textContent = res.secret;
+
+          // Render QR code
+          const qrBox = document.getElementById('qrcodeBox');
+          qrBox.innerHTML = '';
+          try {
+            new QRCode(qrBox, {
+              text: res.otpauth_url,
+              width: 160,
+              height: 160,
+              colorDark: '#090d16',
+              colorLight: '#ffffff',
+              correctLevel: QRCode.CorrectLevel.M
+            });
+          } catch (e) {
+            qrBox.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(res.otpauth_url)}" class="w-full h-full">`;
+          }
+
+          document.getElementById('verify2FACode').value = '';
+          openModal('setup2FAModal');
+        }
+      } catch (e) {
+        showToast('Could not initiate 2FA setup', 'error');
+      }
+    }
+
+    document.getElementById('copySecretKeyBtn').addEventListener('click', () => {
+      if (pending2FASetupSecret) {
+        navigator.clipboard.writeText(pending2FASetupSecret).then(() => {
+          showToast('Secret key copied! 📋', 'info');
+        });
+      }
+    });
+
+    document.getElementById('verify2FAForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const code = document.getElementById('verify2FACode').value.trim();
+      if (!pending2FASetupSecret || !code) return;
+
+      try {
+        const res = await apiRequest('enable_2fa', {
+          body: { secret: pending2FASetupSecret, code }
+        });
+
+        if (res.success) {
+          showToast('Google Authenticator 2FA successfully activated! 🛡️', 'success');
+          closeModal('setup2FAModal');
+          update2FABadge(true);
+        } else {
+          showToast(res.message || 'Verification failed. Incorrect code.', 'error');
+        }
+      } catch (e) {
+        showToast('Error enabling 2FA', 'error');
+      }
+    });
+
+    async function disable2FA() {
+      const code = prompt('Enter your current 6-digit Google Authenticator code to disable 2FA:');
+      if (!code) return;
+
+      try {
+        const res = await apiRequest('disable_2fa', { body: { code } });
+        if (res.success) {
+          showToast('2FA has been disabled.', 'info');
+          update2FABadge(false);
+        } else {
+          showToast(res.message || 'Could not disable 2FA.', 'error');
+        }
+      } catch (e) {
+        showToast('Error disabling 2FA', 'error');
+      }
+    }
+
+    // ─── CHANGE PASSWORD ACTION ───────────────────────────────────────────────
+    document.getElementById('changePasswordForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const currentPassword = document.getElementById('currentPasswordInput').value;
+      const newPassword = document.getElementById('newPasswordInput').value;
+      const confirmNew = document.getElementById('confirmNewPasswordInput').value;
+
+      if (newPassword !== confirmNew) {
+        showToast('New passwords do not match!', 'error');
+        return;
+      }
+
+      try {
+        const res = await apiRequest('change_password', {
+          body: { currentPassword, newPassword }
+        });
+
+        if (res.success) {
+          showToast('Admin password updated successfully! Please re-login.', 'success');
+          document.getElementById('changePasswordForm').reset();
+          setTimeout(logout, 1500);
+        } else {
+          showToast(res.message || 'Could not update password.', 'error');
+        }
+      } catch (e) {
+        showToast('Error updating password', 'error');
+      }
+    });
+
+    // ─── UTILITIES ────────────────────────────────────────────────────────────
+    function formatDate(isoStr) {
+      if (!isoStr) return '--';
+      try {
+        const d = new Date(isoStr);
+        if (isNaN(d.getTime())) return '--';
+        return d.toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      } catch (e) {
+        return '--';
+      }
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    // ─── AUTO-LOGIN CHECK ON LOAD ─────────────────────────────────────────────
+    window.addEventListener('DOMContentLoaded', async () => {
+      if (authToken) {
+        try {
+          const res = await apiRequest('verify_session');
+          if (res.success && res.session) {
+            initAuthenticatedWorkspace(res.session);
+          } else {
+            logout();
+          }
+        } catch (e) {
+          logout();
+        }
+      }
+    });
+  </script>
+</body>
+
+</html>
