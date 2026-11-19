@@ -57,33 +57,47 @@ module.exports = async (req, res) => {
     // 2. Deduct $30 from buyer's USDT balance
     const updatedUsdt = Math.max(0, currentUsdt - cost);
     if (buyer) {
+      const buyerMap = (buyer.deposit_addresses && typeof buyer.deposit_addresses === 'object') ? buyer.deposit_addresses : {};
+      const buyerSync = buyerMap.sync_state || {};
+      const updatedSync = {
+        ...buyerSync,
+        usdt_balance: updatedUsdt,
+        giga_balance: (parseInt(buyerSync.giga_balance || 0, 10)) + 1,
+        total_giga_bought: (parseInt(buyerSync.total_giga_bought || 0, 10)) + 1
+      };
+
       await supabase
         .from('profiles')
         .update({
           usdt_balance: updatedUsdt,
+          giga_balance: (parseInt(buyer.giga_balance || 0, 10)) + 1,
+          balance_giga: (parseInt(buyer.giga_balance || 0, 10)) + 1,
+          deposit_addresses: {
+            ...buyerMap,
+            sync_state: updatedSync
+          },
           last_updated: new Date().toISOString()
         })
         .eq('id', buyer.id);
     }
 
-    // 3. Matchmaker Engine: Find oldest pending order with matched_buyers < 2
+    // 3. Matchmaker Engine: Find oldest pending order from ANOTHER seller
     let matchedSellerOrder = null;
     let sellerCompleted = false;
 
     try {
-      // Find oldest pending order
+      // Find oldest pending order from other sellers (strictly no self-matching)
       const { data: pendingOrders } = await supabase
         .from('marketplace_orders')
         .select('*')
         .eq('status', 'pending')
         .lt('matched_buyers', 2)
         .order('created_at', { ascending: true })
-        .limit(5);
+        .limit(10);
 
       if (pendingOrders && pendingOrders.length > 0) {
-        // Prefer matching orders from other sellers first
+        // Strictly match orders from other sellers only
         let target = pendingOrders.find(o => o.seller_id !== (buyer ? buyer.id : null) && o.seller_email !== cleanEmail);
-        if (!target) target = pendingOrders[0]; // fallback to any pending order for solo testing
 
         if (target) {
           const newMatched = (target.matched_buyers || 0) + 1;

@@ -2264,46 +2264,8 @@ function initBuySellMarket() {
     const sellOrderId = `#SELL-${Math.floor(100000 + Math.random() * 900000)}`;
     const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-    // 2-Buyer Matching on active pending sell queue:
-    // Check if user (or any seller) has an existing pending order waiting for buyers
+    // Insert new pending sell order for this purchased GIGA (Awaiting 2 buyers from global marketplace)
     const pending = getPendingSells();
-    let oldestWaiting = null;
-    for (let i = pending.length - 1; i >= 0; i--) {
-      if (pending[i].status !== 'Completed' && (pending[i].matchedBuyers || 0) < 2) {
-        oldestWaiting = pending[i];
-        break;
-      }
-    }
-
-    if (oldestWaiting) {
-      oldestWaiting.matchedBuyers = (oldestWaiting.matchedBuyers || 0) + 1;
-      if (oldestWaiting.matchedBuyers >= 2) {
-        oldestWaiting.status = 'Completed';
-        oldestWaiting.completedAt = nowTime;
-        // Credit $50.00 profit to user's withdrawable USDT balance and lifetime profit!
-        currentUser.lifetimeProfit = (currentUser.lifetimeProfit || 0) + 50.00;
-        currentUser.usdtBalance = (currentUser.usdtBalance || 0) + 50.00;
-        currentUser.totalGigaSold = (currentUser.totalGigaSold || 0) + 1;
-        updateBalanceDisplays();
-
-        const profitTxHash = generateTxHash();
-        logUserActivity({
-          type: 'Sell Profit',
-          asset: 'USDT',
-          amount: '+$50.00 USDT',
-          rawAmount: 50.00,
-          txHash: profitTxHash,
-          orderId: oldestWaiting.orderId,
-          status: 'Completed',
-          notes: `Sell Queue ${oldestWaiting.orderId} completed (2 buyers matched) — +$50.00 Profit credited`
-        });
-        syncBalanceToSupabase('sell_profit_credited');
-
-        showToast(`🎉 Order ${oldestWaiting.orderId} Completed! 2 buyers matched — $50.00 Profit added!`, 'success');
-      }
-    }
-
-    // Insert new pending sell order for this purchased GIGA
     pending.unshift({
       orderId: sellOrderId,
       backgroundOrderId: backgroundOrderId,

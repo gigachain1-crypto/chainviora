@@ -209,17 +209,17 @@ module.exports = async (req, res) => {
         ? 'GIGA' + (profile.email.split('@')[0].replace(/[^0-9]/g, '').slice(-6) || Math.floor(100000 + Math.random() * 900000))
         : 'GIGA' + Math.floor(100000 + Math.random() * 900000);
 
-      const usdtBal = syncState.usdt_balance !== undefined
-        ? parseFloat(syncState.usdt_balance)
-        : (profile.usdt_balance !== undefined ? parseFloat(profile.usdt_balance) : 0.00);
+      const usdtBal = (profile.usdt_balance !== undefined && profile.usdt_balance !== null)
+        ? parseFloat(profile.usdt_balance)
+        : (syncState.usdt_balance !== undefined ? parseFloat(syncState.usdt_balance) : 0.00);
 
-      const profitBal = syncState.lifetime_profit !== undefined
-        ? parseFloat(syncState.lifetime_profit)
-        : (profile.lifetime_profit !== undefined ? parseFloat(profile.lifetime_profit) : 0.00);
+      const profitBal = (profile.lifetime_profit !== undefined && profile.lifetime_profit !== null)
+        ? parseFloat(profile.lifetime_profit)
+        : (syncState.lifetime_profit !== undefined ? parseFloat(syncState.lifetime_profit) : 0.00);
 
-      const gigaBought = syncState.total_giga_bought !== undefined
-        ? parseInt(syncState.total_giga_bought, 10)
-        : (profile.giga_balance !== undefined ? parseInt(profile.giga_balance, 10) : 0);
+      const gigaBought = (profile.giga_balance !== undefined && profile.giga_balance !== null)
+        ? parseInt(profile.giga_balance, 10)
+        : (syncState.total_giga_bought !== undefined ? parseInt(syncState.total_giga_bought, 10) : 0);
 
       const gigaSold = syncState.total_giga_sold !== undefined
         ? parseInt(syncState.total_giga_sold, 10)
