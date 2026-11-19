@@ -1944,7 +1944,7 @@ function initReferralSystem() {
     shareBtn.addEventListener('click', async () => {
       const shareText = `🚀 Welcome to the GIGACHAIN Ecosystem!
 
-The Next-Generation Decentralized Liquidity Protocol powering Fixed-Rate Trading, Algorithmic Peer-to-Peer Queue Matching, and Realized Yield Distribution.
+The Next-Generation Decentralized Liquidity Protocol powering Fixed-Rate Trading, Algorithmic Queue Matching, and Realized Yield Distribution.
 
 🎁 Special Invitation Bonus:
 Sign up using my Referral Code: ${currentUser.referralCode} to unlock your verified Web3 account and claim an instant +$5.00 USDT Welcome Bonus on your first vault deposit!
@@ -1952,7 +1952,7 @@ Sign up using my Referral Code: ${currentUser.referralCode} to unlock your verif
 🔥 Why Join GIGACHAIN?
 ✅ 100% On-Chain Verifiable on BNB Smart Chain (BEP20)
 ✅ Fixed-Rate $30 GIGA Buy & $50 Queue Sell Settlement
-✅ Algorithmic Queue Matching & Fast P2P Settlements
+✅ Algorithmic Queue Matching & Fast Settlements
 ✅ Automated Cross-Device Synchronized Vault
 
 👉 Register & Claim Your Access Here:
