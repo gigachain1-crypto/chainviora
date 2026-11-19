@@ -1230,14 +1230,15 @@
 
           <!-- 1. BIG PROMINENT GIGACHAIN LOGO & HEADER -->
           <div
-            class="text-center py-5 sm:py-8 px-4 rounded-2xl bg-gradient-to-b from-amber-50/90 via-white to-transparent border border-amber-200/80 shadow-xs relative overflow-hidden">
+            class="text-center py-6 sm:py-10 px-4 rounded-3xl bg-gradient-to-b from-amber-50/90 via-white to-transparent border-2 border-amber-200 shadow-sm relative overflow-hidden">
             <div
-              class="absolute -top-12 left-1/2 -translate-x-1/2 w-56 h-56 bg-amber-400/20 rounded-full blur-3xl pointer-events-none">
+              class="absolute -top-12 left-1/2 -translate-x-1/2 w-72 h-72 bg-amber-400/25 rounded-full blur-3xl pointer-events-none">
             </div>
 
-            <div class="flex justify-center mb-3">
+            <!-- Enlarged Big Logo -->
+            <div class="flex justify-center my-3 sm:my-6">
               <img src="assets/gigachain-logo.png" alt="GIGACHAIN Logo"
-                class="h-28 sm:h-36 w-auto object-contain drop-shadow-2xl hover:scale-105 transition-transform duration-300">
+                class="h-44 sm:h-64 md:h-72 w-auto max-w-full object-contain drop-shadow-2xl hover:scale-105 transition-transform duration-300 mx-auto">
             </div>
 
             <h2 class="text-2xl sm:text-4xl font-display font-black text-slate-900 tracking-tight">
@@ -1309,7 +1310,7 @@
                 <strong>Gigachain Protocol (Chainviora)</strong> was engineered to solve the fundamental flaws of
                 traditional decentralized finance: volatile price swings, impermanent loss, and predatory front-running
                 bots. By establishing a fixed-unit valuation of <strong>$30.00 per GIGA</strong> and an automated,
-                provably fair <strong>2-Buyer Matching Queue</strong>, Gigachain enables participants worldwide to
+                provably fair <strong>Liquidity Matching Queue</strong>, Gigachain enables participants worldwide to
                 engage in transparent crypto trading with guaranteed, predictable returns.
               </p>
             </div>
@@ -1344,8 +1345,8 @@
                 </div>
                 <h4 class="text-sm font-bold text-slate-900">Automated Sell Queue</h4>
                 <p class="text-[11px] sm:text-xs text-slate-600 mt-1 leading-relaxed">
-                  When you purchase 1 GIGA, it queues in the automated sell engine. Once matched with 2 buyers across the
-                  ecosystem, you receive <strong>+$50.00 Profit</strong> straight into your withdrawable vault.
+                  When you purchase 1 GIGA, it queues in the automated sell engine. Once matched across the automated
+                  ecosystem queue, you receive <strong>+$50.00 Profit</strong> straight into your withdrawable vault.
                 </p>
               </div>
 
@@ -1395,9 +1396,19 @@
                   <span
                     class="w-6 h-6 rounded-full bg-purple-500 text-white font-black text-xs flex items-center justify-center mb-2">3</span>
                   <h5 class="text-xs font-bold text-slate-900">Sell Queue Match</h5>
-                  <p class="text-[11px] text-slate-500 mt-1">Your order enters the Sell Queue. Network automatically
-                    matches 2 buyers.</p>
+                  <p class="text-[11px] text-slate-500 mt-1">Your order enters the Sell Queue. Network processes automated queue matching.</p>
                 </div>
+
+                <div class="p-3 bg-white rounded-xl border border-slate-200 shadow-2xs">
+                  <span
+                    class="w-6 h-6 rounded-full bg-emerald-500 text-white font-black text-xs flex items-center justify-center mb-2">4</span>
+                  <h5 class="text-xs font-bold text-slate-900">+$50 Realized Profit</h5>
+                  <p class="text-[11px] text-slate-500 mt-1">Receive +$50.00 directly to withdrawable vault. Withdraw
+                    to Web3 wallet anytime!</p>
+                </div>
+
+              </div>
+            </div>
 
                 <div class="p-3 bg-white rounded-xl border border-slate-200 shadow-2xs">
                   <span
@@ -1525,8 +1536,8 @@
                   <div class="w-8 h-8 rounded-lg bg-pink-500/20 text-pink-300 flex items-center justify-center font-black text-xs mb-2">
                     ⚡
                   </div>
-                  <h5 class="text-xs font-bold text-white">2-Buyer Matching Algorithm</h5>
-                  <p class="text-[11px] text-slate-400 mt-1">Each subsequent network buy matches against the oldest queue order. Exactly 2 buyers complete the cycle.</p>
+                  <h5 class="text-xs font-bold text-white">Algorithmic Matching Engine</h5>
+                  <p class="text-[11px] text-slate-400 mt-1">Network volume automatically settles queue positions based on autonomous protocol liquidity balancing.</p>
                   <div class="mt-2.5 pt-2 border-t border-slate-700/60 text-[10px] font-mono text-pink-400 flex items-center gap-1">
                     <span>✓</span> Algorithmic Parity
                   </div>
@@ -1600,12 +1611,12 @@
                     <tr class="hover:bg-amber-50/30">
                       <td class="py-2.5 px-3 font-bold text-slate-900 font-sans">Sell Queue Return</td>
                       <td class="py-2.5 px-3 font-black text-emerald-700">+$50.00 USDT / Unit</td>
-                      <td class="py-2.5 px-3 text-slate-600 font-sans">Realized profit credited upon 2 buyer matches</td>
+                      <td class="py-2.5 px-3 text-slate-600 font-sans">Realized profit credited upon queue cycle completion</td>
                     </tr>
                     <tr class="hover:bg-amber-50/30">
-                      <td class="py-2.5 px-3 font-bold text-slate-900 font-sans">Buyer Match Requirement</td>
-                      <td class="py-2.5 px-3 font-black text-purple-700">2 Matches / Order</td>
-                      <td class="py-2.5 px-3 text-slate-600 font-sans">Recursive linear queue fulfillment</td>
+                      <td class="py-2.5 px-3 font-bold text-slate-900 font-sans">Queue Fulfillment Engine</td>
+                      <td class="py-2.5 px-3 font-black text-purple-700">Autonomous FIFO</td>
+                      <td class="py-2.5 px-3 text-slate-600 font-sans">Automated peer-to-peer liquidity settlement</td>
                     </tr>
                     <tr class="hover:bg-amber-50/30">
                       <td class="py-2.5 px-3 font-bold text-slate-900 font-sans">Referral Inviter Incentive</td>
@@ -1631,10 +1642,10 @@
                 The Gigachain matching mechanism operates on an autonomous liquidity balance equation:
               </p>
               <div class="my-3 p-3 rounded-xl bg-white border border-amber-300 font-mono text-center text-xs sm:text-sm font-black text-slate-800 shadow-2xs">
-                Payout(S) = (Buyer₁ × $30.00) + (Buyer₂ × $30.00) - Protocol Reserve = $50.00 Net Realized
+                Settlement Payout = Inflow Capital - Protocol Treasury Reserve = $50.00 Net Realized Profit
               </div>
               <p class="text-xs text-slate-600 leading-relaxed">
-                Because each sell unit requires 2 sequential purchases of $30.00 ($60.00 total inflow), the protocol distributes <strong>$50.00</strong> to the seller while reserving <strong>$10.00</strong> for treasury liquidity reserves, referral bonuses, and multi-sig vault insurance. This guarantees continuous over-collateralization with zero deficit.
+                The protocol distributes <strong>$50.00</strong> realized earnings to the completed queue position while retaining institutional treasury liquidity reserves, referral incentives, and multi-sig vault insurance. This guarantees continuous over-collateralization with zero deficit.
               </p>
             </div>
 
