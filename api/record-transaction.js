@@ -106,10 +106,17 @@ module.exports = async (req, res) => {
         return res.status(400).json({ error: 'User profile not found for transaction' });
       }
 
+      // 🔒 SECURITY CHECK: Clients CANNOT submit 'deposit' transactions directly!
+      // All deposits must come through the verified blockchain gateway (/api/check-deposit-status)
+      const cleanType = (type || 'activity').toLowerCase().replace(/\s+/g, '_');
+      if (cleanType === 'deposit') {
+        return res.status(403).json({ error: 'Direct deposit recording forbidden. Must be verified via blockchain gateway.' });
+      }
+
       const noteText = notes || (asset ? `[${asset}] ${type}` : `${type}`);
       const payload = {
         user_id: resolvedUserId,
-        type: (type || 'activity').toLowerCase().replace(/\s+/g, '_'),
+        type: cleanType,
         amount_usdt: parseFloat(amount_usdt) || 0,
         amount_giga: parseFloat(amount_giga) || 0,
         order_id: order_id || null,

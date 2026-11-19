@@ -88,7 +88,7 @@ module.exports = async (req, res) => {
     }
 
     // --------------------------------------------------------------------------
-    // 2. POST: Save user's updated state across all devices
+    // 2. POST: Save user's UI preferences/queues (SERVER-AUTHORITATIVE BALANCES)
     // --------------------------------------------------------------------------
     if (req.method === 'POST') {
       const body = req.body || {};
@@ -110,7 +110,7 @@ module.exports = async (req, res) => {
       const { data: profile } = await query.maybeSingle();
 
       if (!profile) {
-        return res.status(200).json({ success: true, note: 'Profile not found, saved locally' });
+        return res.status(200).json({ success: true, note: 'Profile not found' });
       }
 
       const existingMap = (profile.deposit_addresses && typeof profile.deposit_addresses === 'object')
@@ -119,13 +119,27 @@ module.exports = async (req, res) => {
 
       const existingSync = existingMap.sync_state || {};
 
+      // 🔒 TAMPER-PROOF SECURITY: BALANCES ARE 100% SERVER-AUTHORITATIVE!
+      // Clients are STRICTLY FORBIDDEN from dictating or altering their own balances via POST!
+      // Balances can ONLY ever be changed by:
+      // 1) /api/check-deposit-status (Verified on-chain blockchain deposits)
+      // 2) /api/marketplace-buy (Verified server-side GIGA order transactions)
+      // 3) /api/admin (Cryptographically signed Administrator adjustments)
+      //
+      // Any balance numbers sent in body.usdt_balance, body.giga_balance, or
+      // body.lifetime_profit are COMPLETELY DISCARDED by the server.
+      const authoritativeUsdt = parseFloat(profile.usdt_balance || 0.00);
+      const authoritativeGiga = parseFloat(profile.giga_balance || 0);
+      const authoritativeProfit = parseFloat(profile.lifetime_profit || 0.00);
+
       const newSyncState = {
         ...existingSync,
-        username: body.username || profile.username || existingSync.username,
-        usdt_balance: body.usdt_balance !== undefined ? parseFloat(body.usdt_balance) : (existingSync.usdt_balance !== undefined ? parseFloat(existingSync.usdt_balance) : (parseFloat(profile.usdt_balance) || 0.00)),
-        lifetime_profit: body.lifetime_profit !== undefined ? parseFloat(body.lifetime_profit) : (existingSync.lifetime_profit !== undefined ? parseFloat(existingSync.lifetime_profit) : (parseFloat(profile.lifetime_profit) || 0.00)),
-        total_giga_bought: body.total_giga_bought !== undefined ? parseInt(body.total_giga_bought, 10) : (existingSync.total_giga_bought !== undefined ? parseInt(existingSync.total_giga_bought, 10) : (parseInt(profile.giga_balance, 10) || 0)),
-        total_giga_sold: body.total_giga_sold !== undefined ? parseInt(body.total_giga_sold, 10) : (existingSync.total_giga_sold !== undefined ? parseInt(existingSync.total_giga_sold, 10) : 0),
+        username: profile.username || existingSync.username || defaultUsername,
+        usdt_balance: authoritativeUsdt,
+        giga_balance: authoritativeGiga,
+        lifetime_profit: authoritativeProfit,
+        total_giga_bought: authoritativeGiga,
+        total_giga_sold: existingSync.total_giga_sold || 0,
         pending_sells: Array.isArray(body.pending_sells) ? body.pending_sells : (existingSync.pending_sells || []),
         activities: Array.isArray(body.activities) ? body.activities : (existingSync.activities || [])
       };
@@ -138,19 +152,22 @@ module.exports = async (req, res) => {
         }
       };
 
-      if (body.usdt_balance !== undefined) updatePayload.usdt_balance = parseFloat(body.usdt_balance);
-      if (body.lifetime_profit !== undefined) updatePayload.lifetime_profit = parseFloat(body.lifetime_profit);
-      if (body.username) updatePayload.username = body.username;
-      if (body.giga_balance !== undefined) updatePayload.giga_balance = parseFloat(body.giga_balance);
+      if (body.username && !profile.username) {
+        updatePayload.username = body.username;
+      }
 
       await supabase
         .from('profiles')
         .update(updatePayload)
         .eq('id', profile.id);
 
+      // Return the TRUE authoritative server balances back to the client
       return res.status(200).json({
         success: true,
-        action: body.action || 'sync',
+        action: 'sync',
+        usdt_balance: authoritativeUsdt,
+        giga_balance: authoritativeGiga,
+        lifetime_profit: authoritativeProfit,
         state: newSyncState
       });
     }

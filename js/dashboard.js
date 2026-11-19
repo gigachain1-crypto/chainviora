@@ -250,23 +250,27 @@ async function syncBalanceToSupabase(action = 'update') {
       if (savedTxs) activities = JSON.parse(savedTxs);
     } catch (e) { }
 
-    await fetch('/api/update-balance', {
+    const res = await fetch('/api/update-balance', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         user_id: localStorage.getItem('supabase_user_id') || currentUser.id,
         email: currentUser.email,
         username: currentUser.username,
-        usdt_balance: currentUser.usdtBalance,
-        giga_balance: currentUser.gigaBalance,
-        lifetime_profit: currentUser.lifetimeProfit,
-        total_giga_bought: getUserTotalGigaBought(),
-        total_giga_sold: getUserTotalGigaSold(),
         pending_sells: pendingSells,
         activities: activities,
         action
       })
     });
+
+    const data = await res.json().catch(() => ({}));
+    if (data && data.success && data.usdt_balance !== undefined) {
+      // 🔒 HARDENED: Overwrite local state with true server-authoritative balance
+      currentUser.usdtBalance = parseFloat(data.usdt_balance);
+      currentUser.gigaBalance = parseFloat(data.giga_balance || 0);
+      currentUser.lifetimeProfit = parseFloat(data.lifetime_profit || 0);
+      updateBalanceDisplays();
+    }
   } catch (e) {
     console.warn('Balance sync skipped (offline or error):', e.message);
   }
@@ -2516,8 +2520,8 @@ function initNotificationSystem() {
           }
         }
       })
-      .catch(() => {});
-  } catch (e) {}
+      .catch(() => { });
+  } catch (e) { }
 
   // Global helper ready for Admin Panel integration
   window.showAdminBroadcast = function (data) {
@@ -2672,7 +2676,7 @@ function initUserProfileModal() {
         try {
           const parsed = JSON.parse(savedUserJson);
           regDate = parsed.createdAt || parsed.loginTime || parsed.passwordUpdated;
-        } catch (e) {}
+        } catch (e) { }
       }
     }
     if (modalRegisterDate) {
@@ -2680,7 +2684,7 @@ function initUserProfileModal() {
     }
   }
 
-  window.openProfileModal = function() {
+  window.openProfileModal = function () {
     if (!modal) return;
     updateModalValues();
 
@@ -2697,7 +2701,7 @@ function initUserProfileModal() {
             localStorage.setItem('gigachain_current_user', JSON.stringify(currentUser));
           }
         })
-        .catch(() => {});
+        .catch(() => { });
     }
 
     modal.classList.remove('hidden');
@@ -2705,7 +2709,7 @@ function initUserProfileModal() {
     document.body.style.overflow = 'hidden';
   };
 
-  window.closeProfileModal = function() {
+  window.closeProfileModal = function () {
     if (!modal) return;
     modal.classList.add('hidden');
     modal.classList.remove('flex');
