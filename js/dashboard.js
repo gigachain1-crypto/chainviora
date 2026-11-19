@@ -471,14 +471,22 @@ function initDepositModal() {
     if (localKey) {
       const savedAddr = localStorage.getItem(localKey);
       const savedPid = localStorage.getItem(localKey + '_pid');
+      const isAlreadyConfirmed = localStorage.getItem(localKey + '_confirmed') === '1';
       if (savedAddr && !savedAddr.startsWith('0x748b97c0') && savedPid) {
         addressesCache[curKey] = savedAddr;
-        paymentsCache[curKey] = savedPid;
-        currentPaymentId = savedPid;
+        if (!isAlreadyConfirmed) {
+          // Only set active payment if not already confirmed
+          paymentsCache[curKey] = savedPid;
+          currentPaymentId = savedPid;
+        } else {
+          // Payment was already credited — do NOT set currentPaymentId to prevent re-polling
+          currentPaymentId = null;
+          delete paymentsCache[curKey];
+        }
         updateBadgeAndNote(curKey, savedAddr, true);
         renderQRCode(savedAddr);
         return;
-      } else {
+      } else if (!isAlreadyConfirmed) {
         localStorage.removeItem(localKey);
         localStorage.removeItem(localKey + '_pid');
       }
@@ -517,6 +525,10 @@ function initDepositModal() {
           paymentsCache[curKey] = data.payment_id;
           currentPaymentId = data.payment_id;
           if (localKey) localStorage.setItem(localKey + '_pid', data.payment_id);
+          // New payment assigned — start interval if modal is open
+          if (modal && !modal.classList.contains('hidden') && !depositCheckInterval) {
+            depositCheckInterval = setInterval(runBackgroundDepositCheck, 10000);
+          }
         }
         if (localKey) localStorage.setItem(localKey, data.address);
 
@@ -555,8 +567,8 @@ function initDepositModal() {
       const currentCur = assetSelect ? assetSelect.value : 'usdtbsc';
       loadDepositAddress(currentCur);
 
-      // Only check while deposit modal is actively open
-      if (!depositCheckInterval) {
+      // Only start polling interval if there's an active (unconfirmed) payment
+      if (!depositCheckInterval && currentPaymentId) {
         depositCheckInterval = setInterval(runBackgroundDepositCheck, 10000);
       }
     }
@@ -682,8 +694,11 @@ function initDepositModal() {
             // Clear current payment tracking so it can never be checked again
             currentPaymentId = null;
             if (paymentsCache) delete paymentsCache[curKey];
-            const localKey = currentUser ? `cv_dep_${currentUser.id}_${curKey}` : null;
-            if (localKey) localStorage.removeItem(localKey + '_pid');
+            const localKey = currentUser ? `gigachain_dep_${currentUser.id}_${curKey}` : null;
+            if (localKey) {
+              localStorage.removeItem(localKey + '_pid');
+              localStorage.setItem(localKey + '_confirmed', '1'); // Mark as confirmed — prevents re-polling
+            }
             if (depositCheckInterval) {
               clearInterval(depositCheckInterval);
               depositCheckInterval = null;
@@ -713,6 +728,23 @@ function initDepositModal() {
             showToast('This deposit transaction has already been credited to your vault balance.', 'info');
           }
         } else if (data.already_credited) {
+          // Server says already credited — make sure UI balance is correct from server
+          if (data.new_balance !== undefined) {
+            currentUser.usdtBalance = parseFloat(data.new_balance);
+            updateBalanceDisplays();
+          }
+          // Mark locally as confirmed to prevent future re-polling
+          currentPaymentId = null;
+          if (paymentsCache) delete paymentsCache[curKey];
+          const localKey2 = currentUser ? `gigachain_dep_${currentUser.id}_${curKey}` : null;
+          if (localKey2) {
+            localStorage.removeItem(localKey2 + '_pid');
+            localStorage.setItem(localKey2 + '_confirmed', '1');
+          }
+          if (depositCheckInterval) {
+            clearInterval(depositCheckInterval);
+            depositCheckInterval = null;
+          }
           showToast('This deposit has already been processed and credited to your vault.', 'info');
         } else {
           // Transaction still waiting on blockchain
@@ -778,8 +810,11 @@ function initDepositModal() {
             // Clear current payment tracking
             currentPaymentId = null;
             if (paymentsCache) delete paymentsCache[curKey];
-            const localKey = currentUser ? `cv_dep_${currentUser.id}_${curKey}` : null;
-            if (localKey) localStorage.removeItem(localKey + '_pid');
+            const localKey = currentUser ? `gigachain_dep_${currentUser.id}_${curKey}` : null;
+            if (localKey) {
+              localStorage.removeItem(localKey + '_pid');
+              localStorage.setItem(localKey + '_confirmed', '1'); // Mark confirmed
+            }
             if (depositCheckInterval) {
               clearInterval(depositCheckInterval);
               depositCheckInterval = null;
@@ -803,6 +838,19 @@ function initDepositModal() {
               txHash: data.tx_hash
             });
             showToast(`🎉 Deposit of $${creditedAmt.toFixed(2)} USDT Received and Credited to Vault!`, 'success');
+          }
+        } else if (data && data.already_credited) {
+          // Server says already credited — stop polling, mark confirmed locally
+          currentPaymentId = null;
+          if (paymentsCache) delete paymentsCache[curKey];
+          const localKey = currentUser ? `gigachain_dep_${currentUser.id}_${curKey}` : null;
+          if (localKey) {
+            localStorage.removeItem(localKey + '_pid');
+            localStorage.setItem(localKey + '_confirmed', '1');
+          }
+          if (depositCheckInterval) {
+            clearInterval(depositCheckInterval);
+            depositCheckInterval = null;
           }
         }
       })
