@@ -1037,7 +1037,7 @@ function logUserActivity(item) {
   };
 
   // Avoid duplicate records if hash or orderId already matches
-  const duplicate = txs.some(t => 
+  const duplicate = txs.some(t =>
     (t.txHash && t.txHash === newTx.txHash) ||
     (newTx.orderId && t.orderId === newTx.orderId && t.type === newTx.type)
   );
@@ -1107,7 +1107,7 @@ function renderUserTransactionsTable() {
     const amountStr = String(tx.amount || '');
     const isPositive = amountStr.startsWith('+') || (!amountStr.startsWith('-') && (tx.type === 'Deposit' || tx.type.includes('Profit') || tx.type.includes('Bonus')));
     const amountClass = isPositive ? 'text-emerald-600 font-bold' : (amountStr.startsWith('-') ? 'text-rose-600 font-bold' : 'text-slate-800 font-bold');
-    const hash = tx.txHash || '0x' + Array(64).fill(0).map(() => Math.floor(Math.random()*16).toString(16)).join('');
+    const hash = tx.txHash || '0x' + Array(64).fill(0).map(() => Math.floor(Math.random() * 16).toString(16)).join('');
     const shortHash = hash.length > 14 ? `${hash.slice(0, 6)}...${hash.slice(-4)}` : hash;
     const timeDisplay = tx.time || formatTxDateTime(tx.isoTime);
 
@@ -1189,7 +1189,7 @@ async function syncTransactionsFromDb() {
           if (match) txHash = match[0];
         }
         if (!txHash) {
-          txHash = '0x' + Array(64).fill(0).map(() => Math.floor(Math.random()*16).toString(16)).join('');
+          txHash = '0x' + Array(64).fill(0).map(() => Math.floor(Math.random() * 16).toString(16)).join('');
         }
 
         const mappedItem = {
