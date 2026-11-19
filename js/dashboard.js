@@ -116,6 +116,29 @@ function initDashboardUser() {
 
   updateBalanceDisplays();
 
+  // Async sync with Supabase profile balance (ensures confirmed deposits sync immediately)
+  if (currentUser.email) {
+    (async () => {
+      try {
+        if (window.supabaseClient) {
+          const { data } = await window.supabaseClient
+            .from('profiles')
+            .select('usdt_balance, giga_balance, lifetime_profit')
+            .ilike('email', currentUser.email)
+            .maybeSingle();
+
+          if (data) {
+            const dbUsdt = parseFloat(data.usdt_balance || 0);
+            if (dbUsdt > (currentUser.usdtBalance || 0)) {
+              currentUser.usdtBalance = dbUsdt;
+              updateBalanceDisplays();
+            }
+          }
+        }
+      } catch (err) {}
+    })();
+  }
+
   // Logout Action
   const logoutBtn = document.getElementById('logoutBtn');
   if (logoutBtn) {
@@ -527,18 +550,15 @@ function initDepositModal() {
       const curKey = assetSelect ? assetSelect.value : 'usdtbsc';
       const meta = NETWORK_META[curKey] || NETWORK_META.usdtbsc;
       const pId = currentPaymentId || paymentsCache[curKey];
+      const addr = (addrInput && addrInput.value) ? addrInput.value : (addressesCache[curKey] || '0x9Ca60E989A9E8ce08dCFEfcC108A952cEe4f517b');
 
       try {
-        if (!pId) {
-          showToast('Payment session not initialized. Please refresh the address.', 'error');
-          return;
-        }
-
         const res = await fetch('/api/check-deposit-status', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            payment_id: pId,
+            payment_id: pId || null,
+            address: addr,
             user_id: currentUser ? currentUser.id : null,
             email: currentUser ? currentUser.email : null
           })
@@ -548,28 +568,35 @@ function initDepositModal() {
 
         if (data.success && data.confirmed) {
           // Real on-chain crypto payment received & confirmed!
-          const creditedAmt = parseFloat(data.amount || 30.00);
-          currentUser.usdtBalance = (currentUser.usdtBalance || 0) + creditedAmt;
-          updateBalanceDisplays();
+          const creditedAmt = parseFloat(data.amount || 1.00);
+          const txKey = 'cv_dep_credited_' + (data.tx_hash || 'tx_' + creditedAmt);
 
-          // Add to user activity & transaction history
-          logUserActivity({
-            type: 'Deposit',
-            asset: `USDT (${meta.name || 'BEP20'})`,
-            amount: `+$${creditedAmt.toFixed(2)} USDT`,
-            rawAmount: creditedAmt,
-            txHash: data.tx_hash || generateTxHash(),
-            status: 'Completed',
-            notes: `On-chain deposit via ${meta.name} (NOWPayments ID: ${data.payment_id || ''})`
-          });
+          if (!localStorage.getItem(txKey)) {
+            localStorage.setItem(txKey, '1');
+            currentUser.usdtBalance = (currentUser.usdtBalance || 0) + creditedAmt;
+            updateBalanceDisplays();
+
+            // Add to user activity & transaction history
+            logUserActivity({
+              type: 'Deposit',
+              asset: `USDT (${meta.label || 'BEP20'})`,
+              amount: `+$${creditedAmt.toFixed(2)} USDT`,
+              rawAmount: creditedAmt,
+              txHash: data.tx_hash || generateTxHash(),
+              status: 'Completed',
+              notes: `On-chain deposit via ${meta.name || 'BEP20'} (Status: Confirmed)`
+            });
+            syncBalanceToSupabase('deposit_confirmed');
+          }
 
           // Close modal & open centered Deposit Successful modal
           closeDeposit();
           showDepositSuccessModal({
             amount: creditedAmt,
-            networkName: meta.name,
+            networkName: meta.name || 'USDT (BEP20 - BNB Smart Chain)',
             txHash: data.tx_hash
           });
+          showToast(`🎉 Deposit of $${creditedAmt.toFixed(2)} USDT Confirmed! Credited to Vault!`, 'success');
         } else {
           // Transaction still waiting on blockchain
           showToast('⏳ Waiting for transfer. No incoming transfer detected yet on this address. If you just sent crypto from your wallet, please wait 1-2 minutes for network confirmation and click again.', 'info');
@@ -587,6 +614,62 @@ function initDepositModal() {
       }
     });
   }
+
+  // Background Auto-Listener: Polls for incoming blockchain deposits continuously
+  function runBackgroundDepositCheck() {
+    const curKey = assetSelect ? assetSelect.value : 'usdtbsc';
+    const meta = NETWORK_META[curKey] || NETWORK_META.usdtbsc;
+    const pId = currentPaymentId || paymentsCache[curKey];
+    const addr = (addrInput && addrInput.value) ? addrInput.value : (addressesCache[curKey] || '0x9Ca60E989A9E8ce08dCFEfcC108A952cEe4f517b');
+
+    fetch('/api/check-deposit-status', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        payment_id: pId || null,
+        address: addr,
+        user_id: currentUser ? currentUser.id : null,
+        email: currentUser ? currentUser.email : null
+      })
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data && data.success && data.confirmed) {
+        const creditedAmt = parseFloat(data.amount || 1.00);
+        const txKey = 'cv_dep_credited_' + (data.tx_hash || 'tx_' + creditedAmt);
+
+        if (!localStorage.getItem(txKey)) {
+          localStorage.setItem(txKey, '1');
+          currentUser.usdtBalance = (currentUser.usdtBalance || 0) + creditedAmt;
+          updateBalanceDisplays();
+
+          logUserActivity({
+            type: 'Deposit',
+            asset: `USDT (${meta.label || 'BEP20'})`,
+            amount: `+$${creditedAmt.toFixed(2)} USDT`,
+            rawAmount: creditedAmt,
+            txHash: data.tx_hash || generateTxHash(),
+            status: 'Completed',
+            notes: `On-chain deposit verified & credited automatically`
+          });
+          syncBalanceToSupabase('deposit_confirmed');
+
+          closeDeposit();
+          showDepositSuccessModal({
+            amount: creditedAmt,
+            networkName: meta.name || 'USDT (BEP20 - BNB Smart Chain)',
+            txHash: data.tx_hash
+          });
+          showToast(`🎉 Deposit of $${creditedAmt.toFixed(2)} USDT Received and Credited to Vault!`, 'success');
+        }
+      }
+    })
+    .catch(() => {});
+  }
+
+  // Check 1.5 seconds after page loads, and every 8 seconds continuously
+  setTimeout(runBackgroundDepositCheck, 1500);
+  setInterval(runBackgroundDepositCheck, 8000);
 }
 
 /* --------------------------------------------------------------------------

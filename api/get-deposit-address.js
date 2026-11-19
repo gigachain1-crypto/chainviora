@@ -60,8 +60,8 @@ module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const { user_id, currency = 'usdtbsc', force_refresh = false } = req.body;
-    if (!user_id) return res.status(400).json({ error: 'user_id is required' });
+    const { user_id, email, currency = 'usdtbsc', force_refresh = false } = req.body;
+    if (!user_id && !email) return res.status(400).json({ error: 'user_id or email is required' });
 
     const curKey = currency.toLowerCase();
     const meta = NETWORK_META[curKey] || NETWORK_META.usdtbsc;
@@ -69,6 +69,7 @@ module.exports = async (req, res) => {
     let cachedAddress = null;
     let cachedPaymentId = null;
     let supabaseOk = false;
+    let matchedProfile = null;
 
     // ---- 1. Try Supabase: check if real address & payment_id already exists ----
     if (SUPABASE_URL && SUPABASE_SERVICE_KEY && !force_refresh) {
@@ -76,18 +77,21 @@ module.exports = async (req, res) => {
         const { createClient } = require('@supabase/supabase-js');
         const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('deposit_addresses, deposit_payments')
-          .eq('id', user_id)
-          .single();
+        let profQuery = supabase.from('profiles').select('id, deposit_addresses, deposit_payments');
+        if (email) {
+          profQuery = profQuery.ilike('email', email.trim().toLowerCase());
+        } else {
+          profQuery = profQuery.eq('id', user_id);
+        }
+        const { data: profile } = await profQuery.maybeSingle();
 
         if (profile) {
+          matchedProfile = profile;
           supabaseOk = true;
           if (profile.deposit_addresses && profile.deposit_addresses[curKey]) {
             const addr = profile.deposit_addresses[curKey];
-            // Check if it's NOT an old deterministic fallback address (old fake addresses had repeating hash pattern)
-            const fakeAddr = deterministicAddress(user_id, curKey);
+            // Check if it's NOT an old deterministic fallback address
+            const fakeAddr = deterministicAddress(user_id || profile.id, curKey);
             if (addr !== fakeAddr && profile.deposit_payments && profile.deposit_payments[curKey]) {
               cachedAddress = addr;
               cachedPaymentId = profile.deposit_payments[curKey];
@@ -123,11 +127,11 @@ module.exports = async (req, res) => {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          price_amount: 30, // $30 qualification meets all network minimums
+          price_amount: 1, // $1 base to support micro-deposits seamlessly
           price_currency: 'usd',
           pay_currency: meta.nowCurrency,
-          order_id: `dep_${user_id.slice(0, 8)}_${curKey}_${Date.now()}`,
-          order_description: `Gigachain Deposit for ${curKey.toUpperCase()} - user ${user_id.slice(0, 8)}`,
+          order_id: `dep_${(user_id || (matchedProfile && matchedProfile.id) || 'usr').slice(0, 8)}_${curKey}_${Date.now()}`,
+          order_description: `Gigachain Deposit for ${curKey.toUpperCase()}`,
           ipn_callback_url: 'https://www.chainviora.com/api/check-deposit-status',
           is_fixed_rate: false,
           is_fee_paid_by_user: false
@@ -150,7 +154,7 @@ module.exports = async (req, res) => {
 
     // Fallback if network offline
     if (!generatedAddress) {
-      generatedAddress = deterministicAddress(user_id, curKey);
+      generatedAddress = deterministicAddress(user_id || 'usr', curKey);
       console.log('Using deterministic fallback address for', curKey, ':', generatedAddress);
     }
 
@@ -160,11 +164,12 @@ module.exports = async (req, res) => {
         const { createClient } = require('@supabase/supabase-js');
         const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
+        const targetId = matchedProfile ? matchedProfile.id : user_id;
         const { data: prof } = await supabase
           .from('profiles')
           .select('deposit_addresses, deposit_payments')
-          .eq('id', user_id)
-          .single();
+          .eq('id', targetId)
+          .maybeSingle();
 
         const existingMap = (prof && prof.deposit_addresses) ? prof.deposit_addresses : {};
         const updatedMap = { ...existingMap, [curKey]: generatedAddress };
@@ -180,7 +185,7 @@ module.exports = async (req, res) => {
             deposit_address: generatedAddress,
             deposit_address_currency: curKey
           })
-          .eq('id', user_id);
+          .eq('id', targetId);
 
         console.log('Real NOWPayments address saved to Supabase:', generatedAddress);
       } catch (saveErr) {
