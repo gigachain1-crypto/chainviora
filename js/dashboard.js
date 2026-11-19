@@ -13,12 +13,15 @@ document.addEventListener('DOMContentLoaded', () => {
   initUserActivityHistory();
   initNotificationSystem();
   initAboutUsModal();
+  initUserProfileModal();
 });
 
 // State
 let currentUser = {
   id: null, // Will be set from localStorage (persistent UUID per device)
   username: 'GIGA' + Math.floor(100000 + Math.random() * 900000),
+  fullName: '',
+  createdAt: null,
   email: 'crypto.member@chainviora.com',
   referralCode: Math.floor(100000 + Math.random() * 900000).toString(),
   gigaBalance: 0.00,
@@ -56,6 +59,8 @@ function initDashboardUser() {
       const parsed = JSON.parse(savedUserJson);
       if (parsed.username) currentUser.username = parsed.username;
       if (parsed.email) currentUser.email = parsed.email;
+      if (parsed.fullName) currentUser.fullName = parsed.fullName;
+      if (parsed.createdAt) currentUser.createdAt = parsed.createdAt;
       if (parsed.referralCode) currentUser.referralCode = parsed.referralCode;
 
       // ✅ FULL DATA ISOLATION: Use email-keyed localStorage for balances
@@ -141,6 +146,11 @@ function initDashboardUser() {
           if (headerUsername) headerUsername.textContent = data.username;
           if (welcomeUsername) welcomeUsername.textContent = data.username;
         }
+
+        // Store profile details for Profile modal
+        if (data.full_name) currentUser.fullName = data.full_name;
+        if (data.created_at) currentUser.createdAt = data.created_at;
+        if (data.email) currentUser.email = data.email;
 
         // 2. Balances & Counters sync
         if (data.usdt_balance !== undefined) {
@@ -2569,6 +2579,160 @@ function initAboutUsModal() {
   // Global trigger
   window.openAboutUsModal = openModal;
 }
+
+/* --------------------------------------------------------------------------
+   User Profile Modal (Username, Full Name, Register Date, Email)
+   -------------------------------------------------------------------------- */
+function initUserProfileModal() {
+  const modal = document.getElementById('userProfileModal');
+  const closeBtn = document.getElementById('closeUserProfileModal');
+  const closeFooterBtn = document.getElementById('closeUserProfileModalBtn');
+  const welcomeTrigger = document.getElementById('welcomeUsernameContainer');
+  const headerTrigger = document.getElementById('headerUsernameContainer');
+  const headerUserSpan = document.getElementById('headerUsername');
+  const welcomeUserSpan = document.getElementById('welcomeUsername');
+
+  const modalUsername = document.getElementById('profileModalUsername');
+  const modalName = document.getElementById('profileModalName');
+  const modalEmail = document.getElementById('profileModalEmail');
+  const modalRegisterDate = document.getElementById('profileModalRegisterDate');
+  const avatarInitial = document.getElementById('profileAvatarInitial');
+  const copyUserBtn = document.getElementById('copyProfileUsernameBtn');
+  const copyEmailBtn = document.getElementById('copyProfileEmailBtn');
+
+  function formatDate(isoStr) {
+    if (!isoStr) return 'Verified Member';
+    try {
+      const d = new Date(isoStr);
+      if (isNaN(d.getTime())) return 'Verified Member';
+      return d.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+    } catch (e) {
+      return 'Verified Member';
+    }
+  }
+
+  function updateModalValues() {
+    const uName = currentUser.username || 'GIGA000000';
+    if (modalUsername) modalUsername.textContent = uName;
+
+    // Display Name
+    const fName = currentUser.fullName || currentUser.name || (currentUser.email ? currentUser.email.split('@')[0] : 'Chainviora Member');
+    if (modalName) modalName.textContent = fName;
+
+    // Avatar Initial
+    if (avatarInitial) {
+      const initial = (fName || uName || 'G').trim().charAt(0).toUpperCase();
+      avatarInitial.textContent = initial || 'G';
+    }
+
+    // Email
+    const uEmail = currentUser.email || 'member@chainviora.com';
+    if (modalEmail) modalEmail.textContent = uEmail;
+
+    // Register Date
+    let regDate = currentUser.createdAt || currentUser.created_at;
+    if (!regDate) {
+      const savedUserJson = localStorage.getItem('gigachain_current_user');
+      if (savedUserJson) {
+        try {
+          const parsed = JSON.parse(savedUserJson);
+          regDate = parsed.createdAt || parsed.loginTime || parsed.passwordUpdated;
+        } catch (e) {}
+      }
+    }
+    if (modalRegisterDate) {
+      modalRegisterDate.textContent = formatDate(regDate);
+    }
+  }
+
+  window.openProfileModal = function() {
+    if (!modal) return;
+    updateModalValues();
+
+    // Fetch live fresh profile details from server
+    if (currentUser.email) {
+      fetch(`/api/update-balance?email=${encodeURIComponent(currentUser.email)}`)
+        .then(r => r.json())
+        .then(d => {
+          if (d && d.success) {
+            if (d.full_name) currentUser.fullName = d.full_name;
+            if (d.created_at) currentUser.createdAt = d.created_at;
+            if (d.username) currentUser.username = d.username;
+            updateModalValues();
+            localStorage.setItem('gigachain_current_user', JSON.stringify(currentUser));
+          }
+        })
+        .catch(() => {});
+    }
+
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    document.body.style.overflow = 'hidden';
+  };
+
+  window.closeProfileModal = function() {
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    document.body.style.overflow = '';
+  };
+
+  if (welcomeTrigger) welcomeTrigger.addEventListener('click', window.openProfileModal);
+  if (welcomeUserSpan) welcomeUserSpan.addEventListener('click', (e) => {
+    e.stopPropagation();
+    window.openProfileModal();
+  });
+  if (headerTrigger) headerTrigger.addEventListener('click', (e) => {
+    if (e.target.closest('#copyUsernameBtn')) return;
+    window.openProfileModal();
+  });
+  if (headerUserSpan) headerUserSpan.addEventListener('click', (e) => {
+    e.stopPropagation();
+    window.openProfileModal();
+  });
+
+  if (closeBtn) closeBtn.addEventListener('click', window.closeProfileModal);
+  if (closeFooterBtn) closeFooterBtn.addEventListener('click', window.closeProfileModal);
+
+  if (modal) {
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) window.closeProfileModal();
+    });
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && modal && !modal.classList.contains('hidden')) {
+      window.closeProfileModal();
+    }
+  });
+
+  // Copy Username in modal
+  if (copyUserBtn) {
+    copyUserBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const txt = modalUsername ? modalUsername.textContent : currentUser.username;
+      navigator.clipboard.writeText(txt).then(() => {
+        showToast('Username copied to clipboard! 📋', 'success');
+      });
+    });
+  }
+
+  // Copy Email in modal
+  if (copyEmailBtn) {
+    copyEmailBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const txt = modalEmail ? modalEmail.textContent : currentUser.email;
+      navigator.clipboard.writeText(txt).then(() => {
+        showToast('Email address copied to clipboard! 📋', 'success');
+      });
+    });
+  }
+}
+
 
 
 
