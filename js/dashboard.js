@@ -356,13 +356,11 @@ function updateBalanceDisplays() {
   if (gigaSellDisplay) gigaSellDisplay.textContent = `${totalGigaSold} GIGA`;
   if (gigaSellUsdDisplay) gigaSellUsdDisplay.textContent = `$${soldVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-  // Update withdrawal modal options dynamically
+  // Update withdrawal modal options dynamically (USDT BEP20 only)
   const withdrawAssetSelect = document.getElementById('withdrawAssetSelect');
   if (withdrawAssetSelect) {
     const usdtOpt = withdrawAssetSelect.querySelector('option[value="USDT"]');
-    const gigaOpt = withdrawAssetSelect.querySelector('option[value="GIGA"]');
     if (usdtOpt) usdtOpt.textContent = `USDT (Available: ${currentUser.usdtBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT)`;
-    if (gigaOpt) gigaOpt.textContent = `GIGA (Available: ${totalGigaBought} GIGA)`;
   }
 
   // Save updated balance to localStorage (user-specific key)
@@ -894,8 +892,7 @@ function initWithdrawModal() {
 
   if (maxBtn && amountInput) {
     maxBtn.addEventListener('click', () => {
-      const asset = assetSelect ? assetSelect.value : 'USDT';
-      const maxAvailable = asset === 'GIGA' ? currentUser.gigaBalance : currentUser.usdtBalance;
+      const maxAvailable = currentUser.usdtBalance;
       amountInput.value = maxAvailable.toFixed(2);
       calculateReceive();
     });
@@ -924,6 +921,12 @@ function initWithdrawModal() {
 
       if (amount <= 0) {
         showToast('Please enter a valid withdrawal amount first.', 'error');
+        if (amountInput) amountInput.focus();
+        return;
+      }
+
+      if (amount < 50) {
+        showToast('Minimum withdrawal amount is $50 USDT.', 'error');
         if (amountInput) amountInput.focus();
         return;
       }
@@ -1027,6 +1030,12 @@ function initWithdrawModal() {
 
       if (amount <= 0) {
         showToast('Please enter a valid withdrawal amount.', 'error');
+        return;
+      }
+
+      if (amount < 50) {
+        showToast('Minimum withdrawal amount is $50 USDT.', 'error');
+        if (amountInput) amountInput.focus();
         return;
       }
 
