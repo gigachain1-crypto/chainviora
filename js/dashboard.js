@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initCopyActions();
   initReferralSystem();
   initBuySellMarket();
+  initUserActivityHistory();
 });
 
 // State
@@ -149,18 +150,21 @@ async function syncBalanceToSupabase(action = 'update') {
 }
 
 // ─── Record Transaction to Supabase ─────────────────────────────────────────
-async function recordTxToSupabase(type, amountUsdt, amountGiga, orderId, notes) {
+async function recordTxToSupabase(type, amountUsdt, amountGiga, orderId, notes, txHash, asset) {
   try {
     const supabaseUserId = localStorage.getItem('supabase_user_id') || currentUser.id;
-    if (!supabaseUserId) return;
+    if (!supabaseUserId && !currentUser.email) return;
     await fetch('/api/record-transaction', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         user_id: supabaseUserId,
+        email: currentUser.email,
         type,
+        asset: asset || (type.includes('giga') ? 'GIGA' : 'USDT'),
         amount_usdt: amountUsdt || 0,
         amount_giga: amountGiga || 0,
+        tx_hash: txHash || null,
         order_id: orderId || null,
         status: 'completed',
         notes: notes || null
@@ -520,8 +524,16 @@ function initDepositModal() {
           currentUser.usdtBalance = (currentUser.usdtBalance || 0) + creditedAmt;
           updateBalanceDisplays();
 
-          // Add to transaction history
-          addTransactionRow('Deposit', `$${creditedAmt.toFixed(2)} USDT`, `+$${creditedAmt.toFixed(2)}`, data.tx_hash, 'Just now', 'Completed');
+          // Add to user activity & transaction history
+          logUserActivity({
+            type: 'Deposit',
+            asset: `USDT (${meta.name || 'BEP20'})`,
+            amount: `+$${creditedAmt.toFixed(2)} USDT`,
+            rawAmount: creditedAmt,
+            txHash: data.tx_hash || generateTxHash(),
+            status: 'Completed',
+            notes: `On-chain deposit via ${meta.name} (NOWPayments ID: ${data.payment_id || ''})`
+          });
 
           // Close modal & open centered Deposit Successful modal
           closeDeposit();
@@ -840,9 +852,18 @@ function initWithdrawModal() {
         }
         updateBalanceDisplays();
 
-        // Add to transaction history table with 6% service charge noted
+        // Add to user activity history & sync
         const txHash = generateTxHash();
-        addTransactionRow('Withdrawal', `${asset} (-6% Fee)`, `-${amount.toFixed(2)}`, txHash, 'Just now', 'Confirmed');
+        logUserActivity({
+          type: 'Withdrawal',
+          asset: `${asset} (-6% Fee)`,
+          amount: `-${amount.toFixed(2)} ${asset}`,
+          rawAmount: amount,
+          txHash: txHash,
+          status: 'Confirmed',
+          notes: `Withdrawal of ${receive.toFixed(2)} ${asset} (fee: ${fee.toFixed(2)} ${asset})`
+        });
+        syncBalanceToSupabase('withdrawal');
 
         closeWithdraw();
         showToast(`Withdrawal of ${amount.toFixed(2)} ${asset} successfully submitted! (Received: ${receive.toFixed(2)} ${asset} after 6% fee) 🚀`, 'success');
@@ -881,7 +902,7 @@ function initWithdrawModal() {
 }
 
 /* --------------------------------------------------------------------------
-   4. Table Helpers & Utilities
+   4. User Activity & Transaction History System (Per-User Isolated & Synced)
    -------------------------------------------------------------------------- */
 function generateTxHash() {
   const chars = '0123456789abcdef';
@@ -892,39 +913,329 @@ function generateTxHash() {
   return hash;
 }
 
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function getUserTxStorageKey() {
+  const emailKey = currentUser.email
+    ? currentUser.email.toLowerCase().replace(/[^a-z0-9]/g, '_')
+    : (currentUser._emailKey || 'guest');
+  return `cv_txs_${emailKey}`;
+}
+
+function getUserTransactions() {
+  try {
+    const raw = localStorage.getItem(getUserTxStorageKey());
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveUserTransactions(txs) {
+  try {
+    if (!Array.isArray(txs)) return;
+    localStorage.setItem(getUserTxStorageKey(), JSON.stringify(txs.slice(0, 100)));
+  } catch (e) {
+    console.warn('Failed to save transactions to localStorage:', e);
+  }
+}
+
+function formatTxDateTime(d) {
+  const dt = d ? (d instanceof Date ? d : new Date(d)) : new Date();
+  if (isNaN(dt.getTime())) return 'Recent';
+  return dt.toLocaleString('en-US', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
+function getTxBadgeConfig(type) {
+  const norm = (type || '').toLowerCase();
+  if (norm.includes('deposit')) {
+    return {
+      className: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+      icon: `<svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>`
+    };
+  }
+  if (norm.includes('buy')) {
+    return {
+      className: 'bg-blue-50 text-blue-700 border-blue-200',
+      icon: `<svg class="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>`
+    };
+  }
+  if (norm.includes('sell') || norm.includes('profit')) {
+    return {
+      className: 'bg-purple-50 text-purple-700 border-purple-200',
+      icon: `<svg class="w-3.5 h-3.5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>`
+    };
+  }
+  if (norm.includes('withdraw')) {
+    return {
+      className: 'bg-rose-50 text-rose-700 border-rose-200',
+      icon: `<svg class="w-3.5 h-3.5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg>`
+    };
+  }
+  if (norm.includes('referral') || norm.includes('bonus')) {
+    return {
+      className: 'bg-amber-50 text-amber-700 border-amber-200',
+      icon: `<svg class="w-3.5 h-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"/></svg>`
+    };
+  }
+  return {
+    className: 'bg-slate-50 text-slate-700 border-slate-200',
+    icon: `<svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke-width="2"/></svg>`
+  };
+}
+
+function getTxStatusBadgeClass(status) {
+  const norm = (status || 'completed').toLowerCase();
+  if (norm === 'completed' || norm === 'confirmed') {
+    return 'bg-emerald-100 text-emerald-800 border border-emerald-200';
+  }
+  if (norm === 'pending' || norm === 'processing') {
+    return 'bg-amber-100 text-amber-800 border border-amber-200';
+  }
+  if (norm === 'failed' || norm === 'rejected') {
+    return 'bg-rose-100 text-rose-800 border border-rose-200';
+  }
+  return 'bg-slate-100 text-slate-700 border border-slate-200';
+}
+
+function logUserActivity(item) {
+  if (!item) return;
+  const txs = getUserTransactions();
+
+  const formattedTime = item.time || formatTxDateTime(item.isoTime || new Date());
+  const isoTime = item.isoTime || new Date().toISOString();
+  const txHash = item.txHash || generateTxHash();
+
+  const newTx = {
+    id: item.id || ('act_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6)),
+    type: item.type || 'Activity',
+    asset: item.asset || 'USDT',
+    amount: String(item.amount || '$0.00'),
+    rawAmount: item.rawAmount || 0,
+    txHash: txHash,
+    time: formattedTime,
+    isoTime: isoTime,
+    status: item.status || 'Completed',
+    notes: item.notes || '',
+    orderId: item.orderId || null
+  };
+
+  // Avoid duplicate records if hash or orderId already matches
+  const duplicate = txs.some(t => 
+    (t.txHash && t.txHash === newTx.txHash) ||
+    (newTx.orderId && t.orderId === newTx.orderId && t.type === newTx.type)
+  );
+
+  if (!duplicate) {
+    txs.unshift(newTx);
+    saveUserTransactions(txs);
+  }
+
+  // Sync to backend database
+  const dbType = newTx.type.toLowerCase().replace(/\s+/g, '_');
+  recordTxToSupabase(
+    dbType,
+    newTx.rawAmount || parseFloat((newTx.amount + '').replace(/[^0-9.-]/g, '')) || 0,
+    newTx.asset.includes('GIGA') ? 1 : 0,
+    newTx.orderId,
+    `[${newTx.asset}] ${newTx.notes || newTx.type} (Tx: ${newTx.txHash.slice(0, 10)}...)`,
+    newTx.txHash,
+    newTx.asset
+  );
+
+  // Re-render table immediately
+  renderUserTransactionsTable();
+}
+
+// Backward-compatible wrapper for any code calling addTransactionRow
 function addTransactionRow(type, asset, amount, txHash, time, status) {
+  logUserActivity({
+    type,
+    asset,
+    amount,
+    txHash: txHash || generateTxHash(),
+    time: time && time !== 'Just now' ? time : formatTxDateTime(new Date()),
+    status: status || 'Completed'
+  });
+}
+
+function renderUserTransactionsTable() {
   const table = document.getElementById('transactionHistoryTable');
   if (!table) return;
 
-  const emptyRow = document.getElementById('emptyTxRow');
-  if (emptyRow) emptyRow.remove();
+  const txs = getUserTransactions();
+  const countBadge = document.getElementById('txCountBadge');
+  if (countBadge) {
+    countBadge.textContent = `${txs.length} ${txs.length === 1 ? 'Activity' : 'Activities'}`;
+  }
 
-  const isDeposit = type === 'Deposit';
-  const badgeClass = isDeposit ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200';
-  const amountClass = isDeposit ? 'text-emerald-600' : 'text-slate-800';
-  const icon = isDeposit
-    ? `<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>`
-    : `<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg>`;
+  if (txs.length === 0) {
+    table.innerHTML = `
+      <tr id="emptyTxRow" class="text-center">
+        <td colspan="6" class="py-10 text-center text-slate-400 font-medium">
+          <div class="flex flex-col items-center justify-center gap-2">
+            <svg class="w-8 h-8 text-slate-300 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+            <p class="text-xs">No transactions yet. Deposit funds to get started.</p>
+          </div>
+        </td>
+      </tr>
+    `;
+    return;
+  }
 
-  const row = document.createElement('tr');
-  row.className = 'hover:bg-amber-50/30 transition-colors animate-fade-in';
-  row.innerHTML = `
-    <td class="py-3.5 px-4">
-      <span class="inline-flex items-center gap-1 font-bold ${badgeClass} px-2 py-0.5 rounded-md border text-[11px]">
-        ${icon}
-        ${type}
-      </span>
-    </td>
-    <td class="py-3.5 px-4 font-bold text-slate-800">${asset}</td>
-    <td class="py-3.5 px-4 font-mono font-bold ${amountClass}">${amount}</td>
-    <td class="py-3.5 px-4 font-mono text-slate-500">${txHash.slice(0, 6)}...${txHash.slice(-4)}</td>
-    <td class="py-3.5 px-4 text-slate-400">${time}</td>
-    <td class="py-3.5 px-4 text-right">
-      <span class="px-2 py-1 rounded-md bg-emerald-100 text-emerald-800 font-bold text-[10px]">${status}</span>
-    </td>
-  `;
+  table.innerHTML = txs.map(tx => {
+    const badge = getTxBadgeConfig(tx.type);
+    const amountStr = String(tx.amount || '');
+    const isPositive = amountStr.startsWith('+') || (!amountStr.startsWith('-') && (tx.type === 'Deposit' || tx.type.includes('Profit') || tx.type.includes('Bonus')));
+    const amountClass = isPositive ? 'text-emerald-600 font-bold' : (amountStr.startsWith('-') ? 'text-rose-600 font-bold' : 'text-slate-800 font-bold');
+    const hash = tx.txHash || '0x' + Array(64).fill(0).map(() => Math.floor(Math.random()*16).toString(16)).join('');
+    const shortHash = hash.length > 14 ? `${hash.slice(0, 6)}...${hash.slice(-4)}` : hash;
+    const timeDisplay = tx.time || formatTxDateTime(tx.isoTime);
 
-  table.insertBefore(row, table.firstChild);
+    return `
+      <tr class="hover:bg-amber-50/20 transition-colors animate-fade-in">
+        <td class="py-3.5 px-4">
+          <span class="inline-flex items-center gap-1.5 font-bold ${badge.className} px-2.5 py-1 rounded-md border text-[11px]">
+            ${badge.icon}
+            ${escapeHtml(tx.type)}
+          </span>
+        </td>
+        <td class="py-3.5 px-4 font-bold text-slate-800">${escapeHtml(tx.asset || 'USDT')}</td>
+        <td class="py-3.5 px-4 font-mono ${amountClass}">${escapeHtml(amountStr)}</td>
+        <td class="py-3.5 px-4 font-mono text-slate-500">
+          <button type="button" onclick="navigator.clipboard.writeText('${hash}').then(() => showToast('Tx Hash copied: ${shortHash} 📋', 'success'))" title="Click to copy full hash: ${hash}" class="inline-flex items-center gap-1 hover:text-amber-600 transition-colors cursor-pointer group">
+            <span>${shortHash}</span>
+            <svg class="w-3 h-3 opacity-40 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+          </button>
+        </td>
+        <td class="py-3.5 px-4 text-slate-400 text-[11px] whitespace-nowrap">${escapeHtml(timeDisplay)}</td>
+        <td class="py-3.5 px-4 text-right">
+          <span class="px-2.5 py-0.5 rounded-full ${getTxStatusBadgeClass(tx.status)} font-bold text-[10px] uppercase tracking-wider">${escapeHtml(tx.status || 'Completed')}</span>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+async function syncTransactionsFromDb() {
+  try {
+    const email = currentUser.email;
+    const uid = currentUser.id || localStorage.getItem('supabase_user_id');
+    if (!email && !uid) return;
+
+    const res = await fetch(`/api/record-transaction?email=${encodeURIComponent(email || '')}&user_id=${encodeURIComponent(uid || '')}`);
+    if (!res.ok) return;
+
+    const json = await res.json();
+    if (json.success && Array.isArray(json.transactions) && json.transactions.length > 0) {
+      const localTxs = getUserTransactions();
+      let changed = false;
+
+      json.transactions.forEach(dbTx => {
+        // Map database record to UI transaction object
+        const rawType = (dbTx.type || '').toLowerCase();
+        let displayType = 'Activity';
+        let displayAsset = dbTx.asset || 'USDT';
+        let displayAmount = '+$0.00';
+        let rawAmt = parseFloat(dbTx.amount_usdt) || 0;
+
+        if (rawType.includes('deposit')) {
+          displayType = 'Deposit';
+          displayAsset = dbTx.asset || 'USDT (BEP20)';
+          displayAmount = `+$${rawAmt.toFixed(2)} USDT`;
+        } else if (rawType.includes('buy')) {
+          displayType = 'Buy GIGA';
+          displayAsset = '1 GIGA ($30.00)';
+          displayAmount = `-$30.00 USDT`;
+          rawAmt = 30.00;
+        } else if (rawType.includes('sell') || rawType.includes('profit')) {
+          displayType = 'Sell Profit';
+          displayAsset = 'USDT';
+          displayAmount = `+$${(rawAmt > 0 ? rawAmt : 50.00).toFixed(2)} USDT`;
+          rawAmt = rawAmt > 0 ? rawAmt : 50.00;
+        } else if (rawType.includes('withdraw')) {
+          displayType = 'Withdrawal';
+          displayAsset = dbTx.asset || 'USDT (-6% Fee)';
+          displayAmount = `-$${rawAmt.toFixed(2)}`;
+        } else if (rawType.includes('referral') || rawType.includes('bonus')) {
+          displayType = 'Referral Bonus';
+          displayAsset = 'USDT';
+          displayAmount = `+$${rawAmt.toFixed(2)} USDT`;
+        }
+
+        // Extract hash from notes if column doesn't have it
+        let txHash = dbTx.tx_hash;
+        if (!txHash && dbTx.notes) {
+          const match = dbTx.notes.match(/0x[a-fA-F0-9]{16,64}/);
+          if (match) txHash = match[0];
+        }
+        if (!txHash) {
+          txHash = '0x' + Array(64).fill(0).map(() => Math.floor(Math.random()*16).toString(16)).join('');
+        }
+
+        const mappedItem = {
+          id: dbTx.id,
+          type: displayType,
+          asset: displayAsset,
+          amount: displayAmount,
+          rawAmount: rawAmt,
+          txHash: txHash,
+          time: formatTxDateTime(dbTx.created_at),
+          isoTime: dbTx.created_at || new Date().toISOString(),
+          status: dbTx.status === 'completed' ? 'Completed' : (dbTx.status || 'Completed'),
+          notes: dbTx.notes || '',
+          orderId: dbTx.order_id || null
+        };
+
+        const alreadyExists = localTxs.some(t =>
+          (dbTx.id && t.id === dbTx.id) ||
+          (t.txHash && t.txHash === mappedItem.txHash) ||
+          (mappedItem.orderId && t.orderId === mappedItem.orderId && t.type === mappedItem.type)
+        );
+
+        if (!alreadyExists) {
+          localTxs.push(mappedItem);
+          changed = true;
+        }
+      });
+
+      if (changed) {
+        // Sort descending by date
+        localTxs.sort((a, b) => new Date(b.isoTime || 0) - new Date(a.isoTime || 0));
+        saveUserTransactions(localTxs);
+        renderUserTransactionsTable();
+      }
+    }
+  } catch (err) {
+    console.warn('DB transactions sync skipped:', err.message);
+  }
+}
+
+function initUserActivityHistory() {
+  // 1. Initial render from local per-user storage
+  renderUserTransactionsTable();
+
+  // 2. Sync from database in background
+  syncTransactionsFromDb();
 }
 
 function initCopyActions() {
@@ -1163,8 +1474,16 @@ function initReferralSystem() {
 
       updateBalanceDisplays();
       syncBalanceToSupabase('referral_bonus');
-      recordTxToSupabase('referral_bonus', bonusDiff, 0, null, `Referral Bonus: +$${bonusDiff.toFixed(2)} USDT`);
-      addTransactionRow('Referral Bonus', `+$${bonusDiff.toFixed(2)} USDT`, `+$${bonusDiff.toFixed(2)}`, generateTxHash(), 'Just now', 'Completed');
+      const refTxHash = generateTxHash();
+      logUserActivity({
+        type: 'Referral Bonus',
+        asset: 'USDT',
+        amount: `+$${bonusDiff.toFixed(2)} USDT`,
+        rawAmount: bonusDiff,
+        txHash: refTxHash,
+        status: 'Completed',
+        notes: `Referral Bonus: +$${bonusDiff.toFixed(2)} USDT from invited friends`
+      });
 
       showToast(`🎉 +$${bonusDiff.toFixed(2)} Referral Bonus credited to your main balance from invited friends' deposit!`, 'success');
     }
@@ -1591,6 +1910,20 @@ function initBuySellMarket() {
         currentUser.lifetimeProfit = (currentUser.lifetimeProfit || 0) + 50.00;
         currentUser.usdtBalance = (currentUser.usdtBalance || 0) + 50.00;
         updateBalanceDisplays();
+
+        const profitTxHash = generateTxHash();
+        logUserActivity({
+          type: 'Sell Profit',
+          asset: 'USDT',
+          amount: '+$50.00 USDT',
+          rawAmount: 50.00,
+          txHash: profitTxHash,
+          orderId: oldestWaiting.orderId,
+          status: 'Completed',
+          notes: `Sell Queue ${oldestWaiting.orderId} completed (2 buyers matched) — +$50.00 Profit credited`
+        });
+        syncBalanceToSupabase('sell_profit_credited');
+
         showToast(`🎉 Order ${oldestWaiting.orderId} Completed! 2 buyers matched — $50.00 Profit added!`, 'success');
       }
     }
@@ -1639,9 +1972,18 @@ function initBuySellMarket() {
     }
     savePool(pool);
 
-    // Add to transaction history table
+    // Add to user activity history
     const txHash = generateTxHash();
-    addTransactionRow('Buy GIGA', '1 GIGA ($30.00)', '-$30.00', txHash, 'Just now', 'Completed');
+    logUserActivity({
+      type: 'Buy GIGA',
+      asset: '1 GIGA ($30.00)',
+      amount: '-$30.00 USDT',
+      rawAmount: 30.00,
+      txHash: txHash,
+      orderId: sellOrderId,
+      status: 'Completed',
+      notes: `Bought 1 GIGA ($30.00) — Placed in Sell Queue (${sellOrderId})`
+    });
 
     // ✅ Sync with Supabase Database via API
     try {
@@ -1687,10 +2029,23 @@ function initBuySellMarket() {
         json.orders.forEach(dbOrder => {
           const existing = localPending.find(p => p.orderId === dbOrder.sell_order_code || p.backgroundOrderId === dbOrder.order_id);
           if (existing) {
+            const wasComplete = existing.status === 'Completed';
             if (existing.matchedBuyers !== dbOrder.matched_buyers || existing.status !== dbOrder.status) {
               existing.matchedBuyers = dbOrder.matched_buyers;
               existing.status = dbOrder.status === 'completed' ? 'Completed' : 'Pending';
               changed = true;
+            }
+            if (!wasComplete && dbOrder.status === 'completed') {
+              logUserActivity({
+                type: 'Sell Profit',
+                asset: 'USDT',
+                amount: '+$50.00 USDT',
+                rawAmount: 50.00,
+                txHash: generateTxHash(),
+                orderId: dbOrder.sell_order_code || dbOrder.order_id,
+                status: 'Completed',
+                notes: `Sell Queue ${dbOrder.sell_order_code || dbOrder.order_id} completed — +$50.00 Profit credited`
+              });
             }
           } else {
             localPending.unshift({

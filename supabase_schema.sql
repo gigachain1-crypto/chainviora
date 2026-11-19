@@ -107,6 +107,8 @@ ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS amount_usdt numeric(18,
 ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS amount_giga numeric(18, 4) DEFAULT 0.0000;
 ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS order_id text DEFAULT null;
 ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS notes text DEFAULT null;
+ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS tx_hash text DEFAULT null;
+ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS asset text DEFAULT null;
 
 ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
 

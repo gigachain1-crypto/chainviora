@@ -126,16 +126,23 @@ module.exports = async (req, res) => {
               .eq('id', profile.id);
 
             // Record transaction
-            await supabase.from('transactions').insert({
+            const txPayload = {
               user_id: profile.id,
               type: 'deposit',
               amount_usdt: creditAmount,
               amount_giga: 0,
-              tx_hash: txHash,
               status: 'completed',
-              notes: `NOWPayments Deposit ID: ${paymentId}`,
+              notes: `NOWPayments Deposit ID: ${paymentId} | Hash: ${txHash}`,
               created_at: new Date().toISOString()
+            };
+            let depInsert = await supabase.from('transactions').insert({
+              ...txPayload,
+              tx_hash: txHash,
+              asset: 'USDT'
             });
+            if (depInsert.error && (depInsert.error.message.includes('column') || depInsert.error.code === '42703')) {
+              await supabase.from('transactions').insert(txPayload);
+            }
 
             // Referral bonus check if deposit >= 30
             if (creditAmount >= 30 && profile.referred_by) {
@@ -174,7 +181,7 @@ module.exports = async (req, res) => {
                     }, { onConflict: 'referred_email' });
                   }
                 }
-              } catch (e) {}
+              } catch (e) { }
             }
           }
         }
