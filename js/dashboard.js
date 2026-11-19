@@ -53,6 +53,31 @@ function initDashboardUser() {
   // Set persistent user ID first
   currentUser.id = getOrCreateUserId();
 
+  // 🚀 OFFICIAL LAUNCH RESET: Reset all test-purchased GIGA to 0 across all local caches
+  const LAUNCH_CLEAN_KEY = 'gigachain_fresh_launch_clean_v1';
+  if (!localStorage.getItem(LAUNCH_CLEAN_KEY)) {
+    currentUser.gigaBalance = 0;
+    currentUser.totalGigaBought = 0;
+    currentUser.totalGigaSold = 0;
+
+    try {
+      Object.keys(localStorage).forEach(k => {
+        if (k.startsWith('cv_sells_')) localStorage.setItem(k, JSON.stringify([]));
+        if (k.startsWith('cv_pool_')) localStorage.removeItem(k);
+        if (k.startsWith('cv_balance_')) {
+          try {
+            const b = JSON.parse(localStorage.getItem(k) || '{}');
+            b.giga = 0;
+            b.totalGigaBought = 0;
+            b.totalGigaSold = 0;
+            localStorage.setItem(k, JSON.stringify(b));
+          } catch (e) { }
+        }
+      });
+      localStorage.setItem(LAUNCH_CLEAN_KEY, 'true');
+    } catch (cleanErr) { }
+  }
+
   const savedUserJson = localStorage.getItem('gigachain_current_user');
   if (savedUserJson) {
     try {
