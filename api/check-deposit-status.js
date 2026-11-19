@@ -183,17 +183,32 @@ module.exports = async (req, res) => {
                 console.warn('transactions insert notice:', txInsertErr.message);
               }
 
-              // Update referrals table if user was referred by someone
+              // Update referrals table if user was referred by someone (Strictly 1-time bonus per referred user)
               if (profile.referred_by) {
                 try {
                   const refCode = profile.referred_by.toString().trim().toUpperCase().slice(0, 6);
+                  const cleanEmail = profile.email.toLowerCase().trim();
+
+                  // Check if referral row already exists to preserve 1-time bonus status
+                  const { data: existingRef } = await supabase
+                    .from('referrals')
+                    .select('*')
+                    .eq('referred_email', cleanEmail)
+                    .maybeSingle();
+
+                  const alreadyAwarded = existingRef && existingRef.bonus_awarded === true;
+                  const prevDeposit = existingRef ? parseFloat(existingRef.deposit_amount || 0) : 0;
+                  const totalDeposit = prevDeposit + creditAmount;
+                  const isQualifiedNow = !alreadyAwarded && (totalDeposit >= 30 || creditAmount >= 30);
+
                   await supabase.from('referrals').upsert({
                     referrer_code: refCode,
-                    referred_email: profile.email.toLowerCase().trim(),
+                    referred_email: cleanEmail,
                     referred_username: profile.username || 'Member',
-                    deposit_amount: creditAmount,
-                    bonus_awarded: creditAmount >= 30,
-                    bonus_amount: creditAmount >= 30 ? 5.00 : 0.00
+                    deposit_amount: totalDeposit,
+                    bonus_awarded: alreadyAwarded ? true : isQualifiedNow,
+                    bonus_amount: (alreadyAwarded || isQualifiedNow) ? 5.00 : 0.00,
+                    updated_at: new Date().toISOString()
                   }, { onConflict: 'referred_email' });
                 } catch (refUpsertErr) {
                   console.warn('referrals upsert notice:', refUpsertErr.message);

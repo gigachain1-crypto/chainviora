@@ -52,6 +52,17 @@ async function ensureReferralBonusesCredited(supabase, profile) {
       }
     });
 
+    // 3. Fetch transaction history to ensure strictly 1-time bonus per referred user
+    let existingBonusTxs = [];
+    try {
+      const { data: txs } = await supabase
+        .from('transactions')
+        .select('notes')
+        .eq('user_id', profile.id)
+        .eq('type', 'referral_bonus');
+      if (txs) existingBonusTxs = txs;
+    } catch (e) { }
+
     for (const refUser of candidates) {
       const refEmail = (refUser.email || '').toLowerCase().trim();
       if (!refEmail) continue;
@@ -60,7 +71,11 @@ async function ensureReferralBonusesCredited(supabase, profile) {
       // Qualified if user deposited >= 30 USDT or bonus_awarded is true
       const isQualified = userBal >= 30 || refUser.bonus_awarded === true;
 
-      if (isQualified && !updatedCreditedUsers[refEmail]) {
+      const alreadyCreditedInMap = Boolean(updatedCreditedUsers[refEmail]);
+      const alreadyCreditedInTx = existingBonusTxs.some(t => t.notes && t.notes.toLowerCase().includes(refEmail));
+
+      // Strictly 1-TIME BONUS per referred user: Skip if already credited once
+      if (isQualified && !alreadyCreditedInMap && !alreadyCreditedInTx) {
         newlyCreditedBonus += 5.00;
         updatedCreditedUsers[refEmail] = {
           time: new Date().toISOString(),
@@ -127,7 +142,7 @@ async function ensureReferralBonusesCredited(supabase, profile) {
           amount_usdt: newlyCreditedBonus,
           amount_giga: 0,
           status: 'completed',
-          notes: `Referral Bonus: +$${newlyCreditedBonus.toFixed(2)} USDT from qualified referral deposit`,
+          notes: `Referral Bonus: +$${newlyCreditedBonus.toFixed(2)} USDT from qualified referral deposit (${Object.keys(updatedCreditedUsers).join(', ')})`,
           created_at: new Date().toISOString()
         });
       } catch (e) { }
