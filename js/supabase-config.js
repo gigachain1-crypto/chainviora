@@ -133,7 +133,7 @@ async function signOutUser() {
   if (client) {
     try {
       await client.auth.signOut();
-    } catch (e) {}
+    } catch (e) { }
   }
   localStorage.removeItem('gigachain_current_user');
 }
@@ -147,7 +147,7 @@ async function getCurrentUser() {
     try {
       const { data: { session } } = await client.auth.getSession();
       return session ? session.user : null;
-    } catch (e) {}
+    } catch (e) { }
   }
   const saved = localStorage.getItem('gigachain_current_user');
   return saved ? JSON.parse(saved) : null;
@@ -166,7 +166,7 @@ async function fetchUserProfile(userId) {
         .eq('id', userId)
         .maybeSingle();
       if (!error && data) return data;
-    } catch (e) {}
+    } catch (e) { }
   }
 
   try {
@@ -197,7 +197,7 @@ async function fetchProfileByEmail(email) {
         .ilike('email', email.trim().toLowerCase())
         .maybeSingle();
       if (!error && data) return data;
-    } catch (e) {}
+    } catch (e) { }
   }
 
   try {
@@ -235,7 +235,7 @@ async function recordTransactionToSupabase(userId, fromAsset, toAsset, amountIn,
         }])
         .select();
       return data;
-    } catch (e) {}
+    } catch (e) { }
   }
   return null;
 }

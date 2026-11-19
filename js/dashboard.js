@@ -116,28 +116,84 @@ function initDashboardUser() {
 
   updateBalanceDisplays();
 
-  // Async sync with Supabase profile balance (ensures confirmed deposits sync immediately)
-  if (currentUser.email) {
-    (async () => {
-      try {
-        if (window.supabaseClient) {
-          const { data } = await window.supabaseClient
-            .from('profiles')
-            .select('usdt_balance, giga_balance, lifetime_profit')
-            .ilike('email', currentUser.email)
-            .maybeSingle();
+  // ─── Cross-Device Real-Time Sync via Supabase API (Desktop <-> Mobile) ───────
+  async function syncCrossDeviceState() {
+    if (!currentUser.email) return;
+    try {
+      const res = await fetch(`/api/update-balance?email=${encodeURIComponent(currentUser.email)}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data && data.success) {
+        // 1. Username sync
+        if (data.username && data.username !== currentUser.username) {
+          currentUser.username = data.username;
+          if (headerUsername) headerUsername.textContent = data.username;
+          if (welcomeUsername) welcomeUsername.textContent = data.username;
+        }
 
-          if (data) {
-            const dbUsdt = parseFloat(data.usdt_balance || 0);
-            if (dbUsdt > (currentUser.usdtBalance || 0)) {
-              currentUser.usdtBalance = dbUsdt;
-              updateBalanceDisplays();
-            }
+        // 2. Balances & Counters sync
+        if (data.usdt_balance !== undefined) {
+          currentUser.usdtBalance = parseFloat(data.usdt_balance);
+        }
+        if (data.lifetime_profit !== undefined) {
+          currentUser.lifetimeProfit = parseFloat(data.lifetime_profit);
+        }
+        if (data.total_giga_bought !== undefined) {
+          currentUser.totalGigaBought = parseInt(data.total_giga_bought, 10);
+          currentUser.gigaBalance = currentUser.totalGigaBought;
+        }
+        if (data.total_giga_sold !== undefined) {
+          currentUser.totalGigaSold = parseInt(data.total_giga_sold, 10);
+        }
+
+        const emailKey = currentUser.email
+          ? currentUser.email.toLowerCase().replace(/[^a-z0-9]/g, '_')
+          : (currentUser._emailKey || 'guest');
+
+        // 3. Sells queue sync
+        if (Array.isArray(data.pending_sells) && data.pending_sells.length > 0) {
+          localStorage.setItem(`cv_sells_${emailKey}`, JSON.stringify(data.pending_sells));
+        }
+
+        // 4. Activities sync
+        if (Array.isArray(data.activities) && data.activities.length > 0) {
+          localStorage.setItem(`cv_txs_${emailKey}`, JSON.stringify(data.activities));
+          if (typeof renderUserTransactionsTable === 'function') {
+            renderUserTransactionsTable();
           }
         }
-      } catch (err) {}
-    })();
+
+        // 5. Save synced state to localStorage
+        localStorage.setItem(`cv_balance_${emailKey}`, JSON.stringify({
+          giga: currentUser.gigaBalance,
+          usdt: currentUser.usdtBalance,
+          profit: currentUser.lifetimeProfit
+        }));
+        localStorage.setItem('gigachain_current_user', JSON.stringify(currentUser));
+
+        // 6. Update all UI card displays and pending sells queue
+        updateBalanceDisplays();
+        if (typeof window.renderPendingSellsGlobal === 'function') {
+          window.renderPendingSellsGlobal();
+        }
+      }
+    } catch (err) {
+      console.warn('Cross-device sync check notice:', err.message);
+    }
   }
+
+  // Initial immediate cross-device sync
+  syncCrossDeviceState();
+
+  // Periodic real-time background sync every 10 seconds
+  setInterval(syncCrossDeviceState, 10000);
+
+  // Sync when user returns to tab / phone screen wakes up
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      syncCrossDeviceState();
+    }
+  });
 
   // Logout Action
   const logoutBtn = document.getElementById('logoutBtn');
@@ -155,16 +211,36 @@ function initDashboardUser() {
 // ─── Supabase Balance Sync (saves to backend after each action) ───────────────
 async function syncBalanceToSupabase(action = 'update') {
   try {
-    const supabaseUserId = localStorage.getItem('supabase_user_id') || currentUser.id;
-    if (!supabaseUserId) return;
+    const emailKey = currentUser.email
+      ? currentUser.email.toLowerCase().replace(/[^a-z0-9]/g, '_')
+      : (currentUser._emailKey || 'guest');
+
+    let pendingSells = [];
+    try {
+      const savedSells = localStorage.getItem(`cv_sells_${emailKey}`);
+      if (savedSells) pendingSells = JSON.parse(savedSells);
+    } catch (e) {}
+
+    let activities = [];
+    try {
+      const savedTxs = localStorage.getItem(`cv_txs_${emailKey}`);
+      if (savedTxs) activities = JSON.parse(savedTxs);
+    } catch (e) {}
+
     await fetch('/api/update-balance', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        user_id: supabaseUserId,
+        user_id: localStorage.getItem('supabase_user_id') || currentUser.id,
+        email: currentUser.email,
+        username: currentUser.username,
         usdt_balance: currentUser.usdtBalance,
         giga_balance: currentUser.gigaBalance,
         lifetime_profit: currentUser.lifetimeProfit,
+        total_giga_bought: getUserTotalGigaBought(),
+        total_giga_sold: getUserTotalGigaSold(),
+        pending_sells: pendingSells,
+        activities: activities,
         action
       })
     });
@@ -1884,6 +1960,7 @@ function initBuySellMarket() {
 
   // 4. Render User's Pending & Completed Sells
   function renderPendingSells() {
+    window.renderPendingSellsGlobal = renderPendingSells;
     const pending = getPendingSells();
     const activePending = pending.filter(item => item.status !== 'Completed');
     const completedItems = pending.filter(item => item.status === 'Completed');
