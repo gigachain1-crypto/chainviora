@@ -2518,6 +2518,113 @@ function initNotificationSystem() {
     }
   });
 
+  // Helper: Format notification message with bullet points, callouts, and paragraphs
+  function formatNotificationContent(rawTitle, rawMessage) {
+    let title = (rawTitle || 'Announcement').trim();
+    let text = (rawMessage || '').trim();
+
+    // 1. Avoid duplicate title: If first line of message equals or closely mirrors title, strip it
+    const lines = text.split('\n');
+    if (lines.length > 0) {
+      const cleanFirstLine = lines[0].replace(/^[\p{Emoji}\s]+/gu, '').trim().toLowerCase();
+      const cleanTitle = title.replace(/^[\p{Emoji}\s]+/gu, '').trim().toLowerCase();
+      if (cleanFirstLine && cleanTitle && (cleanFirstLine === cleanTitle || cleanFirstLine.includes(cleanTitle) || cleanTitle.includes(cleanFirstLine))) {
+        lines.shift();
+        while (lines.length > 0 && !lines[0].trim()) lines.shift();
+        text = lines.join('\n');
+      }
+    }
+
+    // 2. Split message by paragraphs (double line breaks)
+    const paragraphs = text.split(/\n\s*\n/);
+    let html = '';
+
+    paragraphs.forEach(para => {
+      para = para.trim();
+      if (!para) return;
+
+      const subLines = para.split('\n').map(l => l.trim()).filter(Boolean);
+      const hasBullets = subLines.some(l => l.startsWith('- ') || l.startsWith('• ') || l.startsWith('* '));
+
+      if (hasBullets) {
+        // Render as an elegant bulleted card / list
+        let listBlock = `<div class="my-3 p-3.5 sm:p-4 rounded-xl bg-slate-50 border border-slate-200/90 shadow-2xs space-y-2">`;
+        subLines.forEach(l => {
+          if (l.startsWith('- ') || l.startsWith('• ') || l.startsWith('* ')) {
+            const itemText = l.replace(/^[-•*]\s*/, '');
+            listBlock += `
+              <div class="flex items-start gap-2.5 text-xs sm:text-sm font-medium text-slate-800">
+                <span class="w-1.5 h-1.5 rounded-full bg-amber-500 mt-2 shrink-0"></span>
+                <span class="leading-relaxed">${escapeHtml(itemText)}</span>
+              </div>
+            `;
+          } else {
+            listBlock += `<div class="text-xs sm:text-sm font-bold text-slate-900 mb-1 flex items-center gap-1.5">${escapeHtml(l)}</div>`;
+          }
+        });
+        listBlock += `</div>`;
+        html += listBlock;
+      } else if (para.startsWith('💎') || para.startsWith('🎯') || para.startsWith('🎁') || para.startsWith('🔥') || para.startsWith('⚡') || para.startsWith('👉')) {
+        // Render as an attractive callout banner
+        html += `
+          <div class="my-2.5 p-3 sm:p-3.5 rounded-xl bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/5 border border-amber-300/80 font-bold text-xs sm:text-sm text-amber-950 flex items-start gap-2 leading-relaxed shadow-2xs">
+            <span class="leading-relaxed">${escapeHtml(para)}</span>
+          </div>
+        `;
+      } else if (para.toLowerCase().includes('building a stronger digital future') || para.startsWith('GIGA Chain – Building')) {
+        // Signature sign-off
+        html += `
+          <div class="mt-3.5 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-amber-700 italic">
+            <span>${escapeHtml(para)}</span>
+          </div>
+        `;
+      } else {
+        // Normal paragraph with line breaks preserved
+        const safePara = escapeHtml(para).replace(/\n/g, '<br>');
+        html += `<p class="text-xs sm:text-sm text-slate-700 leading-relaxed font-normal my-2">${safePara}</p>`;
+      }
+    });
+
+    return html;
+  }
+
+  function createNotificationCard(n) {
+    const item = document.createElement('div');
+    item.className = 'rounded-2xl bg-white border border-slate-200/90 shadow-xs hover:shadow-md transition-all overflow-hidden mb-3.5';
+
+    const typeName = n.type || 'Network Announcement';
+    const isHigh = n.priority === 'high';
+    const dateStr = n.created_at
+      ? new Date(n.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+      : 'Official Update';
+    const bodyFormatted = formatNotificationContent(n.title, n.message);
+
+    item.innerHTML = `
+      <!-- Card Top Header -->
+      <div class="bg-gradient-to-r from-amber-50/80 via-orange-50/40 to-white px-4 sm:px-5 py-2.5 border-b border-amber-100/80 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold ${isHigh ? 'bg-rose-100 text-rose-800 border border-rose-200' : 'bg-amber-100 text-amber-900 border border-amber-200'}">
+            <span class="w-1.5 h-1.5 rounded-full ${isHigh ? 'bg-rose-500' : 'bg-amber-500'} animate-pulse"></span>
+            ${escapeHtml(typeName)}
+          </span>
+          <span class="text-[11px] font-semibold text-slate-400 hidden sm:inline">• Official Broadcast</span>
+        </div>
+        <span class="text-[11px] font-mono text-slate-400 font-semibold">${dateStr}</span>
+      </div>
+
+      <!-- Card Main Body -->
+      <div class="p-4 sm:p-5">
+        <h4 class="text-base sm:text-lg font-display font-black text-slate-900 leading-snug">
+          ${escapeHtml(n.title || 'Announcement')}
+        </h4>
+        <div class="mt-2.5">
+          ${bodyFormatted}
+        </div>
+      </div>
+    `;
+    return item;
+  }
+
   // Load public broadcast announcements from Admin Panel
   try {
     fetch('/api/admin?action=get_public_notifications')
@@ -2527,20 +2634,7 @@ function initNotificationSystem() {
           if (listContainer) {
             listContainer.innerHTML = '';
             data.notifications.forEach(n => {
-              const item = document.createElement('div');
-              item.className = 'p-4 rounded-xl bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-300 shadow-2xs';
-              item.innerHTML = `
-                <div class="flex items-start justify-between gap-2">
-                  <div class="flex items-center gap-2">
-                    <span class="w-2 h-2 rounded-full ${n.priority === 'high' ? 'bg-rose-500' : 'bg-amber-500'} animate-pulse"></span>
-                    <span class="text-xs font-bold text-amber-950 uppercase tracking-wide">${n.type || 'Broadcast'}</span>
-                  </div>
-                  <span class="text-[10px] text-slate-400 font-mono">${n.created_at ? new Date(n.created_at).toLocaleDateString() : 'Active'}</span>
-                </div>
-                <h4 class="text-sm font-bold text-slate-900 mt-2 leading-snug">${n.title || ''}</h4>
-                <p class="text-xs text-slate-600 mt-1 leading-relaxed">${n.message || ''}</p>
-              `;
-              listContainer.appendChild(item);
+              listContainer.appendChild(createNotificationCard(n));
             });
             if (notifBadge) notifBadge.style.opacity = '1';
           }
@@ -2553,20 +2647,7 @@ function initNotificationSystem() {
   window.showAdminBroadcast = function (data) {
     if (!data) return;
     if (listContainer) {
-      const item = document.createElement('div');
-      item.className = 'p-4 rounded-xl bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-300 shadow-2xs';
-      item.innerHTML = `
-        <div class="flex items-start justify-between gap-2">
-          <div class="flex items-center gap-2">
-            <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
-            <span class="text-xs font-bold text-amber-950 uppercase tracking-wide">${data.type || 'Admin Broadcast'}</span>
-          </div>
-          <span class="text-[10px] text-slate-400 font-mono">${data.date || 'Just now'}</span>
-        </div>
-        <h4 class="text-sm font-bold text-slate-900 mt-2 leading-snug">${data.title || 'Announcement'}</h4>
-        <p class="text-xs text-slate-600 mt-1 leading-relaxed">${data.message || ''}</p>
-      `;
-      listContainer.prepend(item);
+      listContainer.prepend(createNotificationCard(data));
     }
     if (notifBadge) notifBadge.style.opacity = '1';
     // Open full screen automatically on arrival

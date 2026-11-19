@@ -1144,30 +1144,30 @@
        ======================================================================== -->
   <div id="notificationModal"
     class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/60 backdrop-blur-sm p-3.5 sm:p-4">
-    <div class="conic-border-box max-w-lg w-full shadow-2xl">
+    <div class="conic-border-box max-w-xl sm:max-w-2xl w-full shadow-2xl">
       <div class="conic-border-content p-5 sm:p-7 bg-white rounded-2xl">
 
         <!-- Modal Header -->
-        <div class="flex items-center justify-between pb-3.5 border-b border-slate-100">
+        <div class="flex items-center justify-between pb-4 border-b border-slate-100">
           <div class="flex items-center gap-3">
             <div
-              class="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 shadow-2xs">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              class="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-tr from-amber-400 to-orange-500 text-white flex items-center justify-center shadow-sm">
+              <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
               </svg>
             </div>
             <div>
               <div class="flex items-center gap-2">
-                <h3 class="text-base font-bold text-slate-900 leading-tight">System Notifications</h3>
+                <h3 class="text-base sm:text-lg font-black font-display text-slate-900 leading-tight">System Announcements</h3>
                 <span
-                  class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">Live</span>
+                  class="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 uppercase tracking-wider">Live Feed</span>
               </div>
-              <p class="text-[11px] text-slate-400 mt-0.5">Admin broadcasts & network announcements</p>
+              <p class="text-[11px] sm:text-xs text-slate-400 mt-0.5">Admin broadcasts, official bonus alerts & network announcements</p>
             </div>
           </div>
           <button id="closeNotificationModal"
-            class="p-2 text-slate-400 hover:text-slate-700 rounded-lg cursor-pointer transition-colors" title="Close">
+            class="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl cursor-pointer transition-colors" title="Close">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -1175,22 +1175,26 @@
         </div>
 
         <!-- Notification Feed Container -->
-        <div id="notificationListContainer" class="mt-4 space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+        <div id="notificationListContainer" class="mt-4 space-y-3.5 max-h-[68vh] overflow-y-auto pr-1 sm:pr-2">
           <!-- Active Notification Item -->
           <div
-            class="p-4 rounded-xl bg-gradient-to-br from-amber-50/70 to-orange-50/40 border border-amber-200/90 shadow-2xs">
-            <div class="flex items-start justify-between gap-2">
+            class="rounded-2xl bg-white border border-slate-200/90 shadow-xs overflow-hidden">
+            <div class="bg-gradient-to-r from-amber-50/80 via-orange-50/40 to-white px-4 sm:px-5 py-2.5 border-b border-amber-100/80 flex items-center justify-between">
               <div class="flex items-center gap-2">
-                <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
-                <span class="text-xs font-bold text-amber-950 uppercase tracking-wide">Network Announcement</span>
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-900 border border-amber-200">
+                  <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                  Network Announcement
+                </span>
+                <span class="text-[11px] font-semibold text-slate-400 hidden sm:inline">• Official Broadcast</span>
               </div>
-              <span class="text-[10px] text-slate-400 font-mono">System</span>
+              <span class="text-[11px] font-mono text-slate-400 font-semibold">Official Update</span>
             </div>
-            <h4 class="text-sm font-bold text-slate-900 mt-2 leading-snug">Welcome to GIGACHAIN Network</h4>
-            <p class="text-xs text-slate-600 mt-1.5 leading-relaxed">
-              All deposit verifications, GIGA buy orders, and auto-matching sell queues are fully operational. Any
-              future admin broadcasts and important alerts will appear here on your screen.
-            </p>
+            <div class="p-4 sm:p-5">
+              <h4 class="text-base sm:text-lg font-display font-black text-slate-900 leading-snug">Welcome to GIGACHAIN Network</h4>
+              <div class="mt-2 text-xs sm:text-sm text-slate-700 leading-relaxed font-normal">
+                All deposit verifications, GIGA buy orders, and auto-matching sell queues are fully operational. Any future admin broadcasts and important alerts will appear here on your screen.
+              </div>
+            </div>
           </div>
         </div>
 
@@ -1201,7 +1205,7 @@
             Broadcast Channel Connected
           </span>
           <button id="closeNotificationModalBtn" type="button"
-            class="px-4 py-2 text-xs font-bold rounded-xl bg-slate-900 hover:bg-slate-800 text-white transition-colors cursor-pointer shadow-xs">
+            class="px-5 py-2 text-xs font-bold rounded-xl bg-slate-900 hover:bg-slate-800 text-white transition-colors cursor-pointer shadow-xs">
             Got it
           </button>
         </div>
