@@ -1,7 +1,7 @@
 // api/check-deposit-status.js
-// Verifies real blockchain payment status from NOWPayments API and credits user balance
+// Handles both client deposit status verification AND NOWPayments IPN webhooks
+// Verifies real blockchain payment status and credits user balance in Supabase
 
-// Always use verified active NOWPayments key
 const VALID_KEY = 'T9S6JJF-WJP45M1-HAAN471-YGKTD7S';
 let envKey = process.env.NOWPAYMENTS_API_KEY;
 if (!envKey || envKey.includes('GDQE') || envKey.includes('DFZY1F2')) {
@@ -13,21 +13,28 @@ const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-nowpayments-sig');
 
-  if (req.method === 'OPTIONS') return res.status(200).end();
+  // Handle health check / preflight
+  if (req.method === 'OPTIONS' || req.method === 'GET') {
+    return res.status(200).json({ status: 'active', gateway: 'NOWPayments Status & Webhook Listener' });
+  }
+
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const { payment_id, user_id, email } = req.body;
+    const body = req.body || {};
+    const paymentId = body.payment_id;
+    let userId = body.user_id;
+    let email = body.email;
 
-    if (!payment_id) {
+    if (!paymentId) {
       return res.status(400).json({ error: 'payment_id is required' });
     }
 
-    // 1. Check payment status with NOWPayments API
-    const npRes = await fetch(`https://api.nowpayments.io/v1/payment/${payment_id}`, {
+    // 1. Fetch latest verified payment status directly from NOWPayments API
+    const npRes = await fetch(`https://api.nowpayments.io/v1/payment/${paymentId}`, {
       method: 'GET',
       headers: {
         'x-api-key': NOWPAYMENTS_API_KEY,
@@ -49,6 +56,8 @@ module.exports = async (req, res) => {
     const priceAmount = parseFloat(npData.price_amount || 30);
     const creditAmount = actuallyPaid > 0 ? actuallyPaid : priceAmount;
     const txHash = npData.payin_hash || npData.payout_hash || ('0x' + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join(''));
+    const orderId = npData.order_id || body.order_id || '';
+    const payAddress = npData.pay_address || body.pay_address || '';
 
     // If status is finished or confirmed, credit to user balance
     if (status === 'finished' || status === 'confirmed' || status === 'sending') {
@@ -63,21 +72,46 @@ module.exports = async (req, res) => {
         const { data: existingTx } = await supabase
           .from('transactions')
           .select('id')
-          .eq('notes', `NOWPayments Deposit ID: ${payment_id}`)
+          .eq('notes', `NOWPayments Deposit ID: ${paymentId}`)
           .maybeSingle();
 
         if (existingTx) {
           alreadyCredited = true;
         } else {
-          // Fetch user profile
+          // Locate user profile
           let profile = null;
-          if (user_id) {
-            const { data } = await supabase.from('profiles').select('*').eq('id', user_id).maybeSingle();
+
+          if (userId) {
+            const { data } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
             profile = data;
           }
           if (!profile && email) {
             const { data } = await supabase.from('profiles').select('*').eq('email', email.trim().toLowerCase()).maybeSingle();
             profile = data;
+          }
+
+          // Fallback: match by order_id format "dep_{user_id}_{curKey}_{timestamp}"
+          if (!profile && orderId && orderId.startsWith('dep_')) {
+            const parts = orderId.split('_');
+            if (parts.length >= 2) {
+              const prefix = parts[1];
+              const { data: matched } = await supabase
+                .from('profiles')
+                .select('*')
+                .ilike('id', `${prefix}%`)
+                .limit(1);
+              if (matched && matched.length > 0) profile = matched[0];
+            }
+          }
+
+          // Fallback: match by pay_address
+          if (!profile && payAddress) {
+            const { data: matched } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('deposit_address', payAddress)
+              .limit(1);
+            if (matched && matched.length > 0) profile = matched[0];
           }
 
           if (profile) {
@@ -99,46 +133,48 @@ module.exports = async (req, res) => {
               amount_giga: 0,
               tx_hash: txHash,
               status: 'completed',
-              notes: `NOWPayments Deposit ID: ${payment_id}`,
+              notes: `NOWPayments Deposit ID: ${paymentId}`,
               created_at: new Date().toISOString()
             });
 
             // Referral bonus check if deposit >= 30
             if (creditAmount >= 30 && profile.referred_by) {
-              const { data: refRow } = await supabase
-                .from('referrals')
-                .select('*')
-                .eq('referred_email', profile.email)
-                .maybeSingle();
-
-              if (!refRow || !refRow.bonus_awarded) {
-                const { data: referrer } = await supabase
-                  .from('profiles')
+              try {
+                const { data: refRow } = await supabase
+                  .from('referrals')
                   .select('*')
-                  .eq('referral_code', profile.referred_by)
+                  .eq('referred_email', profile.email)
                   .maybeSingle();
 
-                if (referrer) {
-                  const refCur = parseFloat(referrer.usdt_balance || 0);
-                  await supabase
+                if (!refRow || !refRow.bonus_awarded) {
+                  const { data: referrer } = await supabase
                     .from('profiles')
-                    .update({
-                      usdt_balance: refCur + 5.0,
-                      total_profit: parseFloat(referrer.total_profit || 0) + 5.0
-                    })
-                    .eq('id', referrer.id);
+                    .select('*')
+                    .eq('referral_code', profile.referred_by)
+                    .maybeSingle();
 
-                  await supabase.from('referrals').upsert({
-                    referrer_id: referrer.id,
-                    referred_id: profile.id,
-                    referred_email: profile.email,
-                    bonus_awarded: true,
-                    bonus_amount: 5.0,
-                    status: 'active',
-                    created_at: new Date().toISOString()
-                  }, { onConflict: 'referred_email' });
+                  if (referrer) {
+                    const refCur = parseFloat(referrer.usdt_balance || 0);
+                    await supabase
+                      .from('profiles')
+                      .update({
+                        usdt_balance: refCur + 5.0,
+                        total_profit: parseFloat(referrer.total_profit || 0) + 5.0
+                      })
+                      .eq('id', referrer.id);
+
+                    await supabase.from('referrals').upsert({
+                      referrer_id: referrer.id,
+                      referred_id: profile.id,
+                      referred_email: profile.email,
+                      bonus_awarded: true,
+                      bonus_amount: 5.0,
+                      status: 'active',
+                      created_at: new Date().toISOString()
+                    }, { onConflict: 'referred_email' });
+                  }
                 }
-              }
+              } catch (e) {}
             }
           }
         }
@@ -156,7 +192,7 @@ module.exports = async (req, res) => {
       });
     }
 
-    // Still waiting for payment
+    // Waiting for payment transfer
     return res.status(200).json({
       success: true,
       status: status, // 'waiting'
