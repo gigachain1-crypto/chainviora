@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initBuySellMarket();
   initUserActivityHistory();
   initNotificationSystem();
+  initAboutUsModal();
 });
 
 // State
@@ -219,13 +220,13 @@ async function syncBalanceToSupabase(action = 'update') {
     try {
       const savedSells = localStorage.getItem(`cv_sells_${emailKey}`);
       if (savedSells) pendingSells = JSON.parse(savedSells);
-    } catch (e) {}
+    } catch (e) { }
 
     let activities = [];
     try {
       const savedTxs = localStorage.getItem(`cv_txs_${emailKey}`);
       if (savedTxs) activities = JSON.parse(savedTxs);
-    } catch (e) {}
+    } catch (e) { }
 
     await fetch('/api/update-balance', {
       method: 'POST',
@@ -708,39 +709,39 @@ function initDepositModal() {
         email: currentUser ? currentUser.email : null
       })
     })
-    .then(r => r.json())
-    .then(data => {
-      if (data && data.success && data.confirmed) {
-        const creditedAmt = parseFloat(data.amount || 1.00);
-        const txKey = 'cv_dep_credited_' + (data.tx_hash || 'tx_' + creditedAmt);
+      .then(r => r.json())
+      .then(data => {
+        if (data && data.success && data.confirmed) {
+          const creditedAmt = parseFloat(data.amount || 1.00);
+          const txKey = 'cv_dep_credited_' + (data.tx_hash || 'tx_' + creditedAmt);
 
-        if (!localStorage.getItem(txKey)) {
-          localStorage.setItem(txKey, '1');
-          currentUser.usdtBalance = (currentUser.usdtBalance || 0) + creditedAmt;
-          updateBalanceDisplays();
+          if (!localStorage.getItem(txKey)) {
+            localStorage.setItem(txKey, '1');
+            currentUser.usdtBalance = (currentUser.usdtBalance || 0) + creditedAmt;
+            updateBalanceDisplays();
 
-          logUserActivity({
-            type: 'Deposit',
-            asset: `USDT (${meta.label || 'BEP20'})`,
-            amount: `+$${creditedAmt.toFixed(2)} USDT`,
-            rawAmount: creditedAmt,
-            txHash: data.tx_hash || generateTxHash(),
-            status: 'Completed',
-            notes: `On-chain deposit verified & credited automatically`
-          });
-          syncBalanceToSupabase('deposit_confirmed');
+            logUserActivity({
+              type: 'Deposit',
+              asset: `USDT (${meta.label || 'BEP20'})`,
+              amount: `+$${creditedAmt.toFixed(2)} USDT`,
+              rawAmount: creditedAmt,
+              txHash: data.tx_hash || generateTxHash(),
+              status: 'Completed',
+              notes: `On-chain deposit verified & credited automatically`
+            });
+            syncBalanceToSupabase('deposit_confirmed');
 
-          closeDeposit();
-          showDepositSuccessModal({
-            amount: creditedAmt,
-            networkName: meta.name || 'USDT (BEP20 - BNB Smart Chain)',
-            txHash: data.tx_hash
-          });
-          showToast(`🎉 Deposit of $${creditedAmt.toFixed(2)} USDT Received and Credited to Vault!`, 'success');
+            closeDeposit();
+            showDepositSuccessModal({
+              amount: creditedAmt,
+              networkName: meta.name || 'USDT (BEP20 - BNB Smart Chain)',
+              txHash: data.tx_hash
+            });
+            showToast(`🎉 Deposit of $${creditedAmt.toFixed(2)} USDT Received and Credited to Vault!`, 'success');
+          }
         }
-      }
-    })
-    .catch(() => {});
+      })
+      .catch(() => { });
   }
 
   // Check 1.5 seconds after page loads, and every 8 seconds continuously
@@ -2381,5 +2382,73 @@ function initNotificationSystem() {
     openNotif();
   };
 }
+
+/* --------------------------------------------------------------------------
+   About Us & Official Whitepaper Modal Management
+   -------------------------------------------------------------------------- */
+function initAboutUsModal() {
+  const openBtn = document.getElementById('openAboutUsBtn');
+  const modal = document.getElementById('aboutUsModal');
+  const closeBtn = document.getElementById('closeAboutUsModal');
+  const closeFooterBtn = document.getElementById('closeAboutUsModalBtn');
+  const aboutTabBtn = document.getElementById('aboutTabBtn');
+  const whitepaperTabBtn = document.getElementById('whitepaperTabBtn');
+  const aboutTabContent = document.getElementById('aboutTabContent');
+  const whitepaperTabContent = document.getElementById('whitepaperTabContent');
+
+  function openModal() {
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeModal() {
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    document.body.style.overflow = '';
+  }
+
+  function switchTab(activeTab) {
+    if (!aboutTabContent || !whitepaperTabContent || !aboutTabBtn || !whitepaperTabBtn) return;
+    if (activeTab === 'about') {
+      aboutTabContent.classList.remove('hidden');
+      whitepaperTabContent.classList.add('hidden');
+
+      aboutTabBtn.className = 'flex-1 py-2 px-4 rounded-lg font-bold text-xs sm:text-sm text-slate-900 bg-white shadow-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 border border-slate-200';
+      whitepaperTabBtn.className = 'flex-1 py-2 px-4 rounded-lg font-bold text-xs sm:text-sm text-slate-500 hover:text-slate-900 transition-all cursor-pointer flex items-center justify-center gap-1.5';
+    } else {
+      aboutTabContent.classList.add('hidden');
+      whitepaperTabContent.classList.remove('hidden');
+
+      whitepaperTabBtn.className = 'flex-1 py-2 px-4 rounded-lg font-bold text-xs sm:text-sm text-slate-900 bg-white shadow-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 border border-slate-200';
+      aboutTabBtn.className = 'flex-1 py-2 px-4 rounded-lg font-bold text-xs sm:text-sm text-slate-500 hover:text-slate-900 transition-all cursor-pointer flex items-center justify-center gap-1.5';
+    }
+  }
+
+  if (openBtn) openBtn.addEventListener('click', openModal);
+  if (closeBtn) closeBtn.addEventListener('click', closeModal);
+  if (closeFooterBtn) closeFooterBtn.addEventListener('click', closeModal);
+
+  if (aboutTabBtn) aboutTabBtn.addEventListener('click', () => switchTab('about'));
+  if (whitepaperTabBtn) whitepaperTabBtn.addEventListener('click', () => switchTab('whitepaper'));
+
+  if (modal) {
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeModal();
+    });
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && modal && !modal.classList.contains('hidden')) {
+      closeModal();
+    }
+  });
+
+  // Global trigger
+  window.openAboutUsModal = openModal;
+}
+
 
 

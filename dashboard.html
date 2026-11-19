@@ -158,11 +158,16 @@
         </div>
       </div>
       <div class="flex items-center gap-1.5">
-        <span
-          class="text-[10px] sm:text-xs font-bold text-emerald-700 bg-emerald-50 px-2 sm:px-2.5 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
-          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-          Vault Active
-        </span>
+        <button id="openAboutUsBtn" type="button"
+          class="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full text-xs sm:text-sm font-extrabold text-slate-800 bg-gradient-to-r from-amber-50 via-white to-orange-50 border-2 border-amber-300 hover:border-amber-500 hover:shadow-md transition-all cursor-pointer group active:scale-95"
+          title="About GIGACHAIN Protocol & Whitepaper">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-600 group-hover:rotate-12 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span class="text-rainbow-gradient font-black tracking-wide">About Us</span>
+        </button>
       </div>
     </div>
 
@@ -1187,6 +1192,501 @@
           <button id="closeNotificationModalBtn" type="button"
             class="px-4 py-2 text-xs font-bold rounded-xl bg-slate-900 hover:bg-slate-800 text-white transition-colors cursor-pointer shadow-xs">
             Got it
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       MODAL: ABOUT US & OFFICIAL WHITEPAPER
+       ======================================================================== -->
+  <div id="aboutUsModal"
+    class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/70 backdrop-blur-md p-3 sm:p-5 overflow-y-auto">
+    <div class="conic-border-box max-w-4xl w-full my-auto shadow-2xl">
+      <div class="conic-border-content p-4 sm:p-7 bg-white rounded-2xl max-h-[92vh] flex flex-col">
+
+        <!-- Modal Top Bar -->
+        <div class="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
+          <div class="flex items-center gap-2">
+            <span
+              class="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 font-extrabold text-[10px] tracking-wider uppercase border border-amber-300">
+              Protocol Documentation
+            </span>
+            <span class="text-xs text-slate-400 font-mono hidden sm:inline">• Official Ecosystem Guide</span>
+          </div>
+          <button id="closeAboutUsModal"
+            class="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl cursor-pointer transition-colors"
+            title="Close">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Scrollable Modal Body -->
+        <div class="overflow-y-auto pr-1 sm:pr-2 space-y-6 pt-3">
+
+          <!-- 1. BIG PROMINENT GIGACHAIN LOGO & HEADER -->
+          <div
+            class="text-center py-5 sm:py-8 px-4 rounded-2xl bg-gradient-to-b from-amber-50/90 via-white to-transparent border border-amber-200/80 shadow-xs relative overflow-hidden">
+            <div
+              class="absolute -top-12 left-1/2 -translate-x-1/2 w-56 h-56 bg-amber-400/20 rounded-full blur-3xl pointer-events-none">
+            </div>
+
+            <div class="flex justify-center mb-3">
+              <img src="assets/gigachain-logo.png" alt="GIGACHAIN Logo"
+                class="h-28 sm:h-36 w-auto object-contain drop-shadow-2xl hover:scale-105 transition-transform duration-300">
+            </div>
+
+            <h2 class="text-2xl sm:text-4xl font-display font-black text-slate-900 tracking-tight">
+              <span class="text-rainbow-gradient">GIGACHAIN</span> PROTOCOL
+            </h2>
+            <p class="mt-2 text-xs sm:text-sm text-slate-600 max-w-2xl mx-auto leading-relaxed font-medium">
+              The Next-Generation Decentralized Liquidity Protocol powering Fixed-Rate Trading, Algorithmic Peer-to-Peer
+              Queue Matching, and Realized Yield Distribution.
+            </p>
+
+            <!-- Verification & Trust Badges -->
+            <div class="mt-4 flex flex-wrap items-center justify-center gap-2">
+              <span
+                class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                Mainnet 2.0 Live
+              </span>
+              <span
+                class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-300 shadow-2xs">
+                🛡️ CertiK &amp; Hacken Audited
+              </span>
+              <span
+                class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-blue-50 text-blue-800 border border-blue-300 shadow-2xs">
+                ⚡ 100% On-Chain Verifiable
+              </span>
+              <span
+                class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-purple-50 text-purple-800 border border-purple-300 shadow-2xs">
+                🌐 Cross-Device Auto-Sync
+              </span>
+            </div>
+          </div>
+
+          <!-- 2. TAB SWITCHER -->
+          <div class="flex items-center justify-center p-1.5 bg-slate-100 rounded-xl max-w-md mx-auto shadow-inner">
+            <button id="aboutTabBtn" type="button"
+              class="flex-1 py-2 px-4 rounded-lg font-bold text-xs sm:text-sm text-slate-900 bg-white shadow-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 border border-slate-200">
+              <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>About Gigachain</span>
+            </button>
+            <button id="whitepaperTabBtn" type="button"
+              class="flex-1 py-2 px-4 rounded-lg font-bold text-xs sm:text-sm text-slate-500 hover:text-slate-900 transition-all cursor-pointer flex items-center justify-center gap-1.5">
+              <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <span>Official Whitepaper</span>
+            </button>
+          </div>
+
+          <!-- ================================================================
+               TAB 1: ABOUT GIGACHAIN
+               ================================================================ -->
+          <div id="aboutTabContent" class="space-y-6">
+
+            <!-- Mission & Vision -->
+            <div class="p-4 sm:p-6 rounded-2xl bg-white border border-slate-200 shadow-xs">
+              <div class="flex items-center gap-2.5 mb-2.5">
+                <div
+                  class="w-7 h-7 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center font-bold text-sm">
+                  🚀
+                </div>
+                <h3 class="text-base sm:text-lg font-display font-black text-slate-900">Our Mission &amp; Ecosystem
+                  Vision</h3>
+              </div>
+              <p class="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                <strong>Gigachain Protocol (Chainviora)</strong> was engineered to solve the fundamental flaws of
+                traditional decentralized finance: volatile price swings, impermanent loss, and predatory front-running
+                bots. By establishing a fixed-unit valuation of <strong>$30.00 per GIGA</strong> and an automated,
+                provably fair <strong>2-Buyer Matching Queue</strong>, Gigachain enables participants worldwide to
+                engage in transparent crypto trading with guaranteed, predictable returns.
+              </p>
+            </div>
+
+            <!-- 3 Core Ecosystem Pillars -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+              <!-- Pillar 1 -->
+              <div
+                class="p-4 rounded-xl bg-gradient-to-br from-amber-50/70 to-white border border-amber-200 shadow-xs hover:border-amber-400 transition-colors">
+                <div class="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center mb-3">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <h4 class="text-sm font-bold text-slate-900">Fixed-Price Economy</h4>
+                <p class="text-[11px] sm:text-xs text-slate-600 mt-1 leading-relaxed">
+                  Every GIGA unit in the 100 Live Pool is pegged strictly at <strong>$30.00 USDT</strong>. Zero
+                  speculative dumps, zero slippage, and zero hidden network deductions.
+                </p>
+              </div>
+
+              <!-- Pillar 2 -->
+              <div
+                class="p-4 rounded-xl bg-gradient-to-br from-emerald-50/70 to-white border border-emerald-200 shadow-xs hover:border-emerald-400 transition-colors">
+                <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center mb-3">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                  </svg>
+                </div>
+                <h4 class="text-sm font-bold text-slate-900">Automated Sell Queue</h4>
+                <p class="text-[11px] sm:text-xs text-slate-600 mt-1 leading-relaxed">
+                  When you purchase 1 GIGA, it queues in the automated sell engine. Once matched with 2 buyers across the
+                  ecosystem, you receive <strong>+$50.00 Profit</strong> straight into your withdrawable vault.
+                </p>
+              </div>
+
+              <!-- Pillar 3 -->
+              <div
+                class="p-4 rounded-xl bg-gradient-to-br from-blue-50/70 to-white border border-blue-200 shadow-xs hover:border-blue-400 transition-colors">
+                <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center mb-3">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  </svg>
+                </div>
+                <h4 class="text-sm font-bold text-slate-900">Multi-Chain On/Off Ramp</h4>
+                <p class="text-[11px] sm:text-xs text-slate-600 mt-1 leading-relaxed">
+                  Supports <strong>USDT (BEP-20)</strong>, <strong>USDT (TRC-20)</strong>, <strong>SOL</strong>,
+                  <strong>BTC</strong>, and <strong>ETH</strong> with unique automated deposit addresses and instant
+                  withdrawal payouts.
+                </p>
+              </div>
+
+            </div>
+
+            <!-- How It Works (Step by Step) -->
+            <div class="p-4 sm:p-6 rounded-2xl bg-slate-50/80 border border-slate-200">
+              <h3 class="text-sm sm:text-base font-display font-black text-slate-900 mb-4 flex items-center gap-2">
+                <span>🔄</span> How the GIGACHAIN User Lifecycle Works
+              </h3>
+              <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+
+                <div class="p-3 bg-white rounded-xl border border-slate-200 shadow-2xs">
+                  <span
+                    class="w-6 h-6 rounded-full bg-amber-500 text-white font-black text-xs flex items-center justify-center mb-2">1</span>
+                  <h5 class="text-xs font-bold text-slate-900">Deposit USDT</h5>
+                  <p class="text-[11px] text-slate-500 mt-1">Send funds via BEP-20 / TRC-20 to your dedicated deposit
+                    vault address.</p>
+                </div>
+
+                <div class="p-3 bg-white rounded-xl border border-slate-200 shadow-2xs">
+                  <span
+                    class="w-6 h-6 rounded-full bg-blue-500 text-white font-black text-xs flex items-center justify-center mb-2">2</span>
+                  <h5 class="text-xs font-bold text-slate-900">Buy 1 GIGA</h5>
+                  <p class="text-[11px] text-slate-500 mt-1">Pick any row in the 100 Live Pool for $30.00. Automatic
+                    balance deduction.</p>
+                </div>
+
+                <div class="p-3 bg-white rounded-xl border border-slate-200 shadow-2xs">
+                  <span
+                    class="w-6 h-6 rounded-full bg-purple-500 text-white font-black text-xs flex items-center justify-center mb-2">3</span>
+                  <h5 class="text-xs font-bold text-slate-900">Sell Queue Match</h5>
+                  <p class="text-[11px] text-slate-500 mt-1">Your order enters the Sell Queue. Network automatically
+                    matches 2 buyers.</p>
+                </div>
+
+                <div class="p-3 bg-white rounded-xl border border-slate-200 shadow-2xs">
+                  <span
+                    class="w-6 h-6 rounded-full bg-emerald-500 text-white font-black text-xs flex items-center justify-center mb-2">4</span>
+                  <h5 class="text-xs font-bold text-slate-900">+$50 Realized Profit</h5>
+                  <p class="text-[11px] text-slate-500 mt-1">Receive +$50.00 directly to withdrawable vault. Withdraw
+                    to Web3 wallet anytime!</p>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- Referral Bonus Highlights -->
+            <div
+              class="p-4 rounded-xl bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 border border-amber-300 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div class="flex items-center gap-3 text-center sm:text-left">
+                <div class="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center text-xl shrink-0">
+                  🎁
+                </div>
+                <div>
+                  <h4 class="text-sm font-black text-slate-900">$5.00 Instant Referral Program</h4>
+                  <p class="text-xs text-slate-600 mt-0.5">Invite friends with your personal referral link. Whenever an
+                    invited member deposits $30 or more, you receive <strong>+$5.00 USDT</strong> instantly!</p>
+                </div>
+              </div>
+              <button type="button"
+                onclick="document.getElementById('aboutUsModal').classList.add('hidden'); document.getElementById('openInvitedModalBtn')?.click();"
+                class="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold shadow-xs transition-colors shrink-0 cursor-pointer">
+                View My Referrals
+              </button>
+            </div>
+
+          </div>
+
+          <!-- ================================================================
+               TAB 2: OFFICIAL WHITEPAPER & ARCHITECTURE SPECIFICATION
+               ================================================================ -->
+          <div id="whitepaperTabContent" class="space-y-6 hidden">
+
+            <!-- Document Meta Header -->
+            <div class="p-4 rounded-xl bg-slate-900 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md">
+              <div>
+                <span class="text-[10px] font-mono tracking-widest uppercase text-amber-400 font-bold">Whitepaper Specification</span>
+                <h3 class="text-base sm:text-lg font-display font-black text-white mt-0.5">Gigachain Protocol Technical Whitepaper v2.4</h3>
+                <p class="text-[11px] text-slate-400 font-mono mt-0.5">Algorithmic Queue Equilibrium &amp; Autonomous Liquidity Settlement</p>
+              </div>
+              <div class="flex items-center gap-2 shrink-0">
+                <span class="px-2.5 py-1 rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-mono text-[11px] font-bold">
+                  Hash: 0x9c4e...8f1a
+                </span>
+              </div>
+            </div>
+
+            <!-- VISUAL ARCHITECTURE FLOWCHART / DIAGRAM ("image mein dikhna chahiye") -->
+            <div class="p-4 sm:p-6 rounded-2xl bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 text-white border border-slate-800 shadow-xl overflow-hidden relative">
+              <div class="text-center max-w-xl mx-auto mb-6">
+                <span class="text-[10px] uppercase font-mono tracking-widest text-amber-400 font-bold px-2 py-0.5 rounded-full bg-amber-400/10 border border-amber-400/20">
+                  Visual Architecture
+                </span>
+                <h4 class="text-base sm:text-xl font-display font-black mt-2 text-white">
+                  The GIGACHAIN Autonomous Settlement Engine
+                </h4>
+                <p class="text-xs text-slate-400 mt-1">
+                  End-to-end cryptographic transaction lifecycle from initial deposit to guaranteed queue payout.
+                </p>
+              </div>
+
+              <!-- Interactive Flowchart Diagram -->
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3.5 relative z-10">
+
+                <!-- Step 1: Inflow -->
+                <div class="p-3.5 rounded-xl bg-slate-800/80 border border-amber-500/40 relative">
+                  <div class="flex items-center justify-between mb-2">
+                    <span class="text-[10px] font-mono font-bold text-amber-400">STAGE 01</span>
+                    <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+                  </div>
+                  <div class="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-300 flex items-center justify-center font-black text-xs mb-2">
+                    📥
+                  </div>
+                  <h5 class="text-xs font-bold text-white">Multi-Chain Vault Deposit</h5>
+                  <p class="text-[11px] text-slate-400 mt-1">User deposits USDT (BEP-20 / TRC-20) to isolated cold vault with automated block confirmation.</p>
+                  <div class="mt-2.5 pt-2 border-t border-slate-700/60 text-[10px] font-mono text-emerald-400 flex items-center gap-1">
+                    <span>✓</span> Non-Custodial Multi-Sig
+                  </div>
+                </div>
+
+                <!-- Step 2: Pool Rotation -->
+                <div class="p-3.5 rounded-xl bg-slate-800/80 border border-blue-500/40 relative">
+                  <div class="flex items-center justify-between mb-2">
+                    <span class="text-[10px] font-mono font-bold text-blue-400">STAGE 02</span>
+                    <span class="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span>
+                  </div>
+                  <div class="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-300 flex items-center justify-center font-black text-xs mb-2">
+                    🔄
+                  </div>
+                  <h5 class="text-xs font-bold text-white">100 GIGA Micro-Pool</h5>
+                  <p class="text-[11px] text-slate-400 mt-1">User acquires 1 GIGA at fixed $30.00 unit valuation. Purchased unit randomizes into dynamic rotation.</p>
+                  <div class="mt-2.5 pt-2 border-t border-slate-700/60 text-[10px] font-mono text-blue-400 flex items-center gap-1">
+                    <span>✓</span> Zero Slippage Peg
+                  </div>
+                </div>
+
+                <!-- Step 3: Sell Queue -->
+                <div class="p-3.5 rounded-xl bg-slate-800/80 border border-purple-500/40 relative">
+                  <div class="flex items-center justify-between mb-2">
+                    <span class="text-[10px] font-mono font-bold text-purple-400">STAGE 03</span>
+                    <span class="w-2 h-2 rounded-full bg-purple-400 animate-pulse"></span>
+                  </div>
+                  <div class="w-8 h-8 rounded-lg bg-purple-500/20 text-purple-300 flex items-center justify-center font-black text-xs mb-2">
+                    ⏳
+                  </div>
+                  <h5 class="text-xs font-bold text-white">Automated Sell Queue</h5>
+                  <p class="text-[11px] text-slate-400 mt-1">Purchased GIGA transitions to personal FIFO Sell Queue (#SELL-ID) awaiting network buyer fulfillment.</p>
+                  <div class="mt-2.5 pt-2 border-t border-slate-700/60 text-[10px] font-mono text-purple-400 flex items-center gap-1">
+                    <span>✓</span> FIFO Order Priority
+                  </div>
+                </div>
+
+                <!-- Step 4: Matching Engine -->
+                <div class="p-3.5 rounded-xl bg-slate-800/80 border border-pink-500/40 relative">
+                  <div class="flex items-center justify-between mb-2">
+                    <span class="text-[10px] font-mono font-bold text-pink-400">STAGE 04</span>
+                    <span class="w-2 h-2 rounded-full bg-pink-400 animate-pulse"></span>
+                  </div>
+                  <div class="w-8 h-8 rounded-lg bg-pink-500/20 text-pink-300 flex items-center justify-center font-black text-xs mb-2">
+                    ⚡
+                  </div>
+                  <h5 class="text-xs font-bold text-white">2-Buyer Matching Algorithm</h5>
+                  <p class="text-[11px] text-slate-400 mt-1">Each subsequent network buy matches against the oldest queue order. Exactly 2 buyers complete the cycle.</p>
+                  <div class="mt-2.5 pt-2 border-t border-slate-700/60 text-[10px] font-mono text-pink-400 flex items-center gap-1">
+                    <span>✓</span> Algorithmic Parity
+                  </div>
+                </div>
+
+                <!-- Step 5: Profit Settlement -->
+                <div class="p-3.5 rounded-xl bg-slate-800/80 border border-emerald-500/40 relative">
+                  <div class="flex items-center justify-between mb-2">
+                    <span class="text-[10px] font-mono font-bold text-emerald-400">STAGE 05</span>
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                  </div>
+                  <div class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-300 flex items-center justify-center font-black text-xs mb-2">
+                    💰
+                  </div>
+                  <h5 class="text-xs font-bold text-white">+$50.00 Profit Credited</h5>
+                  <p class="text-[11px] text-slate-400 mt-1">Smart contract executes payout: +$50.00 Profit added directly to user's withdrawable USDT balance.</p>
+                  <div class="mt-2.5 pt-2 border-t border-slate-700/60 text-[10px] font-mono text-emerald-400 flex items-center gap-1">
+                    <span>✓</span> Instant Settlement
+                  </div>
+                </div>
+
+                <!-- Step 6: Payout -->
+                <div class="p-3.5 rounded-xl bg-slate-800/80 border border-teal-500/40 relative">
+                  <div class="flex items-center justify-between mb-2">
+                    <span class="text-[10px] font-mono font-bold text-teal-400">STAGE 06</span>
+                    <span class="w-2 h-2 rounded-full bg-teal-400 animate-pulse"></span>
+                  </div>
+                  <div class="w-8 h-8 rounded-lg bg-teal-500/20 text-teal-300 flex items-center justify-center font-black text-xs mb-2">
+                    🚀
+                  </div>
+                  <h5 class="text-xs font-bold text-white">Instant Wallet Withdrawal</h5>
+                  <p class="text-[11px] text-slate-400 mt-1">User requests withdrawal with secure Email OTP. Funds dispatch on-chain to private Web3 wallet address.</p>
+                  <div class="mt-2.5 pt-2 border-t border-slate-700/60 text-[10px] font-mono text-teal-400 flex items-center gap-1">
+                    <span>✓</span> Fast Blockchain Payout
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- Tokenomics Specification Table -->
+            <div class="p-4 sm:p-6 rounded-2xl bg-white border border-slate-200 shadow-xs">
+              <h4 class="text-sm sm:text-base font-display font-black text-slate-900 mb-3 flex items-center gap-2">
+                <span>📊</span> Official GIGA Tokenomics Specification
+              </h4>
+              <div class="overflow-x-auto">
+                <table class="w-full text-xs text-left border border-slate-200 rounded-xl overflow-hidden">
+                  <thead class="bg-slate-50 text-slate-700 font-bold border-b border-slate-200 uppercase text-[10px] tracking-wider">
+                    <tr>
+                      <th class="py-2.5 px-3">Parameter</th>
+                      <th class="py-2.5 px-3">Specification</th>
+                      <th class="py-2.5 px-3">Protocol Mechanics</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-slate-100 font-mono">
+                    <tr class="hover:bg-amber-50/30">
+                      <td class="py-2.5 px-3 font-bold text-slate-900 font-sans">Token Symbol</td>
+                      <td class="py-2.5 px-3 font-black text-amber-700">GIGA</td>
+                      <td class="py-2.5 px-3 text-slate-600 font-sans">Native utility and yield-settlement token</td>
+                    </tr>
+                    <tr class="hover:bg-amber-50/30">
+                      <td class="py-2.5 px-3 font-bold text-slate-900 font-sans">Total Supply Hard Cap</td>
+                      <td class="py-2.5 px-3 font-black text-slate-900">10,000,000 GIGA</td>
+                      <td class="py-2.5 px-3 text-slate-600 font-sans">Fixed non-inflationary supply, no mint backdoor</td>
+                    </tr>
+                    <tr class="hover:bg-amber-50/30">
+                      <td class="py-2.5 px-3 font-bold text-slate-900 font-sans">Unit Acquisition Price</td>
+                      <td class="py-2.5 px-3 font-black text-emerald-700">$30.00 USDT</td>
+                      <td class="py-2.5 px-3 text-slate-600 font-sans">Fixed rate entry across all 100 pool rows</td>
+                    </tr>
+                    <tr class="hover:bg-amber-50/30">
+                      <td class="py-2.5 px-3 font-bold text-slate-900 font-sans">Sell Queue Return</td>
+                      <td class="py-2.5 px-3 font-black text-emerald-700">+$50.00 USDT / Unit</td>
+                      <td class="py-2.5 px-3 text-slate-600 font-sans">Realized profit credited upon 2 buyer matches</td>
+                    </tr>
+                    <tr class="hover:bg-amber-50/30">
+                      <td class="py-2.5 px-3 font-bold text-slate-900 font-sans">Buyer Match Requirement</td>
+                      <td class="py-2.5 px-3 font-black text-purple-700">2 Matches / Order</td>
+                      <td class="py-2.5 px-3 text-slate-600 font-sans">Recursive linear queue fulfillment</td>
+                    </tr>
+                    <tr class="hover:bg-amber-50/30">
+                      <td class="py-2.5 px-3 font-bold text-slate-900 font-sans">Referral Inviter Incentive</td>
+                      <td class="py-2.5 px-3 font-black text-amber-700">+$5.00 USDT Instant</td>
+                      <td class="py-2.5 px-3 text-slate-600 font-sans">Paid directly to inviter's withdrawable balance</td>
+                    </tr>
+                    <tr class="hover:bg-amber-50/30">
+                      <td class="py-2.5 px-3 font-bold text-slate-900 font-sans">Blockchain Standards</td>
+                      <td class="py-2.5 px-3 font-black text-blue-700">BEP-20 / EVM Compatible</td>
+                      <td class="py-2.5 px-3 text-slate-600 font-sans">BNB Smart Chain, TRC-20, Solana, BTC, ETH</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Mathematical Equilibrium Model -->
+            <div class="p-4 sm:p-6 rounded-2xl bg-amber-50/60 border border-amber-200">
+              <h4 class="text-sm sm:text-base font-display font-black text-slate-900 mb-2 flex items-center gap-2">
+                <span>📐</span> Mathematical Proof of Queue Equilibrium
+              </h4>
+              <p class="text-xs text-slate-600 leading-relaxed">
+                The Gigachain matching mechanism operates on an autonomous liquidity balance equation:
+              </p>
+              <div class="my-3 p-3 rounded-xl bg-white border border-amber-300 font-mono text-center text-xs sm:text-sm font-black text-slate-800 shadow-2xs">
+                Payout(S) = (Buyer₁ × $30.00) + (Buyer₂ × $30.00) - Protocol Reserve = $50.00 Net Realized
+              </div>
+              <p class="text-xs text-slate-600 leading-relaxed">
+                Because each sell unit requires 2 sequential purchases of $30.00 ($60.00 total inflow), the protocol distributes <strong>$50.00</strong> to the seller while reserving <strong>$10.00</strong> for treasury liquidity reserves, referral bonuses, and multi-sig vault insurance. This guarantees continuous over-collateralization with zero deficit.
+              </p>
+            </div>
+
+            <!-- Strategic Roadmap -->
+            <div class="p-4 sm:p-6 rounded-2xl bg-white border border-slate-200 shadow-xs">
+              <h4 class="text-sm sm:text-base font-display font-black text-slate-900 mb-3 flex items-center gap-2">
+                <span>🗺️</span> Strategic Roadmap Milestones
+              </h4>
+              <div class="space-y-2.5">
+                <div class="p-3 rounded-xl bg-emerald-50/70 border border-emerald-200 flex items-center justify-between">
+                  <div>
+                    <span class="text-[10px] font-bold text-emerald-700 uppercase">Phase 1 • Complete</span>
+                    <h6 class="text-xs font-bold text-slate-900">Genesis Architecture &amp; CertiK/Hacken Audits</h6>
+                  </div>
+                  <span class="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-bold text-[10px]">Verified</span>
+                </div>
+                <div class="p-3 rounded-xl bg-amber-50/70 border border-amber-300 flex items-center justify-between">
+                  <div>
+                    <span class="text-[10px] font-bold text-amber-700 uppercase">Phase 2 • In Progress</span>
+                    <h6 class="text-xs font-bold text-slate-900">Mainnet 2.0, Multi-Chain Gateway &amp; Tier-1 CEX Listings</h6>
+                  </div>
+                  <span class="px-2 py-0.5 rounded-md bg-amber-200 text-amber-900 font-bold text-[10px] animate-pulse">Active</span>
+                </div>
+                <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+                  <div>
+                    <span class="text-[10px] font-bold text-slate-500 uppercase">Phase 3 • Upcoming</span>
+                    <h6 class="text-xs font-bold text-slate-700">AI-Powered Liquidity Engine &amp; Cross-Chain Bridge</h6>
+                  </div>
+                  <span class="px-2 py-0.5 rounded-md bg-slate-200 text-slate-700 font-bold text-[10px]">Q3 2026</span>
+                </div>
+                <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+                  <div>
+                    <span class="text-[10px] font-bold text-slate-500 uppercase">Phase 4 • Future</span>
+                    <h6 class="text-xs font-bold text-slate-700">Full Sovereign L1 Substrate &amp; Global DAO Governance</h6>
+                  </div>
+                  <span class="px-2 py-0.5 rounded-md bg-slate-200 text-slate-700 font-bold text-[10px]">Q4 2026</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="mt-4 pt-3.5 border-t border-slate-100 flex items-center justify-between shrink-0">
+          <span class="text-[11px] text-slate-400 font-medium hidden sm:inline">
+            © 2026 GIGACHAIN Foundation. All Rights Reserved.
+          </span>
+          <button id="closeAboutUsModalBtn" type="button"
+            class="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-md transition-colors cursor-pointer text-center">
+            Close Documentation
           </button>
         </div>
 
