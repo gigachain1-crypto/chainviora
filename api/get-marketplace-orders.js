@@ -1,8 +1,8 @@
 // api/get-marketplace-orders.js
-// Fetches user's marketplace sell queue orders (both pending and completed) from Supabase
+// Fetches user's marketplace sell queue orders (both pending and completed) from Supabase profiles sync_state
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://bhcddgzlzyzovecccmrj.supabase.co';
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'sb_publishable_HwMEDaihTWj54hP1s90VDA_ndMsJnJY';
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -15,32 +15,38 @@ module.exports = async (req, res) => {
     const email = req.query.email || req.body?.email;
     const cleanEmail = email ? email.trim().toLowerCase() : null;
 
-    if (!SUPABASE_SERVICE_KEY) {
-      return res.status(200).json({ success: true, orders: [], note: 'Local mode' });
-    }
-
-    const { createClient } = require('@supabase/supabase-js');
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-
-    let query = supabase.from('marketplace_orders').select('*');
-    if (user_id) {
-      query = query.or(`seller_id.eq.${user_id},seller_email.eq.${cleanEmail || ''}`);
-    } else if (cleanEmail) {
-      query = query.eq('seller_email', cleanEmail);
-    } else {
+    if (!cleanEmail && !user_id) {
       return res.status(400).json({ error: 'user_id or email is required' });
     }
 
-    const { data: orders, error } = await query.order('created_at', { ascending: false });
+    const { createClient } = require('@supabase/supabase-js');
+    const supabase = createClient(
+      SUPABASE_URL,
+      SUPABASE_SERVICE_KEY
+    );
 
-    if (error) {
-      console.warn('Error fetching marketplace orders:', error.message);
+    let query = supabase.from('profiles').select('id, email, giga_balance, deposit_addresses');
+    if (user_id) {
+      query = query.eq('id', user_id);
+    } else {
+      query = query.ilike('email', cleanEmail);
+    }
+
+    const { data: profile, error } = await query.maybeSingle();
+
+    if (error || !profile) {
       return res.status(200).json({ success: true, orders: [] });
     }
 
+    const syncState = (profile.deposit_addresses && profile.deposit_addresses.sync_state)
+      ? profile.deposit_addresses.sync_state
+      : {};
+
+    const orders = Array.isArray(syncState.pending_sells) ? syncState.pending_sells : [];
+
     return res.status(200).json({
       success: true,
-      orders: orders || []
+      orders: orders
     });
 
   } catch (err) {

@@ -239,6 +239,36 @@ module.exports = async (req, res) => {
         }
       }
 
+      // Ensure pending_sells contains at least total_giga_bought items if user has bought GIGA
+      let serverPendingSells = Array.isArray(syncState.pending_sells) ? syncState.pending_sells : [];
+      const totalBoughtServer = Math.max(gigaBought, parseInt(profile.giga_balance || 0, 10));
+      if (totalBoughtServer > serverPendingSells.length) {
+        const missing = totalBoughtServer - serverPendingSells.length;
+        for (let i = 0; i < missing; i++) {
+          serverPendingSells.unshift({
+            orderId: `#SELL-${Math.floor(100000 + Math.random() * 900000)}`,
+            backgroundOrderId: `GIGA-ORD-${Math.floor(100000 + Math.random() * 900000)}`,
+            amount: 1,
+            price: 30.00,
+            profit: 50.00,
+            matchedBuyers: 0,
+            requiredBuyers: 2,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            status: 'Pending',
+            created_at: new Date().toISOString()
+          });
+        }
+        syncState.pending_sells = serverPendingSells;
+        try {
+          await supabase.from('profiles').update({
+            deposit_addresses: {
+              ...profile.deposit_addresses,
+              sync_state: syncState
+            }
+          }).eq('id', profile.id);
+        } catch (e) { }
+      }
+
       return res.status(200).json({
         success: true,
         user_id: profile.id,
@@ -254,7 +284,7 @@ module.exports = async (req, res) => {
         total_giga_sold: isNaN(gigaSold) ? 0 : gigaSold,
         referral_earned: totalReferralEarned,
         referral_count: totalInvitedCount,
-        pending_sells: Array.isArray(syncState.pending_sells) ? syncState.pending_sells : [],
+        pending_sells: serverPendingSells,
         activities: Array.isArray(syncState.activities) ? syncState.activities : []
       });
     }
@@ -304,6 +334,34 @@ module.exports = async (req, res) => {
         ? 'GIGA' + (profile.email.split('@')[0].replace(/[^0-9]/g, '').slice(-6) || Math.floor(100000 + Math.random() * 900000))
         : 'GIGA' + Math.floor(100000 + Math.random() * 900000);
 
+      // Preserve existing pending sells; never overwrite with empty array
+      let resolvedPendingSells = Array.isArray(existingSync.pending_sells) ? existingSync.pending_sells : [];
+      if (Array.isArray(body.pending_sells) && body.pending_sells.length > 0) {
+        resolvedPendingSells = body.pending_sells;
+      }
+      if (authoritativeGiga > resolvedPendingSells.length) {
+        const missing = authoritativeGiga - resolvedPendingSells.length;
+        for (let i = 0; i < missing; i++) {
+          resolvedPendingSells.unshift({
+            orderId: `#SELL-${Math.floor(100000 + Math.random() * 900000)}`,
+            backgroundOrderId: `GIGA-ORD-${Math.floor(100000 + Math.random() * 900000)}`,
+            amount: 1,
+            price: 30.00,
+            profit: 50.00,
+            matchedBuyers: 0,
+            requiredBuyers: 2,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            status: 'Pending',
+            created_at: new Date().toISOString()
+          });
+        }
+      }
+
+      let resolvedActivities = Array.isArray(existingSync.activities) ? existingSync.activities : [];
+      if (Array.isArray(body.activities) && body.activities.length > 0) {
+        resolvedActivities = body.activities;
+      }
+
       const newSyncState = {
         ...existingSync,
         username: profile.username || existingSync.username || defaultUsername,
@@ -312,8 +370,8 @@ module.exports = async (req, res) => {
         lifetime_profit: authoritativeProfit,
         total_giga_bought: authoritativeGiga,
         total_giga_sold: existingSync.total_giga_sold || 0,
-        pending_sells: Array.isArray(body.pending_sells) ? body.pending_sells : (existingSync.pending_sells || []),
-        activities: Array.isArray(body.activities) ? body.activities : (existingSync.activities || [])
+        pending_sells: resolvedPendingSells,
+        activities: resolvedActivities
       };
 
       const updatePayload = {

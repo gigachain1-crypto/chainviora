@@ -207,7 +207,18 @@ function initDashboardUser() {
 
         // 3. Sells queue sync
         if (Array.isArray(data.pending_sells)) {
-          localStorage.setItem(`cv_sells_${emailKey}`, JSON.stringify(data.pending_sells));
+          if (data.pending_sells.length > 0) {
+            localStorage.setItem(`cv_sells_${emailKey}`, JSON.stringify(data.pending_sells));
+          } else {
+            const currentLocal = localStorage.getItem(`cv_sells_${emailKey}`);
+            let localArr = [];
+            try { if (currentLocal) localArr = JSON.parse(currentLocal); } catch (e) { }
+            if (localArr.length === 0) {
+              localStorage.setItem(`cv_sells_${emailKey}`, JSON.stringify([]));
+            } else {
+              syncBalanceToSupabase('sync_local_sells');
+            }
+          }
         }
 
         // 4. Activities sync
@@ -388,7 +399,8 @@ function updateBalanceDisplays() {
   const totalGigaBought = getUserTotalGigaBought();
   const gigaVal = totalGigaBought * GIGA_PRICE;
   const usdtVal = currentUser.usdtBalance;
-  const totalUsd = gigaVal + usdtVal;
+  // Total Portfolio Balance strictly represents available withdrawable USDT cash fund
+  const totalUsd = usdtVal;
 
   // Total GIGA sold by the user
   const totalGigaSold = getUserTotalGigaSold();
@@ -2068,18 +2080,41 @@ function initBuySellMarket() {
         pending = JSON.parse(saved);
       } catch (e) { }
     }
-    if (Array.isArray(pending)) {
-      pending.forEach(item => {
-        if (item.matchedBuyers === undefined) {
-          item.matchedBuyers = item.status === 'Completed' ? 2 : 0;
-        }
-        if (!item.status) {
-          item.status = item.matchedBuyers >= 2 ? 'Completed' : 'Pending';
-        }
-      });
-    } else {
+    if (!Array.isArray(pending)) {
       pending = [];
     }
+
+    // Auto-restore any missing pending sells if totalGigaBought > pending.length
+    const totalBought = Math.max(currentUser.totalGigaBought || 0, currentUser.gigaBalance || 0);
+    const totalRecorded = pending.length;
+    if (totalBought > totalRecorded) {
+      const missingCount = totalBought - totalRecorded;
+      for (let i = 0; i < missingCount; i++) {
+        pending.unshift({
+          orderId: `#SELL-${Math.floor(100000 + Math.random() * 900000)}`,
+          backgroundOrderId: `GIGA-ORD-${Math.floor(100000 + Math.random() * 900000)}`,
+          amount: 1,
+          price: 30.00,
+          profit: 50.00,
+          matchedBuyers: 0,
+          requiredBuyers: 2,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          status: 'Pending',
+          created_at: new Date().toISOString()
+        });
+      }
+      savePendingSells(pending);
+      syncBalanceToSupabase('restore_pending_sells');
+    }
+
+    pending.forEach(item => {
+      if (item.matchedBuyers === undefined) {
+        item.matchedBuyers = item.status === 'Completed' ? 2 : 0;
+      }
+      if (!item.status) {
+        item.status = item.matchedBuyers >= 2 ? 'Completed' : 'Pending';
+      }
+    });
     return pending;
   }
 
@@ -2324,7 +2359,7 @@ function initBuySellMarket() {
 
     // ✅ Sync with Supabase Database via API
     try {
-      fetch('/api/marketplace-buy', {
+      const buyRes = await fetch('/api/marketplace-buy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -2333,16 +2368,23 @@ function initBuySellMarket() {
           username: currentUser.username,
           background_order_id: backgroundOrderId
         })
-      }).catch(e => console.warn('Marketplace buy API sync notice:', e.message));
-    } catch (e) { }
+      });
+      const buyData = await buyRes.json().catch(() => ({}));
+      if (buyData && buyData.new_usdt_balance !== undefined) {
+        currentUser.usdtBalance = parseFloat(buyData.new_usdt_balance);
+      }
+    } catch (e) {
+      console.warn('Marketplace buy API sync notice:', e.message);
+    }
 
     localStorage.setItem('gigachain_current_user', JSON.stringify(currentUser));
-    syncBalanceToSupabase('buy_giga');
+    await syncBalanceToSupabase('buy_giga');
     recordTxToSupabase('buy_giga', 30.00, 1, sellOrderId, 'Bought 1 GIGA for $30.00');
 
     // Re-render UI
     renderPoolTable(searchInput ? searchInput.value : '');
     renderPendingSells();
+    updateBalanceDisplays();
 
     // Open Buy Successfully Popup Modal
     openSuccessModal(sellOrderId);
@@ -2364,37 +2406,42 @@ function initBuySellMarket() {
         let changed = false;
 
         json.orders.forEach(dbOrder => {
-          const existing = localPending.find(p => p.orderId === dbOrder.sell_order_code || p.backgroundOrderId === dbOrder.order_id);
+          const oId = dbOrder.orderId || dbOrder.sell_order_code || dbOrder.order_id;
+          const bgId = dbOrder.backgroundOrderId || dbOrder.background_order_id || dbOrder.order_id;
+          const existing = localPending.find(p => (oId && p.orderId === oId) || (bgId && p.backgroundOrderId === bgId));
+          const dbMatched = dbOrder.matchedBuyers !== undefined ? dbOrder.matchedBuyers : (dbOrder.matched_buyers || 0);
+          const dbStatus = (dbOrder.status === 'completed' || dbOrder.status === 'Completed') ? 'Completed' : 'Pending';
+
           if (existing) {
             const wasComplete = existing.status === 'Completed';
-            if (existing.matchedBuyers !== dbOrder.matched_buyers || existing.status !== dbOrder.status) {
-              existing.matchedBuyers = dbOrder.matched_buyers;
-              existing.status = dbOrder.status === 'completed' ? 'Completed' : 'Pending';
+            if (existing.matchedBuyers !== dbMatched || existing.status !== dbStatus) {
+              existing.matchedBuyers = dbMatched;
+              existing.status = dbStatus;
               changed = true;
             }
-            if (!wasComplete && dbOrder.status === 'completed') {
+            if (!wasComplete && dbStatus === 'Completed') {
               logUserActivity({
                 type: 'Sell Profit',
                 asset: 'USDT',
                 amount: '+$50.00 USDT',
                 rawAmount: 50.00,
                 txHash: generateTxHash(),
-                orderId: dbOrder.sell_order_code || dbOrder.order_id,
+                orderId: oId,
                 status: 'Completed',
-                notes: `Sell Queue ${dbOrder.sell_order_code || dbOrder.order_id} completed — +$50.00 Profit credited`
+                notes: `Sell Queue ${oId} completed — +$50.00 Profit credited`
               });
             }
           } else {
             localPending.unshift({
-              orderId: dbOrder.sell_order_code || `#SELL-${Math.floor(100000 + Math.random() * 900000)}`,
-              backgroundOrderId: dbOrder.order_id,
+              orderId: oId || `#SELL-${Math.floor(100000 + Math.random() * 900000)}`,
+              backgroundOrderId: bgId || `GIGA-ORD-${Math.floor(100000 + Math.random() * 900000)}`,
               amount: parseFloat(dbOrder.amount) || 1,
-              price: parseFloat(dbOrder.unit_price) || 30.00,
-              profit: parseFloat(dbOrder.profit_amount) || 50.00,
-              matchedBuyers: dbOrder.matched_buyers || 0,
-              requiredBuyers: dbOrder.required_buyers || 2,
-              timestamp: new Date(dbOrder.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              status: dbOrder.status === 'completed' ? 'Completed' : 'Pending'
+              price: parseFloat(dbOrder.price || dbOrder.unit_price) || 30.00,
+              profit: parseFloat(dbOrder.profit || dbOrder.profit_amount) || 50.00,
+              matchedBuyers: dbMatched,
+              requiredBuyers: dbOrder.requiredBuyers || dbOrder.required_buyers || 2,
+              timestamp: dbOrder.timestamp || (dbOrder.created_at ? new Date(dbOrder.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })),
+              status: dbStatus
             });
             changed = true;
           }

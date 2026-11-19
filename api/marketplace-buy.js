@@ -1,8 +1,9 @@
 // api/marketplace-buy.js
 // Handles GIGA purchase ($30), 2-buyer matching logic, and Supabase database persistence
+// Strictly updates seller and buyer cross-device sync_state in Supabase
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://bhcddgzlzyzovecccmrj.supabase.co';
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'sb_publishable_HwMEDaihTWj54hP1s90VDA_ndMsJnJY';
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -12,7 +13,7 @@ module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const { user_id, email, username, background_order_id } = req.body;
+    const { user_id, email, username, background_order_id } = req.body || {};
 
     const cleanEmail = email ? email.trim().toLowerCase() : null;
     const cleanUsername = username ? username.trim() : 'GIGA Member';
@@ -20,21 +21,11 @@ module.exports = async (req, res) => {
     const sellCode = `#SELL-${Math.floor(100000 + Math.random() * 900000)}`;
     const cost = 30.00;
 
-    // Fallback if Supabase service key is not set in local dev
-    if (!SUPABASE_SERVICE_KEY) {
-      return res.status(200).json({
-        success: true,
-        note: 'Saved locally',
-        order_id: bgOrderId,
-        sell_order_code: sellCode,
-        matched_buyers: 0,
-        required_buyers: 2,
-        status: 'pending'
-      });
-    }
-
     const { createClient } = require('@supabase/supabase-js');
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+    const supabase = createClient(
+      SUPABASE_URL,
+      SUPABASE_SERVICE_KEY
+    );
 
     // 1. Fetch current buyer profile
     let buyer = null;
@@ -43,7 +34,7 @@ module.exports = async (req, res) => {
       buyer = data;
     }
     if (!buyer && cleanEmail) {
-      const { data } = await supabase.from('profiles').select('*').eq('email', cleanEmail).maybeSingle();
+      const { data } = await supabase.from('profiles').select('*').ilike('email', cleanEmail).maybeSingle();
       buyer = data;
     }
 
@@ -54,16 +45,146 @@ module.exports = async (req, res) => {
       });
     }
 
-    // 2. Deduct $30 from buyer's USDT balance
+    // 2. Prepare new pending sell order for this buyer
     const updatedUsdt = Math.max(0, currentUsdt - cost);
+    const newPendingOrder = {
+      orderId: sellCode,
+      backgroundOrderId: bgOrderId,
+      amount: 1,
+      price: cost,
+      profit: 50.00,
+      matchedBuyers: 0,
+      requiredBuyers: 2,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      status: 'Pending',
+      created_at: new Date().toISOString()
+    };
+
+    // 3. Matchmaker Engine: Find pending order from ANOTHER seller in profiles
+    let matchedSellerOrder = null;
+    let sellerCompleted = false;
+
+    try {
+      const buyerId = buyer ? buyer.id : '00000000-0000-0000-0000-000000000000';
+      const { data: otherProfiles } = await supabase
+        .from('profiles')
+        .select('*')
+        .neq('id', buyerId)
+        .limit(50);
+
+      if (otherProfiles && Array.isArray(otherProfiles)) {
+        for (const seller of otherProfiles) {
+          if (cleanEmail && seller.email && seller.email.toLowerCase() === cleanEmail) continue;
+
+          const sMap = (seller.deposit_addresses && typeof seller.deposit_addresses === 'object') ? seller.deposit_addresses : {};
+          const sSync = sMap.sync_state || {};
+          const sPending = Array.isArray(sSync.pending_sells) ? sSync.pending_sells : [];
+
+          const targetOrder = sPending.find(item => item.status === 'Pending' && (item.matchedBuyers || 0) < 2);
+          if (targetOrder) {
+            targetOrder.matchedBuyers = (targetOrder.matchedBuyers || 0) + 1;
+            const isComplete = targetOrder.matchedBuyers >= 2;
+            if (isComplete) {
+              targetOrder.status = 'Completed';
+              targetOrder.completedAt = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            }
+
+            const sellerUsdt = parseFloat(seller.usdt_balance || 0);
+            const sellerProfit = parseFloat(seller.lifetime_profit || 0);
+            const newSellerUsdt = isComplete ? sellerUsdt + 50.00 : sellerUsdt;
+            const newSellerProfit = isComplete ? sellerProfit + 50.00 : sellerProfit;
+            const newSellerSold = isComplete ? (parseInt(sSync.total_giga_sold || 0, 10) + 1) : (parseInt(sSync.total_giga_sold || 0, 10));
+
+            const sActivities = Array.isArray(sSync.activities) ? [...sSync.activities] : [];
+            if (isComplete) {
+              sActivities.unshift({
+                id: 'profit_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+                time: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ', ' + new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+                type: 'Sell Profit',
+                asset: 'USDT',
+                amount: '+$50.00 USDT',
+                status: 'Completed',
+                notes: `Sell Queue ${targetOrder.orderId} completed (2 buyers matched) — +$50.00 Profit credited`,
+                rawAmount: 50.00,
+                orderId: targetOrder.orderId
+              });
+            }
+
+            const updatedSellerSync = {
+              ...sSync,
+              usdt_balance: newSellerUsdt,
+              lifetime_profit: newSellerProfit,
+              total_giga_sold: newSellerSold,
+              pending_sells: sPending,
+              activities: sActivities.slice(0, 50)
+            };
+
+            await supabase
+              .from('profiles')
+              .update({
+                usdt_balance: newSellerUsdt,
+                lifetime_profit: newSellerProfit,
+                deposit_addresses: {
+                  ...sMap,
+                  sync_state: updatedSellerSync
+                },
+                last_updated: new Date().toISOString()
+              })
+              .eq('id', seller.id);
+
+            if (isComplete) {
+              try {
+                await supabase.from('transactions').insert({
+                  user_id: seller.id,
+                  type: 'sell_complete',
+                  amount_usdt: 50.00,
+                  amount_giga: 1.0000,
+                  order_id: targetOrder.orderId,
+                  status: 'completed',
+                  notes: `Sell completed (2 of 2 buyers matched) — +$50.00 profit credited`,
+                  created_at: new Date().toISOString()
+                });
+              } catch (e) { }
+            }
+
+            matchedSellerOrder = targetOrder;
+            sellerCompleted = isComplete;
+            break; // Matched 1 pending order from oldest seller
+          }
+        }
+      }
+    } catch (matchingErr) {
+      console.warn('Marketplace matching error (non-fatal):', matchingErr.message);
+    }
+
+    // 4. Update Buyer: Deduct $30 USDT and add new Pending Sell Order
     if (buyer) {
       const buyerMap = (buyer.deposit_addresses && typeof buyer.deposit_addresses === 'object') ? buyer.deposit_addresses : {};
       const buyerSync = buyerMap.sync_state || {};
+      const existingPending = Array.isArray(buyerSync.pending_sells) ? buyerSync.pending_sells : [];
+      const updatedPending = [newPendingOrder, ...existingPending];
+
+      const existingActivities = Array.isArray(buyerSync.activities) ? buyerSync.activities : [];
+      const buyActivity = {
+        id: 'buy_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+        time: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ', ' + new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+        type: 'Buy GIGA',
+        asset: '1 GIGA ($30.00)',
+        amount: '-$30.00 USDT',
+        status: 'Completed',
+        notes: `Bought 1 GIGA ($30.00) — Placed in Sell Queue (${sellCode})`,
+        rawAmount: 30.00,
+        orderId: sellCode
+      };
+      const updatedActivities = [buyActivity, ...existingActivities].slice(0, 50);
+
       const updatedSync = {
         ...buyerSync,
         usdt_balance: updatedUsdt,
         giga_balance: (parseInt(buyerSync.giga_balance || 0, 10)) + 1,
-        total_giga_bought: (parseInt(buyerSync.total_giga_bought || 0, 10)) + 1
+        total_giga_bought: (parseInt(buyerSync.total_giga_bought || 0, 10)) + 1,
+        pending_sells: updatedPending,
+        activities: updatedActivities
       };
 
       await supabase
@@ -79,120 +200,8 @@ module.exports = async (req, res) => {
           last_updated: new Date().toISOString()
         })
         .eq('id', buyer.id);
-    }
 
-    // 3. Matchmaker Engine: Find oldest pending order from ANOTHER seller
-    let matchedSellerOrder = null;
-    let sellerCompleted = false;
-
-    try {
-      // Find oldest pending order from other sellers (strictly no self-matching)
-      const { data: pendingOrders } = await supabase
-        .from('marketplace_orders')
-        .select('*')
-        .eq('status', 'pending')
-        .lt('matched_buyers', 2)
-        .order('created_at', { ascending: true })
-        .limit(10);
-
-      if (pendingOrders && pendingOrders.length > 0) {
-        // Strictly match orders from other sellers only
-        let target = pendingOrders.find(o => o.seller_id !== (buyer ? buyer.id : null) && o.seller_email !== cleanEmail);
-
-        if (target) {
-          const newMatched = (target.matched_buyers || 0) + 1;
-          const isComplete = newMatched >= 2;
-          const existingBuyers = Array.isArray(target.buyer_ids) ? target.buyer_ids : [];
-          existingBuyers.push({
-            buyer_id: buyer ? buyer.id : null,
-            email: cleanEmail,
-            bought_at: new Date().toISOString()
-          });
-
-          const updatePayload = {
-            matched_buyers: newMatched,
-            buyer_ids: existingBuyers,
-            status: isComplete ? 'completed' : 'pending'
-          };
-          if (isComplete) {
-            updatePayload.completed_at = new Date().toISOString();
-          }
-
-          await supabase
-            .from('marketplace_orders')
-            .update(updatePayload)
-            .eq('id', target.id);
-
-          matchedSellerOrder = target;
-          sellerCompleted = isComplete;
-
-          // If 2nd buyer matched -> Seller gets +$50.00 Profit!
-          if (isComplete) {
-            let sellerProfile = null;
-            if (target.seller_id) {
-              const { data: sp } = await supabase.from('profiles').select('*').eq('id', target.seller_id).maybeSingle();
-              sellerProfile = sp;
-            }
-            if (!sellerProfile && target.seller_email) {
-              const { data: sp } = await supabase.from('profiles').select('*').eq('email', target.seller_email).maybeSingle();
-              sellerProfile = sp;
-            }
-
-            if (sellerProfile) {
-              const newSellerUsdt = parseFloat(sellerProfile.usdt_balance || 0) + 50.00;
-              const newSellerProfit = parseFloat(sellerProfile.lifetime_profit || 0) + 50.00;
-
-              await supabase
-                .from('profiles')
-                .update({
-                  usdt_balance: newSellerUsdt,
-                  lifetime_profit: newSellerProfit,
-                  last_updated: new Date().toISOString()
-                })
-                .eq('id', sellerProfile.id);
-
-              // Record sell_complete transaction for seller
-              await supabase.from('transactions').insert({
-                user_id: sellerProfile.id,
-                type: 'sell_complete',
-                amount_usdt: 50.00,
-                amount_giga: 1.0000,
-                order_id: target.sell_order_code || target.order_id,
-                status: 'completed',
-                notes: 'Sell completed (2 of 2 buyers matched) — +$50.00 profit credited'
-              });
-            }
-          }
-        }
-      }
-    } catch (matchingErr) {
-      console.warn('Marketplace matching error (non-fatal):', matchingErr.message);
-    }
-
-    // 4. Create new pending sell order for this buyer in marketplace_orders
-    const newOrderData = {
-      order_id: bgOrderId,
-      sell_order_code: sellCode,
-      seller_id: buyer ? buyer.id : null,
-      seller_email: cleanEmail || 'guest@example.com',
-      seller_username: cleanUsername,
-      amount: 1.0000,
-      unit_price: 30.00,
-      profit_amount: 50.00,
-      matched_buyers: 0,
-      required_buyers: 2,
-      buyer_ids: [],
-      status: 'pending'
-    };
-
-    try {
-      await supabase.from('marketplace_orders').insert(newOrderData);
-    } catch (orderInsertErr) {
-      console.warn('marketplace_orders insert failed (table may need schema run):', orderInsertErr.message);
-    }
-
-    // 5. Record buy transaction in transactions table
-    if (buyer) {
+      // Record transaction
       try {
         await supabase.from('transactions').insert({
           user_id: buyer.id,
@@ -201,7 +210,8 @@ module.exports = async (req, res) => {
           amount_giga: 1.0000,
           order_id: sellCode,
           status: 'completed',
-          notes: `Bought 1 GIGA ($30.00) — placed in sell queue (${sellCode})`
+          notes: `Bought 1 GIGA ($30.00) — placed in sell queue (${sellCode})`,
+          created_at: new Date().toISOString()
         });
       } catch (txErr) {
         console.warn('buy_giga transaction record error:', txErr.message);
@@ -211,9 +221,9 @@ module.exports = async (req, res) => {
     return res.status(200).json({
       success: true,
       new_usdt_balance: updatedUsdt,
-      order: newOrderData,
+      order: newPendingOrder,
       matched_seller: matchedSellerOrder ? {
-        sell_order_code: matchedSellerOrder.sell_order_code,
+        orderId: matchedSellerOrder.orderId,
         completed: sellerCompleted
       } : null
     });
