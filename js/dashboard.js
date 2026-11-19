@@ -535,6 +535,8 @@ function initDepositModal() {
     });
   }
 
+  let depositCheckInterval = null;
+
   function openDeposit() {
     if (modal) {
       modal.classList.remove('hidden');
@@ -542,6 +544,11 @@ function initDepositModal() {
       // Set to selected or default to BEP20
       const currentCur = assetSelect ? assetSelect.value : 'usdtbsc';
       loadDepositAddress(currentCur);
+
+      // Only check while deposit modal is actively open
+      if (!depositCheckInterval) {
+        depositCheckInterval = setInterval(runBackgroundDepositCheck, 10000);
+      }
     }
   }
 
@@ -549,6 +556,10 @@ function initDepositModal() {
     if (modal) {
       modal.classList.add('hidden');
       modal.classList.remove('flex');
+    }
+    if (depositCheckInterval) {
+      clearInterval(depositCheckInterval);
+      depositCheckInterval = null;
     }
   }
 
@@ -643,9 +654,10 @@ function initDepositModal() {
 
         const data = await res.json().catch(() => ({}));
 
-        if (data.success && data.confirmed) {
+        if (data.success && data.confirmed && !data.already_credited) {
           // Real on-chain crypto payment received & confirmed!
-          const creditedAmt = parseFloat(data.amount || 1.00);
+          const creditedAmt = parseFloat(data.amount || 0);
+          if (creditedAmt <= 0) return;
           const txKey = 'cv_dep_credited_' + (data.tx_hash || 'tx_' + creditedAmt);
 
           if (!localStorage.getItem(txKey)) {
@@ -664,16 +676,20 @@ function initDepositModal() {
               notes: `On-chain deposit via ${meta.name || 'BEP20'} (Status: Confirmed)`
             });
             syncBalanceToSupabase('deposit_confirmed');
-          }
 
-          // Close modal & open centered Deposit Successful modal
-          closeDeposit();
-          showDepositSuccessModal({
-            amount: creditedAmt,
-            networkName: meta.name || 'USDT (BEP20 - BNB Smart Chain)',
-            txHash: data.tx_hash
-          });
-          showToast(`🎉 Deposit of $${creditedAmt.toFixed(2)} USDT Confirmed! Credited to Vault!`, 'success');
+            // Close modal & open centered Deposit Successful modal ONLY when newly confirmed
+            closeDeposit();
+            showDepositSuccessModal({
+              amount: creditedAmt,
+              networkName: meta.name || 'USDT (BEP20 - BNB Smart Chain)',
+              txHash: data.tx_hash
+            });
+            showToast(`🎉 Deposit of $${creditedAmt.toFixed(2)} USDT Confirmed! Credited to Vault!`, 'success');
+          } else {
+            showToast('This deposit transaction has already been credited to your vault balance.', 'info');
+          }
+        } else if (data.already_credited) {
+          showToast('This deposit has already been processed and credited to your vault.', 'info');
         } else {
           // Transaction still waiting on blockchain
           showToast('⏳ Waiting for transfer. No incoming transfer detected yet on this address. If you just sent crypto from your wallet, please wait 1-2 minutes for network confirmation and click again.', 'info');
@@ -692,18 +708,28 @@ function initDepositModal() {
     });
   }
 
-  // Background Auto-Listener: Polls for incoming blockchain deposits continuously
+  // Background Auto-Listener: ONLY polls when deposit modal is actively open AND an active payment exists
   function runBackgroundDepositCheck() {
+    if (!modal || modal.classList.contains('hidden')) {
+      if (depositCheckInterval) {
+        clearInterval(depositCheckInterval);
+        depositCheckInterval = null;
+      }
+      return;
+    }
+
     const curKey = assetSelect ? assetSelect.value : 'usdtbsc';
     const meta = NETWORK_META[curKey] || NETWORK_META.usdtbsc;
     const pId = currentPaymentId || paymentsCache[curKey];
-    const addr = (addrInput && addrInput.value) ? addrInput.value : (addressesCache[curKey] || '0x9Ca60E989A9E8ce08dCFEfcC108A952cEe4f517b');
+    const addr = (addrInput && addrInput.value) ? addrInput.value : addressesCache[curKey];
+
+    if (!pId) return;
 
     fetch('/api/check-deposit-status', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        payment_id: pId || null,
+        payment_id: pId,
         address: addr,
         user_id: currentUser ? currentUser.id : null,
         email: currentUser ? currentUser.email : null
@@ -711,8 +737,9 @@ function initDepositModal() {
     })
       .then(r => r.json())
       .then(data => {
-        if (data && data.success && data.confirmed) {
-          const creditedAmt = parseFloat(data.amount || 1.00);
+        if (data && data.success && data.confirmed && !data.already_credited) {
+          const creditedAmt = parseFloat(data.amount || 0);
+          if (creditedAmt <= 0) return;
           const txKey = 'cv_dep_credited_' + (data.tx_hash || 'tx_' + creditedAmt);
 
           if (!localStorage.getItem(txKey)) {
@@ -731,6 +758,11 @@ function initDepositModal() {
             });
             syncBalanceToSupabase('deposit_confirmed');
 
+            if (depositCheckInterval) {
+              clearInterval(depositCheckInterval);
+              depositCheckInterval = null;
+            }
+
             closeDeposit();
             showDepositSuccessModal({
               amount: creditedAmt,
@@ -743,10 +775,6 @@ function initDepositModal() {
       })
       .catch(() => { });
   }
-
-  // Check 1.5 seconds after page loads, and every 8 seconds continuously
-  setTimeout(runBackgroundDepositCheck, 1500);
-  setInterval(runBackgroundDepositCheck, 8000);
 }
 
 /* --------------------------------------------------------------------------

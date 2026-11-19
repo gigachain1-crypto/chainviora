@@ -9,7 +9,7 @@ if (!envKey || envKey.includes('GDQE') || envKey.includes('DFZY1F2')) {
 }
 const NOWPAYMENTS_API_KEY = envKey;
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://bhcddgzlzyzovecccmrj.supabase.co';
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'sb_publishable_HwMEDaihTWj54hP1s90VDA_ndMsJnJY';
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -74,25 +74,17 @@ module.exports = async (req, res) => {
       }
     }
 
-    // 2. Special check for address 0x9Ca60E989A9E8ce08dCFEfcC108A952cEe4f517b (or any known on-chain BSC deposit)
-    const normalizedAddr = (payAddress || address || '').toLowerCase();
-    if (normalizedAddr === '0x9ca60e989a9e8ce08dcfefcc108a952cee4f517b' || email === 'rajaraj8847@gmail.com') {
-      isConfirmed = true;
-      if (actuallyPaid <= 0) actuallyPaid = 1.00;
-      if (!status) status = 'finished';
-      if (!txHash) txHash = '0x9ca60e989a9e8ce08dcfefcc108a952cee4f517b_bep20_transfer';
-    }
+    // Determine the credit amount
+    let creditAmount = actuallyPaid > 0 ? actuallyPaid : (priceAmount > 0 ? priceAmount : 0);
 
-    // Determine the credit amount (minimum 1.00 if confirmed)
-    let creditAmount = actuallyPaid > 0 ? actuallyPaid : (priceAmount > 0 ? priceAmount : 1.00);
-    if (!txHash) {
-      txHash = '0x' + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
-    }
-
-    // 3. Process confirmed deposit and credit to user profile in Supabase
-    if (isConfirmed) {
+    // 2. Process confirmed deposit and credit to user profile in Supabase
+    if (isConfirmed && creditAmount > 0) {
       let alreadyCredited = false;
       let newBalance = creditAmount;
+
+      if (!txHash) {
+        txHash = '0x' + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+      }
 
       if (SUPABASE_SERVICE_KEY) {
         try {
@@ -130,11 +122,22 @@ module.exports = async (req, res) => {
               const curBal = parseFloat(profile.usdt_balance || 0);
               newBalance = curBal + creditAmount;
 
+              const existingMap = (profile.deposit_addresses && typeof profile.deposit_addresses === 'object') ? profile.deposit_addresses : {};
+              const existingSync = existingMap.sync_state || {};
+              const newSyncState = {
+                ...existingSync,
+                usdt_balance: newBalance
+              };
+
               await supabase
                 .from('profiles')
                 .update({
                   usdt_balance: newBalance,
                   deposit_address: payAddress || profile.deposit_address,
+                  deposit_addresses: {
+                    ...existingMap,
+                    sync_state: newSyncState
+                  },
                   last_updated: new Date().toISOString()
                 })
                 .eq('id', profile.id);
@@ -165,6 +168,20 @@ module.exports = async (req, res) => {
         }
       }
 
+      if (alreadyCredited) {
+        return res.status(200).json({
+          success: true,
+          status: status || 'finished',
+          confirmed: false,
+          already_credited: true,
+          message: 'Deposit already processed and credited',
+          amount: creditAmount,
+          tx_hash: txHash,
+          network: payCurrency || 'usdtbsc',
+          pay_address: payAddress
+        });
+      }
+
       return res.status(200).json({
         success: true,
         status: status || 'finished',
@@ -173,7 +190,7 @@ module.exports = async (req, res) => {
         tx_hash: txHash,
         network: payCurrency || 'usdtbsc',
         pay_address: payAddress,
-        already_credited: alreadyCredited
+        already_credited: false
       });
     }
 
