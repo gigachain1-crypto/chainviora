@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initReferralSystem();
   initBuySellMarket();
   initUserActivityHistory();
+  initNotificationSystem();
 });
 
 // State
@@ -2151,6 +2152,74 @@ function initBuySellMarket() {
   // Initial render
   renderPoolTable();
   renderPendingSells();
+}
+
+/* --------------------------------------------------------------------------
+   8. System Notifications & Admin Broadcasts (Ready for Admin Panel)
+   -------------------------------------------------------------------------- */
+function initNotificationSystem() {
+  const notifBtn = document.getElementById('notificationBtn');
+  const notifModal = document.getElementById('notificationModal');
+  const closeBtn = document.getElementById('closeNotificationModal');
+  const closeFooterBtn = document.getElementById('closeNotificationModalBtn');
+  const notifBadge = document.getElementById('notifBadge');
+  const listContainer = document.getElementById('notificationListContainer');
+
+  function openNotif() {
+    if (!notifModal) return;
+    notifModal.classList.remove('hidden');
+    notifModal.classList.add('flex');
+    if (notifBadge) {
+      // Fade out badge ping once user opens notifications
+      notifBadge.style.opacity = '0.35';
+    }
+  }
+
+  function closeNotif() {
+    if (!notifModal) return;
+    notifModal.classList.add('hidden');
+    notifModal.classList.remove('flex');
+  }
+
+  if (notifBtn) notifBtn.addEventListener('click', openNotif);
+  if (closeBtn) closeBtn.addEventListener('click', closeNotif);
+  if (closeFooterBtn) closeFooterBtn.addEventListener('click', closeNotif);
+
+  if (notifModal) {
+    notifModal.addEventListener('click', (e) => {
+      if (e.target === notifModal) closeNotif();
+    });
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && notifModal && !notifModal.classList.contains('hidden')) {
+      closeNotif();
+    }
+  });
+
+  // Global helper ready for Admin Panel integration
+  window.showAdminBroadcast = function (data) {
+    if (!data) return;
+    if (listContainer) {
+      const item = document.createElement('div');
+      item.className = 'p-4 rounded-xl bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-300 shadow-2xs';
+      item.innerHTML = `
+        <div class="flex items-start justify-between gap-2">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+            <span class="text-xs font-bold text-amber-950 uppercase tracking-wide">${data.type || 'Admin Broadcast'}</span>
+          </div>
+          <span class="text-[10px] text-slate-400 font-mono">${data.date || 'Just now'}</span>
+        </div>
+        <h4 class="text-sm font-bold text-slate-900 mt-2 leading-snug">${data.title || 'Announcement'}</h4>
+        <p class="text-xs text-slate-600 mt-1 leading-relaxed">${data.message || ''}</p>
+      `;
+      listContainer.prepend(item);
+    }
+    if (notifBadge) notifBadge.style.opacity = '1';
+    // Open full screen automatically on arrival
+    openNotif();
+  };
 }
 
 
