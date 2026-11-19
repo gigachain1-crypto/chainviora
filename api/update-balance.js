@@ -49,18 +49,38 @@ module.exports = async (req, res) => {
         ? profile.deposit_addresses.sync_state
         : {};
 
+      const defaultUsername = profile.email
+        ? 'GIGA' + (profile.email.split('@')[0].replace(/[^0-9]/g, '').slice(-6) || Math.floor(100000 + Math.random() * 900000))
+        : 'GIGA' + Math.floor(100000 + Math.random() * 900000);
+
+      const usdtBal = syncState.usdt_balance !== undefined
+        ? parseFloat(syncState.usdt_balance)
+        : (profile.usdt_balance !== undefined ? parseFloat(profile.usdt_balance) : 0.00);
+
+      const profitBal = syncState.lifetime_profit !== undefined
+        ? parseFloat(syncState.lifetime_profit)
+        : (profile.lifetime_profit !== undefined ? parseFloat(profile.lifetime_profit) : 0.00);
+
+      const gigaBought = syncState.total_giga_bought !== undefined
+        ? parseInt(syncState.total_giga_bought, 10)
+        : (profile.giga_balance !== undefined ? parseInt(profile.giga_balance, 10) : 0);
+
+      const gigaSold = syncState.total_giga_sold !== undefined
+        ? parseInt(syncState.total_giga_sold, 10)
+        : 0;
+
       return res.status(200).json({
         success: true,
         user_id: profile.id,
         email: profile.email,
-        username: profile.username || syncState.username || 'GIGA761970',
-        usdt_balance: parseFloat(syncState.usdt_balance !== undefined ? syncState.usdt_balance : (profile.usdt_balance !== undefined ? profile.usdt_balance : 211.00)),
-        lifetime_profit: parseFloat(syncState.lifetime_profit !== undefined ? syncState.lifetime_profit : (profile.lifetime_profit !== undefined ? profile.lifetime_profit : 150.00)),
+        username: profile.username || syncState.username || defaultUsername,
+        usdt_balance: isNaN(usdtBal) ? 0.00 : usdtBal,
+        lifetime_profit: isNaN(profitBal) ? 0.00 : profitBal,
         giga_balance: parseFloat(profile.giga_balance || 0),
-        total_giga_bought: parseInt(syncState.total_giga_bought || 6, 10),
-        total_giga_sold: parseInt(syncState.total_giga_sold || 3, 10),
-        pending_sells: syncState.pending_sells || [],
-        activities: syncState.activities || []
+        total_giga_bought: isNaN(gigaBought) ? 0 : gigaBought,
+        total_giga_sold: isNaN(gigaSold) ? 0 : gigaSold,
+        pending_sells: Array.isArray(syncState.pending_sells) ? syncState.pending_sells : [],
+        activities: Array.isArray(syncState.activities) ? syncState.activities : []
       });
     }
 
@@ -98,12 +118,12 @@ module.exports = async (req, res) => {
 
       const newSyncState = {
         ...existingSync,
-        username: body.username || profile.username || existingSync.username || 'GIGA761970',
-        usdt_balance: body.usdt_balance !== undefined ? parseFloat(body.usdt_balance) : existingSync.usdt_balance,
-        lifetime_profit: body.lifetime_profit !== undefined ? parseFloat(body.lifetime_profit) : existingSync.lifetime_profit,
-        total_giga_bought: body.total_giga_bought !== undefined ? parseInt(body.total_giga_bought, 10) : (existingSync.total_giga_bought || 6),
-        total_giga_sold: body.total_giga_sold !== undefined ? parseInt(body.total_giga_sold, 10) : (existingSync.total_giga_sold || 3),
-        pending_sells: Array.isArray(body.pending_sells) ? body.pending_sells : existingSync.pending_sells,
+        username: body.username || profile.username || existingSync.username,
+        usdt_balance: body.usdt_balance !== undefined ? parseFloat(body.usdt_balance) : (existingSync.usdt_balance !== undefined ? parseFloat(existingSync.usdt_balance) : (parseFloat(profile.usdt_balance) || 0.00)),
+        lifetime_profit: body.lifetime_profit !== undefined ? parseFloat(body.lifetime_profit) : (existingSync.lifetime_profit !== undefined ? parseFloat(existingSync.lifetime_profit) : (parseFloat(profile.lifetime_profit) || 0.00)),
+        total_giga_bought: body.total_giga_bought !== undefined ? parseInt(body.total_giga_bought, 10) : (existingSync.total_giga_bought !== undefined ? parseInt(existingSync.total_giga_bought, 10) : (parseInt(profile.giga_balance, 10) || 0)),
+        total_giga_sold: body.total_giga_sold !== undefined ? parseInt(body.total_giga_sold, 10) : (existingSync.total_giga_sold !== undefined ? parseInt(existingSync.total_giga_sold, 10) : 0),
+        pending_sells: Array.isArray(body.pending_sells) ? body.pending_sells : (existingSync.pending_sells || []),
         activities: Array.isArray(body.activities) ? body.activities : (existingSync.activities || [])
       };
 

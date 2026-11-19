@@ -72,17 +72,23 @@ function initDashboardUser() {
           currentUser.gigaBalance = parseFloat(bal.giga) || 0;
           currentUser.usdtBalance = parseFloat(bal.usdt) || 0;
           currentUser.lifetimeProfit = parseFloat(bal.profit) || 0;
+          currentUser.totalGigaBought = parseInt(bal.totalGigaBought !== undefined ? bal.totalGigaBought : (bal.giga || 0), 10) || 0;
+          currentUser.totalGigaSold = parseInt(bal.totalGigaSold, 10) || 0;
         } catch (e) {
           currentUser.gigaBalance = 0;
           currentUser.usdtBalance = 0;
           currentUser.lifetimeProfit = 0;
+          currentUser.totalGigaBought = 0;
+          currentUser.totalGigaSold = 0;
         }
       } else {
         // Brand new user on this device — start at zero
         currentUser.gigaBalance = 0;
         currentUser.usdtBalance = 0;
         currentUser.lifetimeProfit = 0;
-        localStorage.setItem(KEY_BAL, JSON.stringify({ giga: 0, usdt: 0, profit: 0 }));
+        currentUser.totalGigaBought = 0;
+        currentUser.totalGigaSold = 0;
+        localStorage.setItem(KEY_BAL, JSON.stringify({ giga: 0, usdt: 0, profit: 0, totalGigaBought: 0, totalGigaSold: 0 }));
       }
 
       // Store current email key for balance saves
@@ -93,11 +99,15 @@ function initDashboardUser() {
       currentUser.gigaBalance = 0;
       currentUser.usdtBalance = 0;
       currentUser.lifetimeProfit = 0;
+      currentUser.totalGigaBought = 0;
+      currentUser.totalGigaSold = 0;
     }
   } else {
     currentUser.gigaBalance = 0;
     currentUser.usdtBalance = 0;
     currentUser.lifetimeProfit = 0;
+    currentUser.totalGigaBought = 0;
+    currentUser.totalGigaSold = 0;
   }
 
   // Ensure user always has a 6-digit referral code
@@ -152,12 +162,12 @@ function initDashboardUser() {
           : (currentUser._emailKey || 'guest');
 
         // 3. Sells queue sync
-        if (Array.isArray(data.pending_sells) && data.pending_sells.length > 0) {
+        if (Array.isArray(data.pending_sells)) {
           localStorage.setItem(`cv_sells_${emailKey}`, JSON.stringify(data.pending_sells));
         }
 
         // 4. Activities sync
-        if (Array.isArray(data.activities) && data.activities.length > 0) {
+        if (Array.isArray(data.activities)) {
           localStorage.setItem(`cv_txs_${emailKey}`, JSON.stringify(data.activities));
           if (typeof renderUserTransactionsTable === 'function') {
             renderUserTransactionsTable();
@@ -168,7 +178,9 @@ function initDashboardUser() {
         localStorage.setItem(`cv_balance_${emailKey}`, JSON.stringify({
           giga: currentUser.gigaBalance,
           usdt: currentUser.usdtBalance,
-          profit: currentUser.lifetimeProfit
+          profit: currentUser.lifetimeProfit,
+          totalGigaBought: currentUser.totalGigaBought,
+          totalGigaSold: currentUser.totalGigaSold
         }));
         localStorage.setItem('gigachain_current_user', JSON.stringify(currentUser));
 
