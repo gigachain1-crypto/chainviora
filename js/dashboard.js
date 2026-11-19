@@ -674,8 +674,22 @@ function initDepositModal() {
 
           if (!localStorage.getItem(txKey)) {
             localStorage.setItem(txKey, '1');
-            currentUser.usdtBalance = (currentUser.usdtBalance || 0) + creditedAmt;
+            if (data.new_balance !== undefined) {
+              currentUser.usdtBalance = parseFloat(data.new_balance);
+            } else {
+              currentUser.usdtBalance = (currentUser.usdtBalance || 0) + creditedAmt;
+            }
             updateBalanceDisplays();
+
+            // Clear current payment tracking so it can never be checked again
+            currentPaymentId = null;
+            if (paymentsCache) delete paymentsCache[curKey];
+            const localKey = currentUser ? `cv_dep_${currentUser.id}_${curKey}` : null;
+            if (localKey) localStorage.removeItem(localKey + '_pid');
+            if (depositCheckInterval) {
+              clearInterval(depositCheckInterval);
+              depositCheckInterval = null;
+            }
 
             // Add to user activity & transaction history
             logUserActivity({
@@ -756,8 +770,22 @@ function initDepositModal() {
 
           if (!localStorage.getItem(txKey)) {
             localStorage.setItem(txKey, '1');
-            currentUser.usdtBalance = (currentUser.usdtBalance || 0) + creditedAmt;
+            if (data.new_balance !== undefined) {
+              currentUser.usdtBalance = parseFloat(data.new_balance);
+            } else {
+              currentUser.usdtBalance = (currentUser.usdtBalance || 0) + creditedAmt;
+            }
             updateBalanceDisplays();
+
+            // Clear current payment tracking
+            currentPaymentId = null;
+            if (paymentsCache) delete paymentsCache[curKey];
+            const localKey = currentUser ? `cv_dep_${currentUser.id}_${curKey}` : null;
+            if (localKey) localStorage.removeItem(localKey + '_pid');
+            if (depositCheckInterval) {
+              clearInterval(depositCheckInterval);
+              depositCheckInterval = null;
+            }
 
             logUserActivity({
               type: 'Deposit',
@@ -769,11 +797,6 @@ function initDepositModal() {
               notes: `On-chain deposit verified & credited automatically`
             });
             syncBalanceToSupabase('deposit_confirmed');
-
-            if (depositCheckInterval) {
-              clearInterval(depositCheckInterval);
-              depositCheckInterval = null;
-            }
 
             closeDeposit();
             showDepositSuccessModal({

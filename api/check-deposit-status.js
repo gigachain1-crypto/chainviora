@@ -86,47 +86,71 @@ module.exports = async (req, res) => {
         txHash = '0x' + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
       }
 
+      const depCheckKey = paymentId ? String(paymentId) : (txHash || payAddress);
+
       if (SUPABASE_SERVICE_KEY) {
         try {
           const { createClient } = require('@supabase/supabase-js');
           const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
-          // Check if already credited in Supabase transactions
-          const txCheckKey = paymentId ? `NOWPayments Deposit ID: ${paymentId}` : `Deposit to ${payAddress}`;
-          const { data: existingTx } = await supabase
-            .from('transactions')
-            .select('id')
-            .or(`notes.ilike.%${paymentId || payAddress}%,tx_hash.eq.${txHash}`)
-            .maybeSingle();
+          // Locate user profile: by email, by userId, or by deposit_address
+          let profile = null;
+          if (email) {
+            const { data } = await supabase.from('profiles').select('*').ilike('email', email).maybeSingle();
+            profile = data;
+          }
+          if (!profile && userId) {
+            const { data } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
+            profile = data;
+          }
+          if (!profile && payAddress) {
+            const { data } = await supabase.from('profiles').select('*').eq('deposit_address', payAddress).maybeSingle();
+            profile = data;
+          }
 
-          if (existingTx) {
-            alreadyCredited = true;
-          } else {
-            // Locate user profile: by email, by userId, or by deposit_address
-            let profile = null;
+          if (profile) {
+            const existingMap = (profile.deposit_addresses && typeof profile.deposit_addresses === 'object') ? profile.deposit_addresses : {};
+            const existingSync = existingMap.sync_state || {};
+            const creditedDeposits = existingMap.credited_deposits || existingSync.credited_deposits || {};
 
-            if (email) {
-              const { data } = await supabase.from('profiles').select('*').ilike('email', email).maybeSingle();
-              profile = data;
-            }
-            if (!profile && userId) {
-              const { data } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
-              profile = data;
-            }
-            if (!profile && payAddress) {
-              const { data } = await supabase.from('profiles').select('*').eq('deposit_address', payAddress).maybeSingle();
-              profile = data;
+            // DEDUPLICATION CHECK 1: in profile.deposit_addresses.credited_deposits
+            if (creditedDeposits[depCheckKey]) {
+              alreadyCredited = true;
+              newBalance = parseFloat(profile.usdt_balance || 0);
             }
 
-            if (profile) {
+            // DEDUPLICATION CHECK 2: in Supabase transactions table
+            if (!alreadyCredited) {
+              const { data: existingTx } = await supabase
+                .from('transactions')
+                .select('id')
+                .eq('user_id', profile.id)
+                .or(`notes.ilike.%${depCheckKey}%,tx_hash.eq.${txHash}`)
+                .maybeSingle();
+
+              if (existingTx) {
+                alreadyCredited = true;
+                newBalance = parseFloat(profile.usdt_balance || 0);
+              }
+            }
+
+            // CREDIT ONLY IF NEVER CREDITED BEFORE
+            if (!alreadyCredited) {
               const curBal = parseFloat(profile.usdt_balance || 0);
               newBalance = curBal + creditAmount;
 
-              const existingMap = (profile.deposit_addresses && typeof profile.deposit_addresses === 'object') ? profile.deposit_addresses : {};
-              const existingSync = existingMap.sync_state || {};
+              const updatedCreditedMap = {
+                ...creditedDeposits,
+                [depCheckKey]: {
+                  amount: creditAmount,
+                  time: new Date().toISOString()
+                }
+              };
+
               const newSyncState = {
                 ...existingSync,
-                usdt_balance: newBalance
+                usdt_balance: newBalance,
+                credited_deposits: updatedCreditedMap
               };
 
               await supabase
@@ -136,30 +160,27 @@ module.exports = async (req, res) => {
                   deposit_address: payAddress || profile.deposit_address,
                   deposit_addresses: {
                     ...existingMap,
+                    credited_deposits: updatedCreditedMap,
                     sync_state: newSyncState
                   },
                   last_updated: new Date().toISOString()
                 })
                 .eq('id', profile.id);
 
-              // Record in transactions
-              const txPayload = {
-                user_id: profile.id,
-                type: 'deposit',
-                amount_usdt: creditAmount,
-                amount_giga: 0,
-                status: 'completed',
-                notes: txCheckKey + ` | Hash: ${txHash}`,
-                created_at: new Date().toISOString()
-              };
-
-              let depInsert = await supabase.from('transactions').insert({
-                ...txPayload,
-                tx_hash: txHash,
-                asset: 'USDT (BEP20)'
-              });
-              if (depInsert.error && (depInsert.error.message.includes('column') || depInsert.error.code === '42703')) {
-                await supabase.from('transactions').insert(txPayload);
+              // Record in transactions (clean schema without missing columns)
+              try {
+                await supabase.from('transactions').insert({
+                  user_id: profile.id,
+                  type: 'deposit',
+                  amount_usdt: creditAmount,
+                  amount_giga: 0,
+                  tx_hash: txHash,
+                  status: 'completed',
+                  notes: `NOWPayments Deposit ID: ${depCheckKey} | Hash: ${txHash}`,
+                  created_at: new Date().toISOString()
+                });
+              } catch (txInsertErr) {
+                console.warn('transactions insert notice:', txInsertErr.message);
               }
             }
           }
@@ -176,6 +197,7 @@ module.exports = async (req, res) => {
           already_credited: true,
           message: 'Deposit already processed and credited',
           amount: creditAmount,
+          new_balance: newBalance,
           tx_hash: txHash,
           network: payCurrency || 'usdtbsc',
           pay_address: payAddress
@@ -187,6 +209,7 @@ module.exports = async (req, res) => {
         status: status || 'finished',
         confirmed: true,
         amount: creditAmount,
+        new_balance: newBalance,
         tx_hash: txHash,
         network: payCurrency || 'usdtbsc',
         pay_address: payAddress,
