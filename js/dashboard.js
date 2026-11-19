@@ -1942,17 +1942,32 @@ function initReferralSystem() {
   // Share via WhatsApp / Web Share API
   if (shareBtn) {
     shareBtn.addEventListener('click', async () => {
-      const shareText = `Hey! Join Chainviora using my Referral Code: ${currentUser.referralCode} to get started with Web3!\nSign up here:\n${refLink}`;
+      const shareText = `🚀 Welcome to the GIGACHAIN Ecosystem!
+
+The Next-Generation Decentralized Liquidity Protocol powering Fixed-Rate Trading, Algorithmic Peer-to-Peer Queue Matching, and Realized Yield Distribution.
+
+🎁 Special Invitation Bonus:
+Sign up using my Referral Code: ${currentUser.referralCode} to unlock your verified Web3 account and claim an instant +$5.00 USDT Welcome Bonus on your first vault deposit!
+
+🔥 Why Join GIGACHAIN?
+✅ 100% On-Chain Verifiable on BNB Smart Chain (BEP20)
+✅ Fixed-Rate $30 GIGA Buy & $50 Queue Sell Settlement
+✅ Algorithmic Queue Matching & Fast P2P Settlements
+✅ Automated Cross-Device Synchronized Vault
+
+👉 Register & Claim Your Access Here:
+${refLink}`;
 
       if (navigator.share) {
         try {
           await navigator.share({
-            title: 'Chainviora Web3 Ecosystem',
-            text: shareText,
-            url: refLink
+            title: 'GIGACHAIN Protocol — Web3 Ecosystem',
+            text: shareText
           });
           return;
-        } catch (e) { }
+        } catch (e) {
+          if (e && e.name === 'AbortError') return;
+        }
       }
 
       // WhatsApp Web / App share fallback
