@@ -1159,15 +1159,19 @@
             </div>
             <div>
               <div class="flex items-center gap-2">
-                <h3 class="text-base sm:text-lg font-black font-display text-slate-900 leading-tight">System Announcements</h3>
+                <h3 class="text-base sm:text-lg font-black font-display text-slate-900 leading-tight">System
+                  Announcements</h3>
                 <span
-                  class="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 uppercase tracking-wider">Live Feed</span>
+                  class="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 uppercase tracking-wider">Live
+                  Feed</span>
               </div>
-              <p class="text-[11px] sm:text-xs text-slate-400 mt-0.5">Admin broadcasts, official bonus alerts & network announcements</p>
+              <p class="text-[11px] sm:text-xs text-slate-400 mt-0.5">Admin broadcasts, official bonus alerts & network
+                announcements</p>
             </div>
           </div>
           <button id="closeNotificationModal"
-            class="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl cursor-pointer transition-colors" title="Close">
+            class="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl cursor-pointer transition-colors"
+            title="Close">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -1177,11 +1181,12 @@
         <!-- Notification Feed Container -->
         <div id="notificationListContainer" class="mt-4 space-y-3.5 max-h-[68vh] overflow-y-auto pr-1 sm:pr-2">
           <!-- Active Notification Item -->
-          <div
-            class="rounded-2xl bg-white border border-slate-200/90 shadow-xs overflow-hidden">
-            <div class="bg-gradient-to-r from-amber-50/80 via-orange-50/40 to-white px-4 sm:px-5 py-2.5 border-b border-amber-100/80 flex items-center justify-between">
+          <div class="rounded-2xl bg-white border border-slate-200/90 shadow-xs overflow-hidden">
+            <div
+              class="bg-gradient-to-r from-amber-50/80 via-orange-50/40 to-white px-4 sm:px-5 py-2.5 border-b border-amber-100/80 flex items-center justify-between">
               <div class="flex items-center gap-2">
-                <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-900 border border-amber-200">
+                <span
+                  class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-900 border border-amber-200">
                   <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
                   Network Announcement
                 </span>
@@ -1190,9 +1195,11 @@
               <span class="text-[11px] font-mono text-slate-400 font-semibold">Official Update</span>
             </div>
             <div class="p-4 sm:p-5">
-              <h4 class="text-base sm:text-lg font-display font-black text-slate-900 leading-snug">Welcome to GIGACHAIN Network</h4>
+              <h4 class="text-base sm:text-lg font-display font-black text-slate-900 leading-snug">Welcome to GIGACHAIN
+                Network</h4>
               <div class="mt-2 text-xs sm:text-sm text-slate-700 leading-relaxed font-normal">
-                All deposit verifications, GIGA buy orders, and auto-matching sell queues are fully operational. Any future admin broadcasts and important alerts will appear here on your screen.
+                All deposit verifications, GIGA buy orders, and auto-matching sell queues are fully operational. Any
+                future admin broadcasts and important alerts will appear here on your screen.
               </div>
             </div>
           </div>
@@ -1580,6 +1587,118 @@
                 </span>
               </div>
             </div>
+
+            <!-- WHITEPAPER SLIDES CAROUSEL — 4 Premium v2.4 Images -->
+            <div class="rounded-2xl overflow-hidden border border-amber-500/30 shadow-2xl bg-slate-950" style="box-shadow: 0 0 0 1px rgba(212,175,55,0.15), 0 24px 64px rgba(0,0,0,0.6);">
+              <!-- Slide header -->
+              <div class="flex items-center justify-between px-4 py-2.5 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border-b border-amber-500/20">
+                <div class="flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+                  <span class="text-[10px] font-mono font-bold text-amber-400 uppercase tracking-widest">Official Whitepaper Slides</span>
+                </div>
+                <span class="text-[10px] font-mono text-emerald-400 font-bold bg-emerald-400/10 px-2 py-0.5 rounded border border-emerald-400/30">v2.4 • 4 Slides</span>
+              </div>
+
+              <!-- Slides viewport -->
+              <div class="relative w-full" style="aspect-ratio: 16/9; background: #060a14;">
+                <!-- Slides -->
+                <div id="wpSlideTrack" class="flex h-full transition-transform duration-500 ease-in-out" style="width: 400%;">
+                  <div class="flex-shrink-0 h-full" style="width: 25%;">
+                    <img id="wpSlide1" src="assets/wp-slide-1.jpg" alt="GigaChain Whitepaper v2.4 – Cover" class="w-full h-full object-contain select-none" draggable="false" loading="eager" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" />
+                    <div class="hidden w-full h-full items-center justify-center flex-col gap-3 bg-gradient-to-br from-slate-900 to-slate-950">
+                      <div class="w-14 h-14 rounded-2xl bg-amber-400/10 border border-amber-400/20 flex items-center justify-center text-2xl">📄</div>
+                      <p class="text-xs text-slate-400 font-mono">Slide 01 — Cover</p>
+                    </div>
+                  </div>
+                  <div class="flex-shrink-0 h-full" style="width: 25%;">
+                    <img id="wpSlide2" src="assets/wp-slide-2.jpg" alt="GigaChain Whitepaper v2.4 – Introduction" class="w-full h-full object-contain select-none" draggable="false" loading="eager" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" />
+                    <div class="hidden w-full h-full items-center justify-center flex-col gap-3 bg-gradient-to-br from-slate-900 to-slate-950">
+                      <div class="w-14 h-14 rounded-2xl bg-amber-400/10 border border-amber-400/20 flex items-center justify-center text-2xl">📋</div>
+                      <p class="text-xs text-slate-400 font-mono">Slide 02 — Introduction</p>
+                    </div>
+                  </div>
+                  <div class="flex-shrink-0 h-full" style="width: 25%;">
+                    <img id="wpSlide3" src="assets/wp-slide-3.jpg" alt="GigaChain Whitepaper v2.4 – Overview" class="w-full h-full object-contain select-none" draggable="false" loading="eager" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" />
+                    <div class="hidden w-full h-full items-center justify-center flex-col gap-3 bg-gradient-to-br from-slate-900 to-slate-950">
+                      <div class="w-14 h-14 rounded-2xl bg-amber-400/10 border border-amber-400/20 flex items-center justify-center text-2xl">🌐</div>
+                      <p class="text-xs text-slate-400 font-mono">Slide 03 — Overview</p>
+                    </div>
+                  </div>
+                  <div class="flex-shrink-0 h-full" style="width: 25%;">
+                    <img id="wpSlide4" src="assets/wp-slide-4.svg" alt="GigaChain Whitepaper v2.4 – Buy & Sell Program" class="w-full h-full object-contain select-none" draggable="false" loading="eager" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" />
+                    <div class="hidden w-full h-full items-center justify-center flex-col gap-3 bg-gradient-to-br from-slate-900 to-slate-950">
+                      <div class="w-14 h-14 rounded-2xl bg-amber-400/10 border border-amber-400/20 flex items-center justify-center text-2xl">💰</div>
+                      <p class="text-xs text-slate-400 font-mono">Slide 04 — Buy &amp; Sell Program</p>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Prev / Next buttons -->
+                <button id="wpPrevBtn" onclick="wpSlideNav(-1)" type="button" class="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center cursor-pointer z-10 transition-all duration-200" style="background: rgba(10,14,26,0.85); border: 1.5px solid rgba(212,175,55,0.5);" aria-label="Previous slide">
+                  <svg width="16" height="16" fill="none" stroke="#D4AF37" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+                </button>
+                <button id="wpNextBtn" onclick="wpSlideNav(1)" type="button" class="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center cursor-pointer z-10 transition-all duration-200" style="background: rgba(10,14,26,0.85); border: 1.5px solid rgba(212,175,55,0.5);" aria-label="Next slide">
+                  <svg width="16" height="16" fill="none" stroke="#D4AF37" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+                </button>
+
+                <!-- Slide counter -->
+                <div class="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 z-10">
+                  <button onclick="wpSlideTo(0)" class="wp-dot w-6 h-1.5 rounded-full transition-all duration-300" style="background:#D4AF37;" aria-label="Slide 1"></button>
+                  <button onclick="wpSlideTo(1)" class="wp-dot w-2 h-1.5 rounded-full transition-all duration-300" style="background:rgba(212,175,55,0.3);" aria-label="Slide 2"></button>
+                  <button onclick="wpSlideTo(2)" class="wp-dot w-2 h-1.5 rounded-full transition-all duration-300" style="background:rgba(212,175,55,0.3);" aria-label="Slide 3"></button>
+                  <button onclick="wpSlideTo(3)" class="wp-dot w-2 h-1.5 rounded-full transition-all duration-300" style="background:rgba(212,175,55,0.3);" aria-label="Slide 4"></button>
+                </div>
+
+                <!-- Slide number badge -->
+                <div id="wpSlideNumBadge" class="absolute top-3 right-3 z-10 font-mono text-[11px] font-bold text-amber-400 bg-black/60 px-2 py-0.5 rounded border border-amber-400/30">01 / 04</div>
+              </div>
+
+              <!-- Thumbnail strip -->
+              <div class="flex gap-1.5 p-2.5 bg-slate-900 border-t border-slate-800">
+                <button onclick="wpSlideTo(0)" id="wpThumb0" class="flex-1 rounded-lg overflow-hidden border-2 border-amber-400 opacity-100 transition-all duration-200 cursor-pointer" style="aspect-ratio:16/9;" aria-label="Go to slide 1">
+                  <img src="assets/wp-slide-1.jpg" alt="" class="w-full h-full object-cover" draggable="false" onerror="this.parentElement.style.background='#1e293b';this.style.display='none'" />
+                </button>
+                <button onclick="wpSlideTo(1)" id="wpThumb1" class="flex-1 rounded-lg overflow-hidden border-2 border-transparent opacity-50 hover:opacity-80 transition-all duration-200 cursor-pointer" style="aspect-ratio:16/9;" aria-label="Go to slide 2">
+                  <img src="assets/wp-slide-2.jpg" alt="" class="w-full h-full object-cover" draggable="false" onerror="this.parentElement.style.background='#1e293b';this.style.display='none'" />
+                </button>
+                <button onclick="wpSlideTo(2)" id="wpThumb2" class="flex-1 rounded-lg overflow-hidden border-2 border-transparent opacity-50 hover:opacity-80 transition-all duration-200 cursor-pointer" style="aspect-ratio:16/9;" aria-label="Go to slide 3">
+                  <img src="assets/wp-slide-3.jpg" alt="" class="w-full h-full object-cover" draggable="false" onerror="this.parentElement.style.background='#1e293b';this.style.display='none'" />
+                </button>
+                <button onclick="wpSlideTo(3)" id="wpThumb3" class="flex-1 rounded-lg overflow-hidden border-2 border-transparent opacity-50 hover:opacity-80 transition-all duration-200 cursor-pointer" style="aspect-ratio:16/9;" aria-label="Go to slide 4">
+                  <img src="assets/wp-slide-4.svg" alt="" class="w-full h-full object-cover" draggable="false" onerror="this.parentElement.style.background='#1e293b';this.style.display='none'" />
+                </button>
+              </div>
+            </div>
+
+            <!-- Whitepaper Slide JS Controller -->
+            <script>
+              (function() {
+                var wpCurrent = 0;
+                var wpTotal = 4;
+                window.wpSlideTo = function(idx) {
+                  wpCurrent = ((idx % wpTotal) + wpTotal) % wpTotal;
+                  var track = document.getElementById('wpSlideTrack');
+                  if (track) track.style.transform = 'translateX(-' + (wpCurrent * 25) + '%)';
+                  var badge = document.getElementById('wpSlideNumBadge');
+                  if (badge) badge.textContent = String(wpCurrent + 1).padStart(2,'0') + ' / 0' + wpTotal;
+                  var dots = document.querySelectorAll('.wp-dot');
+                  dots.forEach(function(d, i) {
+                    d.style.background = i === wpCurrent ? '#D4AF37' : 'rgba(212,175,55,0.3)';
+                    d.style.width = i === wpCurrent ? '24px' : '8px';
+                  });
+                  for (var t = 0; t < wpTotal; t++) {
+                    var th = document.getElementById('wpThumb' + t);
+                    if (th) {
+                      th.style.borderColor = t === wpCurrent ? '#D4AF37' : 'transparent';
+                      th.style.opacity = t === wpCurrent ? '1' : '0.5';
+                    }
+                  }
+                };
+                window.wpSlideNav = function(dir) { window.wpSlideTo(wpCurrent + dir); };
+                // Auto-advance every 5 seconds
+                setInterval(function() { window.wpSlideNav(1); }, 5000);
+              })();
+            </script>
 
             <!-- VISUAL ARCHITECTURE FLOWCHART / DIAGRAM ("image mein dikhna chahiye") -->
             <div
