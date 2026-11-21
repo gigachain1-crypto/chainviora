@@ -115,7 +115,7 @@ module.exports = async (req, res) => {
 
       const noteText = notes || (asset ? `[${asset}] ${type}` : `${type}`);
       // Generate a fallback tx_hash if not provided (tx_hash column is NOT NULL in DB)
-      const finalTxHash = tx_hash || ('0x' + Array.from({length: 64}, () => Math.floor(Math.random()*16).toString(16)).join(''));
+      const finalTxHash = tx_hash || ('0x' + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join(''));
       // Withdrawals start as 'pending' so admin can review & approve them
       const finalStatus = cleanType === 'withdrawal' ? 'pending' : (status || 'completed');
       const payload = {

@@ -631,28 +631,67 @@ module.exports = async (req, res) => {
         supabase
           .from('transactions')
           .select('*')
-          .in('type', ['buy_giga', 'sell_giga', 'giga_buy', 'giga_sell'])
+          .in('type', ['buy_giga', 'sell_giga', 'giga_buy', 'giga_sell', 'sell_complete'])
           .order('created_at', { ascending: false })
-          .limit(100),
-        supabase.from('profiles').select('id, email, username, deposit_addresses')
+          .limit(200),
+        supabase.from('profiles').select('id, email, username, giga_balance, usdt_balance, lifetime_profit, deposit_addresses, created_at')
       ]);
 
       const userMap = {};
       const allPendingSells = [];
+      const perUserGiga = [];
+
+      let totalGigaBought = 0;
+      let totalGigaInWallets = 0;
+      let totalPendingSellValue = 0;
+      let totalProfitPaid = 0;
 
       (profilesRes.data || []).forEach(p => {
         userMap[p.id] = p;
         const syncState = (p.deposit_addresses && p.deposit_addresses.sync_state) || {};
-        if (Array.isArray(syncState.pending_sells)) {
-          syncState.pending_sells.forEach(s => {
-            allPendingSells.push({
-              ...s,
-              email: p.email,
-              username: p.username || 'Member'
-            });
+        const pendingSells = Array.isArray(syncState.pending_sells) ? syncState.pending_sells : [];
+        const gigaBal = parseFloat(p.giga_balance || 0);
+        const profit = parseFloat(p.lifetime_profit || 0);
+
+        totalGigaInWallets += gigaBal;
+        totalProfitPaid += profit;
+
+        // Count pending sells per user
+        pendingSells.forEach(s => {
+          const amt = parseFloat(s.amount || 1);
+          totalPendingSellValue += amt * 50;
+          allPendingSells.push({
+            id: s.orderId || s.id || 'ORDER',
+            orderId: s.orderId || s.id || 'ORDER',
+            amount: amt,
+            matchedBuyers: s.matchedBuyers || 0,
+            status: s.status || 'Pending',
+            email: p.email,
+            username: p.username || 'Member',
+            queued_at: s.created_at || s.time || null
           });
+        });
+
+        // Build per-user GIGA summary
+        const totalGigaThisUser = gigaBal + pendingSells.reduce((sum, s) => sum + parseFloat(s.amount || 1), 0);
+        if (totalGigaThisUser > 0 || profit > 0 || pendingSells.length > 0) {
+          perUserGiga.push({
+            id: p.id,
+            email: p.email,
+            username: p.username || 'GIGA Member',
+            giga_in_wallet: gigaBal,
+            giga_in_sell_queue: pendingSells.length,
+            giga_total: totalGigaThisUser,
+            lifetime_profit: profit,
+            usdt_balance: parseFloat(p.usdt_balance || 0),
+            joined: p.created_at
+          });
+          totalGigaBought += totalGigaThisUser;
         }
       });
+
+      // Sort perUserGiga by total GIGA desc
+      perUserGiga.sort((a, b) => b.giga_total - a.giga_total);
 
       const trades = (txsRes.data || []).map(t => {
         const u = userMap[t.user_id] || {};
@@ -672,10 +711,26 @@ module.exports = async (req, res) => {
         };
       });
 
+      // Count total GIGA bought from transactions table as backup
+      const txBuys = txsRes.data ? txsRes.data.filter(t => t.type.includes('buy')) : [];
+      const txBuyGigaTotal = txBuys.reduce((sum, t) => sum + parseFloat(t.amount_giga || 1), 0);
+
       return res.status(200).json({
         success: true,
         trades,
-        pendingSellQueue: allPendingSells
+        pendingSellQueue: allPendingSells,
+        perUserGiga,
+        gigaStats: {
+          totalGigaBought: Math.max(totalGigaBought, txBuyGigaTotal),
+          totalGigaInWallets,
+          totalInSellQueue: allPendingSells.length,
+          totalPendingSellValue: parseFloat(totalPendingSellValue.toFixed(2)),
+          totalProfitPaid: parseFloat(totalProfitPaid.toFixed(2)),
+          totalBuyTxCount: txBuys.length,
+          poolCapacity: 100,
+          unitPrice: 30,
+          sellPrice: 50
+        }
       });
     }
 

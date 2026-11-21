@@ -2,6 +2,7 @@
 // Handles GIGA purchase ($30), 2-buyer matching logic, and Supabase database persistence
 // Strictly updates seller and buyer cross-device sync_state in Supabase
 
+const crypto = require('crypto');
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://bhcddgzlzyzovecccmrj.supabase.co';
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'sb_publishable_HwMEDaihTWj54hP1s90VDA_ndMsJnJY';
 
@@ -134,11 +135,13 @@ module.exports = async (req, res) => {
 
             if (isComplete) {
               try {
+                const sellerTxHash = '0x' + crypto.randomBytes(32).toString('hex');
                 await supabase.from('transactions').insert({
                   user_id: seller.id,
-                  type: 'sell_complete',
+                  type: 'sell_giga',
                   amount_usdt: 50.00,
                   amount_giga: 1.0000,
+                  tx_hash: sellerTxHash,
                   order_id: targetOrder.orderId,
                   status: 'completed',
                   notes: `Sell completed (2 of 2 buyers matched) — +$50.00 profit credited`,
@@ -203,11 +206,13 @@ module.exports = async (req, res) => {
 
       // Record transaction
       try {
+        const buyerTxHash = '0x' + crypto.randomBytes(32).toString('hex');
         await supabase.from('transactions').insert({
           user_id: buyer.id,
           type: 'buy_giga',
           amount_usdt: 30.00,
           amount_giga: 1.0000,
+          tx_hash: buyerTxHash,
           order_id: sellCode,
           status: 'completed',
           notes: `Bought 1 GIGA ($30.00) — placed in sell queue (${sellCode})`,

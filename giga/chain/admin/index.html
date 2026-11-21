@@ -564,29 +564,158 @@
         <!-- ====================================================================
              TAB 5: GIGA BUY / SELL MONITORING
              ==================================================================== -->
-        <div id="tabTrades" class="tab-content hidden space-y-6">
-          <div>
-            <h1 class="text-xl sm:text-2xl font-black text-white tracking-tight">GIGA Trading & Queue Activity</h1>
-            <p class="text-xs sm:text-sm text-slate-400 mt-1">Live tracking of GIGA Purchases ($30) and Pending Sell Queues ($50).</p>
+<div id="tabTrades" class="tab-content hidden space-y-6">
+          <div class="flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <h1 class="text-xl sm:text-2xl font-black text-white tracking-tight">GIGA Trading, Queue &amp; System Engine</h1>
+              <p class="text-xs sm:text-sm text-slate-400 mt-1">Live tracking of GIGA ecosystem &mdash; purchases, FIFO matching engine, per-user holdings &amp; background protocol rules.</p>
+            </div>
+            <button onclick="fetchTrades()" class="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center gap-1.5 cursor-pointer transition-colors shadow-sm">
+              <svg class="w-3.5 h-3.5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+              <span>Refresh GIGA Engine</span>
+            </button>
           </div>
 
-          <!-- Trades Grid: Buy Orders & Sells Queue -->
+          <!-- GIGA Metric Cards -->
+          <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            <div class="rounded-2xl bg-slate-900/90 border border-slate-800 p-4 space-y-1">
+              <p class="text-[10px] text-slate-500 uppercase tracking-widest font-semibold">Total GIGA Bought</p>
+              <p class="text-xl font-black text-emerald-400 font-mono" id="statTotalGigaBought">&mdash;</p>
+              <p class="text-[10px] text-slate-500">All users combined</p>
+            </div>
+            <div class="rounded-2xl bg-slate-900/90 border border-slate-800 p-4 space-y-1">
+              <p class="text-[10px] text-slate-500 uppercase tracking-widest font-semibold">In User Wallets</p>
+              <p class="text-xl font-black text-blue-400 font-mono" id="statGigaInWallets">&mdash;</p>
+              <p class="text-[10px] text-slate-500">Current wallet balance</p>
+            </div>
+            <div class="rounded-2xl bg-slate-900/90 border border-slate-800 p-4 space-y-1">
+              <p class="text-[10px] text-slate-500 uppercase tracking-widest font-semibold">Active Sell Queue</p>
+              <p class="text-xl font-black text-amber-400 font-mono" id="statSellQueue">&mdash;</p>
+              <p class="text-[10px] text-slate-500">Units in FIFO queue</p>
+            </div>
+            <div class="rounded-2xl bg-slate-900/90 border border-slate-800 p-4 space-y-1">
+              <p class="text-[10px] text-slate-500 uppercase tracking-widest font-semibold">Queue Liquidity</p>
+              <p class="text-xl font-black text-purple-400 font-mono" id="statQueueValue">&mdash;</p>
+              <p class="text-[10px] text-slate-500">Value @ $50 / GIGA</p>
+            </div>
+            <div class="rounded-2xl bg-slate-900/90 border border-slate-800 p-4 space-y-1">
+              <p class="text-[10px] text-slate-500 uppercase tracking-widest font-semibold">Profits Paid Out</p>
+              <p class="text-xl font-black text-rose-400 font-mono" id="statProfitPaid">&mdash;</p>
+              <p class="text-[10px] text-slate-500">Total realized profit</p>
+            </div>
+            <div class="rounded-2xl bg-slate-900/90 border border-slate-800 p-4 space-y-1">
+              <p class="text-[10px] text-slate-500 uppercase tracking-widest font-semibold">Total Buyers</p>
+              <p class="text-xl font-black text-cyan-400 font-mono" id="statTotalBuyers">&mdash;</p>
+              <p class="text-[10px] text-slate-500">Users with GIGA</p>
+            </div>
+          </div>
+
+          <!-- Protocol & Background Engine Rules Panel -->
+          <div class="rounded-2xl bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 border border-slate-800 p-5 space-y-4 shadow-lg">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800/80">
+              <div class="flex items-center gap-2.5">
+                <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span>
+                <h3 class="text-sm font-bold text-white tracking-wide uppercase text-[11px] font-mono">Backend Protocol &amp; Matching Engine Logic (Active Rules)</h3>
+              </div>
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">Engine v2.4 Live</span>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
+              <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 space-y-1">
+                <div class="flex items-center justify-between">
+                  <span class="font-bold text-emerald-400 flex items-center gap-1.5">&#x1F4B0; 1. Acquisition Rate</span>
+                  <span class="font-mono text-[11px] font-bold text-white">$30.00 USDT</span>
+                </div>
+                <p class="text-[11px] text-slate-400 leading-relaxed">Auto-deducted from user's USDT Vault. Pool capacity is 100 GIGA. GIGA is credited and queued instantly.</p>
+              </div>
+              <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 space-y-1">
+                <div class="flex items-center justify-between">
+                  <span class="font-bold text-purple-400 flex items-center gap-1.5">&#x1F4C8; 2. Target Sell Yield</span>
+                  <span class="font-mono text-[11px] font-bold text-white">+$50.00 USDT</span>
+                </div>
+                <p class="text-[11px] text-slate-400 leading-relaxed">Guaranteed exit return upon queue cycle completion (+66.6% ROI, +$20.00 net profit per sold unit).</p>
+              </div>
+              <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 space-y-1">
+                <div class="flex items-center justify-between">
+                  <span class="font-bold text-amber-400 flex items-center gap-1.5">&#x26A1; 3. Matching Ratio</span>
+                  <span class="font-mono text-[11px] font-bold text-white">2 Buyers : 1 Unit</span>
+                </div>
+                <p class="text-[11px] text-slate-400 leading-relaxed">FIFO Autonomous Engine. 2 buyers ($30 + $30 = $60) match 1 seller: $50 to seller, $10 protocol reserve.</p>
+              </div>
+              <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 space-y-1">
+                <div class="flex items-center justify-between">
+                  <span class="font-bold text-rose-400 flex items-center gap-1.5">&#x1F6E1;&#xFE0F; 4. Anti-Self-Matching</span>
+                  <span class="font-mono text-[11px] font-bold text-emerald-400">Strictly Enforced</span>
+                </div>
+                <p class="text-[11px] text-slate-400 leading-relaxed">System blocks users from buying from their own sell queue. Matching only pairs with other network buyers.</p>
+              </div>
+              <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 space-y-1">
+                <div class="flex items-center justify-between">
+                  <span class="font-bold text-blue-400 flex items-center gap-1.5">&#x1F381; 5. Referral Bonus</span>
+                  <span class="font-mono text-[11px] font-bold text-white">$5.00 USDT (1-Time)</span>
+                </div>
+                <p class="text-[11px] text-slate-400 leading-relaxed">Paid directly to inviter upon first qualified deposit (&ge;$30). Repeated deposits do not trigger bonus.</p>
+              </div>
+              <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 space-y-1">
+                <div class="flex items-center justify-between">
+                  <span class="font-bold text-cyan-400 flex items-center gap-1.5">&#x1F510; 6. Withdrawal Fee</span>
+                  <span class="font-mono text-[11px] font-bold text-white">6% Platform Fee</span>
+                </div>
+                <p class="text-[11px] text-slate-400 leading-relaxed">BEP-20 on-chain settlement with 6% network protocol fee and strict 6-digit Email OTP verification.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Per-User GIGA Holdings Table -->
+          <div class="rounded-2xl bg-slate-900 border border-slate-800 p-5 space-y-4">
+            <div class="flex items-center justify-between flex-wrap gap-3 pb-3 border-b border-slate-800">
+              <div class="flex items-center gap-2">
+                <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                <h3 class="text-sm font-bold text-white">Current User GIGA Holdings &amp; Purchases</h3>
+              </div>
+              <div class="flex items-center gap-3">
+                <input type="text" id="gigaUserSearchInput" oninput="filterPerUserGigaTable()" placeholder="Search user or email..."
+                  class="px-3 py-1 text-xs rounded-xl bg-slate-950 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 w-48 sm:w-64 font-mono">
+                <span class="text-[10px] text-slate-400 font-mono px-2 py-0.5 rounded-full bg-slate-800 border border-slate-700" id="gigaUserCountBadge">&mdash; users</span>
+              </div>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-xs">
+                <thead>
+                  <tr class="text-left text-slate-500 border-b border-slate-800 font-mono">
+                    <th class="pb-2.5 pr-4 font-semibold">#</th>
+                    <th class="pb-2.5 pr-4 font-semibold">User Details</th>
+                    <th class="pb-2.5 pr-4 font-semibold text-right">GIGA In Wallet</th>
+                    <th class="pb-2.5 pr-4 font-semibold text-right">In Sell Queue</th>
+                    <th class="pb-2.5 pr-4 font-semibold text-right">Total GIGA Bought</th>
+                    <th class="pb-2.5 pr-4 font-semibold text-right">USDT Vault Balance</th>
+                    <th class="pb-2.5 font-semibold text-right">Realized Profit</th>
+                  </tr>
+                </thead>
+                <tbody id="perUserGigaTableBody">
+                  <tr><td colspan="7" class="py-8 text-center text-slate-500">Loading user GIGA data...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Bottom Grid: Buy/Sell Transactions & Sell Queue -->
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-            <!-- Completed Trades -->
+            <!-- Recent Buy/Sell Transactions -->
             <div class="rounded-2xl bg-slate-900 border border-slate-800 p-5 space-y-4">
               <div class="flex items-center justify-between pb-3 border-b border-slate-800">
                 <h3 class="text-sm font-bold text-white flex items-center gap-2">
                   <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-                  Recent Buy & Sell Transactions
+                  Recent Buy &amp; Sell Transactions
                 </h3>
+                <span class="text-[10px] text-slate-400 font-mono px-2 py-0.5 rounded-full bg-slate-800" id="tradesTxCountBadge">0 records</span>
               </div>
               <div class="max-h-96 overflow-y-auto space-y-2 pr-1" id="tradesListContainer">
                 <p class="text-xs text-slate-500 text-center py-6">No recent trade records</p>
               </div>
             </div>
 
-            <!-- Pending Sell Queues Across All Users -->
+            <!-- Live Pending Sell Queue (Matching Engine) -->
             <div class="rounded-2xl bg-slate-900 border border-slate-800 p-5 space-y-4">
               <div class="flex items-center justify-between pb-3 border-b border-slate-800">
                 <h3 class="text-sm font-bold text-white flex items-center gap-2">
@@ -1453,63 +1582,136 @@
     }
 
     // 5. Trades & Queue
+// 5. Trades & Queue (Full GIGA Ecosystem)
+    let globalPerUserGigaData = [];
+
+    function filterPerUserGigaTable() {
+      const q = (document.getElementById('gigaUserSearchInput')?.value || '').toLowerCase().trim();
+      const filtered = q
+        ? globalPerUserGigaData.filter(u => (u.username || '').toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q))
+        : globalPerUserGigaData;
+      renderPerUserGigaTable(filtered);
+    }
+
+    function renderPerUserGigaTable(list) {
+      const tbody = document.getElementById('perUserGigaTableBody');
+      if (!tbody) return;
+      if (list.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="py-8 text-center text-slate-500">No users found</td></tr>';
+        return;
+      }
+      tbody.innerHTML = list.map((u, i) => `
+        <tr class="hover:bg-slate-800/40 transition-colors border-b border-slate-800/50">
+          <td class="py-3 pr-4 text-slate-500 font-mono text-[11px]">${i + 1}</td>
+          <td class="py-3 pr-4">
+            <div class="font-bold text-white">${escapeHtml(u.username)}</div>
+            <div class="text-[10px] text-slate-400 font-mono">${escapeHtml(u.email)}</div>
+          </td>
+          <td class="py-3 pr-4 text-right font-mono font-bold text-blue-400 text-xs">${u.giga_in_wallet} GIGA</td>
+          <td class="py-3 pr-4 text-right font-mono text-amber-400 text-xs font-semibold">${u.giga_in_sell_queue} queued</td>
+          <td class="py-3 pr-4 text-right font-mono font-black text-emerald-400 text-xs">${u.giga_total} GIGA</td>
+          <td class="py-3 pr-4 text-right font-mono text-slate-300 text-xs">$${parseFloat(u.usdt_balance || 0).toFixed(2)}</td>
+          <td class="py-3 text-right font-mono text-rose-400 font-bold text-xs">+$${parseFloat(u.lifetime_profit || 0).toFixed(2)}</td>
+        </tr>
+      `).join('');
+    }
+
     async function fetchTrades() {
       const data = await apiRequest('get_trades').catch(() => null);
-      if (data && data.success) {
-        // Render completed buy/sell trades
-        const tradesContainer = document.getElementById('tradesListContainer');
-        const trades = data.trades || [];
-        if (trades.length === 0) {
-          tradesContainer.innerHTML = `<p class="text-xs text-slate-500 text-center py-6">No recent trade activity</p>`;
-        } else {
-          tradesContainer.innerHTML = trades.map(t => `
-            <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between text-xs">
-              <div class="flex items-center gap-2.5">
-                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${t.type === 'BUY' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-purple-500/20 text-purple-400 border border-purple-500/30'}">
-                  ${t.type}
-                </span>
-                <div>
-                  <div class="font-bold text-white">${escapeHtml(t.username)} <span class="text-slate-400 font-normal">(${escapeHtml(t.email)})</span></div>
-                  <div class="text-[10px] text-slate-500 font-mono">${formatDate(t.created_at)}</div>
-                </div>
-              </div>
-              <div class="text-right">
-                <div class="font-bold font-mono ${t.type === 'BUY' ? 'text-emerald-400' : 'text-purple-400'}">${t.amount_giga} GIGA</div>
-                <div class="text-[10px] text-slate-400 font-mono">$${t.amount_usdt.toFixed(2)} USDT</div>
-              </div>
-            </div>
-          `).join('');
-        }
+      if (!data || !data.success) return;
 
-        // Render Sell Queues
-        const queueContainer = document.getElementById('sellQueueListContainer');
-        const queue = data.pendingSellQueue || [];
-        document.getElementById('queueCountBadge').textContent = `${queue.length} Queued`;
+      const stats = data.gigaStats || {};
 
-        if (queue.length === 0) {
-          queueContainer.innerHTML = `<p class="text-xs text-slate-500 text-center py-6">No units currently in matching queue</p>`;
-        } else {
-          queueContainer.innerHTML = queue.map(q => `
-            <div class="p-3 rounded-xl bg-slate-950 border border-amber-500/20 flex items-center justify-between text-xs">
+      // 1. Metric Cards
+      const setEl = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+      setEl('statTotalGigaBought', (stats.totalGigaBought || 0) + ' GIGA');
+      setEl('statGigaInWallets', (stats.totalGigaInWallets || 0) + ' GIGA');
+      setEl('statSellQueue', (stats.totalInSellQueue || 0) + ' units');
+      setEl('statQueueValue', '$' + (stats.totalPendingSellValue || 0).toFixed(2));
+      setEl('statProfitPaid', '$' + (stats.totalProfitPaid || 0).toFixed(2));
+
+      // 2. Per-User Table
+      globalPerUserGigaData = data.perUserGiga || [];
+      const userBadge = document.getElementById('gigaUserCountBadge');
+      if (userBadge) userBadge.textContent = globalPerUserGigaData.length + ' users with GIGA';
+      setEl('statTotalBuyers', globalPerUserGigaData.length + ' Users');
+      filterPerUserGigaTable();
+
+      // 3. Recent Buy/Sell Transactions
+      const tradesContainer = document.getElementById('tradesListContainer');
+      const trades = data.trades || [];
+      const txBadge = document.getElementById('tradesTxCountBadge');
+      if (txBadge) txBadge.textContent = trades.length + ' records';
+
+      if (trades.length === 0) {
+        tradesContainer.innerHTML = '<p class="text-xs text-slate-500 text-center py-6">No recent trade records<br><span class="text-[10px] text-slate-600">New GIGA buys &amp; sell completions will appear here automatically</span></p>';
+      } else {
+        tradesContainer.innerHTML = trades.map(t => `
+          <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between text-xs">
+            <div class="flex items-center gap-2.5">
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${t.type === 'BUY' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-purple-500/20 text-purple-400 border border-purple-500/30'}">
+                ${t.type}
+              </span>
               <div>
-                <div class="font-bold text-white flex items-center gap-1.5">
-                  <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
-                  ${escapeHtml(q.username)}
-                </div>
-                <div class="text-[10px] text-slate-400 font-mono">Queue ID: ${escapeHtml(q.id || 'ORDER')}</div>
-              </div>
-              <div class="text-right">
-                <div class="font-bold text-amber-400 font-mono">${q.amount || 1} GIGA</div>
-                <div class="text-[10px] text-emerald-400 font-mono">Value: $${((q.amount || 1) * 50).toFixed(2)}</div>
+                <div class="font-bold text-white">${escapeHtml(t.username)} <span class="text-slate-400 font-normal">(${escapeHtml(t.email)})</span></div>
+                <div class="text-[10px] text-slate-500 font-mono">${formatDate(t.created_at)}</div>
               </div>
             </div>
-          `).join('');
-        }
+            <div class="text-right">
+              <div class="font-bold font-mono ${t.type === 'BUY' ? 'text-emerald-400' : 'text-purple-400'}">${t.amount_giga} GIGA</div>
+              <div class="text-[10px] text-slate-400 font-mono">$${parseFloat(t.amount_usdt || 0).toFixed(2)} USDT</div>
+            </div>
+          </div>
+        `).join('');
+      }
+
+      // 4. Live Pending Sell Queue
+      const queueContainer = document.getElementById('sellQueueListContainer');
+      const queue = data.pendingSellQueue || [];
+      const qBadge = document.getElementById('queueCountBadge');
+      if (qBadge) qBadge.textContent = queue.length + ' Queued';
+
+      if (queue.length === 0) {
+        queueContainer.innerHTML = '<p class="text-xs text-slate-500 text-center py-6">No units currently in matching queue</p>';
+      } else {
+        queueContainer.innerHTML = queue.map((q, idx) => {
+          const matched = parseInt(q.matchedBuyers || 0, 10);
+          const percent = matched >= 2 ? 100 : (matched === 1 ? 50 : 0);
+          const statusText = matched >= 2 ? 'Matched & Completed' : (matched === 1 ? '1 of 2 Buyers Matched (50%)' : 'Waiting for Buyers (0 of 2)');
+          const statusColor = matched >= 2 ? 'text-emerald-400' : (matched === 1 ? 'text-blue-400' : 'text-amber-400');
+          return `
+            <div class="p-3.5 rounded-xl bg-slate-950 border border-amber-500/20 space-y-2 text-xs">
+              <div class="flex items-center justify-between">
+                <div>
+                  <div class="font-bold text-white flex items-center gap-1.5">
+                    <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+                    ${escapeHtml(q.username)}
+                    <span class="text-[10px] text-slate-400 font-normal">(${escapeHtml(q.email || '')})</span>
+                  </div>
+                  <div class="text-[10px] text-slate-500 font-mono">Order ID: ${escapeHtml(q.orderId || q.id || ('ORDER-' + (idx+1)))}</div>
+                </div>
+                <div class="text-right">
+                  <div class="font-bold text-amber-400 font-mono">${q.amount || 1} GIGA</div>
+                  <div class="text-[10px] text-emerald-400 font-mono font-bold">Yield: +$${((q.amount || 1) * 50).toFixed(2)} USDT</div>
+                </div>
+              </div>
+              <!-- Progress Bar -->
+              <div class="space-y-1">
+                <div class="flex items-center justify-between text-[10px] font-mono">
+                  <span class="${statusColor}">${statusText}</span>
+                  <span class="text-slate-400">${percent}%</span>
+                </div>
+                <div class="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                  <div class="h-1.5 rounded-full ${matched >= 2 ? 'bg-emerald-400' : (matched === 1 ? 'bg-blue-400' : 'bg-amber-400')}" style="width: ${percent}%"></div>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
       }
     }
 
-    // 6. Staff Accounts
-    async function fetchStaff() {
+        async function fetchStaff() {
       const data = await apiRequest('get_staff').catch(() => null);
       if (data && data.success && data.staff) {
         const tbody = document.getElementById('staffTableBody');
