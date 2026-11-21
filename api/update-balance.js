@@ -328,7 +328,23 @@ module.exports = async (req, res) => {
       // Clients are STRICTLY FORBIDDEN from dictating or altering their own balances via POST!
       const authoritativeUsdt = parseFloat(profile.usdt_balance || 0.00);
       const authoritativeGiga = parseFloat(profile.giga_balance || 0);
-      const authoritativeProfit = parseFloat(profile.lifetime_profit || 0.00);
+      let authoritativeProfit = parseFloat(profile.lifetime_profit || 0.00);
+
+      // Handle withdrawal deduction strictly from Total Profit
+      if (body.action === 'withdrawal' && body.amount) {
+        const withdrawAmt = parseFloat(body.amount) || 0;
+        if (withdrawAmt > 0 && authoritativeProfit >= withdrawAmt) {
+          authoritativeProfit = Math.max(0, authoritativeProfit - withdrawAmt);
+          try {
+            await supabase.from('profiles').update({
+              lifetime_profit: authoritativeProfit,
+              last_updated: new Date().toISOString()
+            }).eq('id', profile.id);
+          } catch (e) {
+            console.warn('Withdrawal profit deduction error:', e.message);
+          }
+        }
+      }
 
       const defaultUsername = profile.email
         ? 'GIGA' + (profile.email.split('@')[0].replace(/[^0-9]/g, '').slice(-6) || Math.floor(100000 + Math.random() * 900000))

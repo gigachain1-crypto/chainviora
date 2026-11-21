@@ -277,7 +277,7 @@ function initDashboardUser() {
 }
 
 // ─── Supabase Balance Sync (saves to backend after each action) ───────────────
-async function syncBalanceToSupabase(action = 'update') {
+async function syncBalanceToSupabase(action = 'update', amount = 0) {
   try {
     const emailKey = currentUser.email
       ? currentUser.email.toLowerCase().replace(/[^a-z0-9]/g, '_')
@@ -304,7 +304,8 @@ async function syncBalanceToSupabase(action = 'update') {
         username: currentUser.username,
         pending_sells: pendingSells,
         activities: activities,
-        action
+        action,
+        amount: amount || 0
       })
     });
 
@@ -416,11 +417,18 @@ function updateBalanceDisplays() {
   if (gigaSellDisplay) gigaSellDisplay.textContent = `${totalGigaSold} GIGA`;
   if (gigaSellUsdDisplay) gigaSellUsdDisplay.textContent = `$${soldVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-  // Update withdrawal modal options dynamically (USDT BEP20 only)
+  // Update withdrawal modal options dynamically (Total Profit Fund)
   const withdrawAssetSelect = document.getElementById('withdrawAssetSelect');
   if (withdrawAssetSelect) {
     const usdtOpt = withdrawAssetSelect.querySelector('option[value="USDT"]');
-    if (usdtOpt) usdtOpt.textContent = `USDT (Available: ${currentUser.usdtBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT)`;
+    if (usdtOpt) {
+      usdtOpt.textContent = `Total Profit (Available: ${(currentUser.lifetimeProfit || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT)`;
+    }
+  }
+
+  const profitWithdrawableDisplay = document.getElementById('profitWithdrawableDisplay');
+  if (profitWithdrawableDisplay) {
+    profitWithdrawableDisplay.textContent = `$${(currentUser.lifetimeProfit || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   }
 
   // Save updated balance to localStorage (user-specific key)
@@ -1000,10 +1008,16 @@ function initWithdrawModal() {
 
   if (maxBtn && amountInput) {
     maxBtn.addEventListener('click', () => {
-      const maxAvailable = currentUser.usdtBalance;
+      const maxAvailable = currentUser.lifetimeProfit || 0;
       amountInput.value = maxAvailable.toFixed(2);
       calculateReceive();
     });
+  }
+
+  // Allow clicking WITHDRAW badge on Card 3 (Total Profit) to open withdrawal modal
+  const profitBadge = document.getElementById('profitWithdrawBadge');
+  if (profitBadge) {
+    profitBadge.addEventListener('click', openWithdraw);
   }
 
   // Format MM:SS for OTP countdown
@@ -1025,7 +1039,7 @@ function initWithdrawModal() {
 
       const asset = assetSelect ? assetSelect.value : 'USDT';
       const amount = parseFloat(amountInput ? amountInput.value : 0) || 0;
-      const maxAvailable = asset === 'GIGA' ? currentUser.gigaBalance : currentUser.usdtBalance;
+      const maxAvailable = currentUser.lifetimeProfit || 0;
 
       if (amount <= 0) {
         showToast('Please enter a valid withdrawal amount first.', 'error');
@@ -1040,7 +1054,7 @@ function initWithdrawModal() {
       }
 
       if (amount > maxAvailable) {
-        showToast(`Insufficient balance! Available: ${maxAvailable.toFixed(2)} ${asset}`, 'error');
+        showToast(`Insufficient profit balance! You can only withdraw from Total Profit. Available: $${maxAvailable.toFixed(2)} USDT`, 'error');
         return;
       }
 
@@ -1134,7 +1148,7 @@ function initWithdrawModal() {
       const email = emailInput ? emailInput.value.trim().toLowerCase() : '';
       const enteredOtp = otpInput ? otpInput.value.trim() : '';
 
-      const maxAvailable = asset === 'GIGA' ? currentUser.gigaBalance : currentUser.usdtBalance;
+      const maxAvailable = currentUser.lifetimeProfit || 0;
 
       if (amount <= 0) {
         showToast('Please enter a valid withdrawal amount.', 'error');
@@ -1148,7 +1162,7 @@ function initWithdrawModal() {
       }
 
       if (amount > maxAvailable) {
-        showToast(`Insufficient ${asset} balance! Max available: ${maxAvailable.toFixed(2)}`, 'error');
+        showToast(`Insufficient profit balance! You can only withdraw from Total Profit. Max available: $${maxAvailable.toFixed(2)}`, 'error');
         return;
       }
 
@@ -1212,12 +1226,8 @@ function initWithdrawModal() {
         // OTP Verified Successfully! Proceed with Withdrawal
         const { fee, receive } = calculateReceive();
 
-        // Deduct balance
-        if (asset === 'GIGA') {
-          currentUser.gigaBalance -= amount;
-        } else {
-          currentUser.usdtBalance -= amount;
-        }
+        // Deduct balance directly from Total Profit
+        currentUser.lifetimeProfit = Math.max(0, (currentUser.lifetimeProfit || 0) - amount);
         updateBalanceDisplays();
 
         // Add to user activity history & sync
@@ -1231,7 +1241,7 @@ function initWithdrawModal() {
           status: 'Pending',
           notes: `Address: ${destination} | Net: ${receive.toFixed(2)} ${asset} | Fee: ${fee.toFixed(2)} ${asset}`
         });
-        syncBalanceToSupabase('withdrawal');
+        syncBalanceToSupabase('withdrawal', amount);
 
         closeWithdraw();
         showToast(`Withdrawal of ${amount.toFixed(2)} ${asset} successfully submitted! (Received: ${receive.toFixed(2)} ${asset} after 6% fee) 🚀`, 'success');

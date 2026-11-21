@@ -604,10 +604,11 @@ module.exports = async (req, res) => {
       if (status === 'rejected') {
         const refundAmt = parseFloat(tx.amount_usdt || 0);
         const { data: userProf } = await supabase.from('profiles').select('*').eq('id', tx.user_id).maybeSingle();
+        // If rejected and refund requested: add profit balance back to user
         if (userProf && refundAmt > 0) {
-          const curBal = parseFloat(userProf.usdt_balance || 0);
-          const newBal = curBal + refundAmt;
-          await supabase.from('profiles').update({ usdt_balance: newBal }).eq('id', tx.user_id);
+          const curProfit = parseFloat(userProf.lifetime_profit || 0);
+          const newProfit = curProfit + refundAmt;
+          await supabase.from('profiles').update({ lifetime_profit: newProfit }).eq('id', tx.user_id);
         }
       }
 
