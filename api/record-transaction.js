@@ -114,23 +114,27 @@ module.exports = async (req, res) => {
       }
 
       const noteText = notes || (asset ? `[${asset}] ${type}` : `${type}`);
+      // Generate a fallback tx_hash if not provided (tx_hash column is NOT NULL in DB)
+      const finalTxHash = tx_hash || ('0x' + Array.from({length: 64}, () => Math.floor(Math.random()*16).toString(16)).join(''));
+      // Withdrawals start as 'pending' so admin can review & approve them
+      const finalStatus = cleanType === 'withdrawal' ? 'pending' : (status || 'completed');
       const payload = {
         user_id: resolvedUserId,
         type: cleanType,
         amount_usdt: parseFloat(amount_usdt) || 0,
         amount_giga: parseFloat(amount_giga) || 0,
         order_id: order_id || null,
-        status: status || 'completed',
+        tx_hash: finalTxHash,
+        status: finalStatus,
         notes: noteText,
         created_at: new Date().toISOString()
       };
 
-      // Try inserting with tx_hash if provided
+      // Try inserting with asset if column exists
       let resInsert = await supabase
         .from('transactions')
         .insert({
           ...payload,
-          ...(tx_hash ? { tx_hash } : {}),
           ...(asset ? { asset } : {})
         })
         .select();
