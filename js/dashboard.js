@@ -227,6 +227,9 @@ function initDashboardUser() {
           if (typeof renderUserTransactionsTable === 'function') {
             renderUserTransactionsTable();
           }
+          if (typeof syncTransactionsFromDb === 'function') {
+            syncTransactionsFromDb();
+          }
         }
 
         // 5. Save synced state to localStorage
@@ -1570,6 +1573,10 @@ async function syncTransactionsFromDb() {
           txHash = '0x' + Array(64).fill(0).map(() => Math.floor(Math.random() * 16).toString(16)).join('');
         }
 
+        const targetStatus = (dbTx.status === 'completed' || dbTx.status === 'approved')
+          ? 'Completed'
+          : (dbTx.status === 'rejected' ? 'Rejected' : (dbTx.status ? (dbTx.status.charAt(0).toUpperCase() + dbTx.status.slice(1)) : 'Completed'));
+
         const mappedItem = {
           id: dbTx.id,
           type: displayType,
@@ -1579,18 +1586,33 @@ async function syncTransactionsFromDb() {
           txHash: txHash,
           time: formatTxDateTime(dbTx.created_at),
           isoTime: dbTx.created_at || new Date().toISOString(),
-          status: dbTx.status === 'completed' ? 'Completed' : (dbTx.status || 'Completed'),
+          status: targetStatus,
           notes: dbTx.notes || '',
           orderId: dbTx.order_id || null
         };
 
-        const alreadyExists = localTxs.some(t =>
+        const existingIdx = localTxs.findIndex(t =>
           (dbTx.id && t.id === dbTx.id) ||
-          (t.txHash && t.txHash === mappedItem.txHash) ||
-          (mappedItem.orderId && t.orderId === mappedItem.orderId && t.type === mappedItem.type)
+          (t.txHash && mappedItem.txHash && t.txHash.toLowerCase() === mappedItem.txHash.toLowerCase()) ||
+          (mappedItem.orderId && t.orderId === mappedItem.orderId && t.type === mappedItem.type) ||
+          (t.type === mappedItem.type && Math.abs((t.rawAmount || 0) - (mappedItem.rawAmount || 0)) < 0.05 && Math.abs(new Date(t.isoTime || 0) - new Date(mappedItem.isoTime || 0)) < 600000)
         );
 
-        if (!alreadyExists) {
+        if (existingIdx !== -1) {
+          const cur = localTxs[existingIdx];
+          if (cur.status !== targetStatus) {
+            cur.status = targetStatus;
+            changed = true;
+          }
+          if (dbTx.tx_hash && cur.txHash !== dbTx.tx_hash) {
+            cur.txHash = dbTx.tx_hash;
+            changed = true;
+          }
+          if (!cur.id && dbTx.id) {
+            cur.id = dbTx.id;
+            changed = true;
+          }
+        } else {
           localTxs.push(mappedItem);
           changed = true;
         }
@@ -1614,6 +1636,13 @@ function initUserActivityHistory() {
 
   // 2. Sync from database in background
   syncTransactionsFromDb();
+
+  // 3. Real-time background poller (every 8s) to update status immediately when Admin approves
+  if (!window._cvTxDbPoller) {
+    window._cvTxDbPoller = setInterval(() => {
+      syncTransactionsFromDb();
+    }, 8000);
+  }
 }
 
 function initCopyActions() {

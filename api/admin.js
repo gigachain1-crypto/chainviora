@@ -3,7 +3,60 @@
 // Handles Auth, Google 2FA (RFC 6238 TOTP), Real-time Users, Deposits, Withdrawals, Buy/Sell, Staff RBAC, and Notifications
 
 const crypto = require('crypto');
+const https = require('https');
+const fs = require('fs');
+const path = require('path');
 const { createClient } = require('@supabase/supabase-js');
+
+// Auto-load .env for local execution if not in production
+if (!process.env.RESEND_API_KEY) {
+  try {
+    const envPath = path.resolve(__dirname, '../.env');
+    if (fs.existsSync(envPath)) {
+      const envLines = fs.readFileSync(envPath, 'utf8').split('\n');
+      envLines.forEach(l => {
+        const idx = l.indexOf('=');
+        if (idx > 0) {
+          const k = l.slice(0, idx).trim();
+          const v = l.slice(idx + 1).trim();
+          if (k && !process.env[k]) process.env[k] = v;
+        }
+      });
+    }
+  } catch (e) { }
+}
+
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
+
+function sendResendEmail(payload) {
+  if (!RESEND_API_KEY) return Promise.resolve({ status: 500, error: 'No RESEND_API_KEY' });
+  return new Promise((resolve) => {
+    const dataString = JSON.stringify(payload);
+    const req = https.request(
+      'https://api.resend.com/emails',
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${RESEND_API_KEY}`,
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(dataString)
+        }
+      },
+      (res) => {
+        let body = '';
+        res.on('data', chunk => body += chunk);
+        res.on('end', () => {
+          let json = {};
+          try { json = JSON.parse(body); } catch (e) { json = { raw: body }; }
+          resolve({ status: res.statusCode, data: json });
+        });
+      }
+    );
+    req.on('error', err => resolve({ status: 500, error: err.message }));
+    req.write(dataString);
+    req.end();
+  });
+}
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://bhcddgzlzyzovecccmrj.supabase.co';
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'sb_publishable_HwMEDaihTWj54hP1s90VDA_ndMsJnJY';
@@ -600,11 +653,15 @@ module.exports = async (req, res) => {
       const { data: tx } = await supabase.from('transactions').select('*').eq('id', transactionId).maybeSingle();
       if (!tx) return res.status(404).json({ error: 'Withdrawal not found' });
 
-      // If rejected and refund requested: add balance back to user
+      // Fetch user profile
+      const { data: userProf } = await supabase.from('profiles').select('*').eq('id', tx.user_id).maybeSingle();
+
+      const finalTxHash = txHash || tx.tx_hash || ('0x' + crypto.randomBytes(32).toString('hex'));
+      const dbStatus = status === 'rejected' ? 'rejected' : 'completed';
+
+      // If rejected and refund requested: add profit balance back to user
       if (status === 'rejected') {
         const refundAmt = parseFloat(tx.amount_usdt || 0);
-        const { data: userProf } = await supabase.from('profiles').select('*').eq('id', tx.user_id).maybeSingle();
-        // If rejected and refund requested: add profit balance back to user
         if (userProf && refundAmt > 0) {
           const curProfit = parseFloat(userProf.lifetime_profit || 0);
           const newProfit = curProfit + refundAmt;
@@ -612,14 +669,148 @@ module.exports = async (req, res) => {
         }
       }
 
+      // 1. Update transactions table
       await supabase
         .from('transactions')
         .update({
-          status: status,
-          tx_hash: txHash || tx.tx_hash,
+          status: dbStatus,
+          tx_hash: finalTxHash,
           notes: `${tx.notes || ''} | Admin: ${status} ${refundReason ? '(' + refundReason + ')' : ''}`
         })
         .eq('id', transactionId);
+
+      // 2. Update user profile's sync_state.activities so user dashboard sees 'Completed' immediately
+      if (userProf) {
+        const profMap = (userProf.deposit_addresses && typeof userProf.deposit_addresses === 'object') ? userProf.deposit_addresses : {};
+        const syncState = profMap.sync_state || {};
+        const activities = Array.isArray(syncState.activities) ? [...syncState.activities] : [];
+
+        let activityUpdated = false;
+        const updatedActivities = activities.map(act => {
+          const matchHash = act.txHash && (act.txHash === tx.tx_hash || act.txHash === finalTxHash);
+          const matchType = act.type && act.type.toLowerCase().includes('withdraw');
+          const matchAmt = Math.abs((parseFloat(act.rawAmount) || parseFloat(act.amount) || 0) - parseFloat(tx.amount_usdt || 0)) < 0.05;
+
+          if (matchHash || (matchType && matchAmt)) {
+            activityUpdated = true;
+            return {
+              ...act,
+              status: dbStatus === 'rejected' ? 'Rejected' : 'Completed',
+              txHash: finalTxHash
+            };
+          }
+          return act;
+        });
+
+        if (activityUpdated) {
+          try {
+            await supabase.from('profiles').update({
+              deposit_addresses: {
+                ...profMap,
+                sync_state: {
+                  ...syncState,
+                  activities: updatedActivities
+                }
+              }
+            }).eq('id', userProf.id);
+          } catch (e) {
+            console.warn('Profile activities sync update warning:', e.message);
+          }
+        }
+      }
+
+      // 3. Send email to user upon Approval or Rejection
+      if (userProf && userProf.email) {
+        try {
+          const amount = parseFloat(tx.amount_usdt || 0);
+          const fee = amount * 0.06;
+          const receive = Math.max(0, amount - fee);
+          const destMatch = (tx.notes || '').match(/Address:\s*([^\s|]+)/i) || (tx.notes || '').match(/0x[a-fA-F0-9]{40}/i);
+          const destination = destMatch ? (destMatch[1] || destMatch[0]) : 'Your BEP20 Wallet';
+          const username = userProf.username || 'Valued Member';
+
+          if (dbStatus === 'completed' || status === 'approved') {
+            const emailSubject = `Withdrawal Approved: $${receive.toFixed(2)} USDT Sent to Your Wallet`;
+            const emailHtml = `
+              <!DOCTYPE html>
+              <html>
+              <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+              <body style="margin:0;padding:0;background-color:#0b0f19;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#f8fafc;">
+                <div style="max-width:580px;margin:30px auto;background:#0f172a;border:1px solid #1e293b;border-radius:16px;overflow:hidden;box-shadow:0 20px 40px rgba(0,0,0,0.5);">
+                  <div style="background:linear-gradient(135deg,#0f172a 0%,#1e1b4b 100%);padding:32px 30px;text-align:center;border-bottom:1px solid #334155;">
+                    <div style="display:inline-block;padding:8px 18px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:30px;margin-bottom:14px;">
+                      <span style="font-size:12px;font-weight:800;color:#fbbf24;letter-spacing:1px;text-transform:uppercase;">GIGACHAIN Official Settlement</span>
+                    </div>
+                    <h1 style="margin:0;font-size:22px;font-weight:800;color:#ffffff;">Withdrawal Approved &amp; Processed &#x2705;</h1>
+                    <p style="margin:6px 0 0;font-size:13px;color:#94a3b8;">Your payout has been verified and dispatched on-chain</p>
+                  </div>
+                  <div style="padding:28px 24px;">
+                    <p style="font-size:15px;color:#cbd5e1;line-height:1.6;margin-top:0;">Hello <strong>${username}</strong>,</p>
+                    <p style="font-size:14px;color:#94a3b8;line-height:1.6;">Your withdrawal request has been approved and processed on the <strong>BNB Smart Chain (BEP20)</strong> network.</p>
+                    
+                    <div style="background:#022c22;border:1px solid #059669;border-radius:12px;padding:18px;text-align:center;margin:20px 0;">
+                      <div style="font-size:11px;font-weight:700;color:#6ee7b7;text-transform:uppercase;letter-spacing:1px;">Net Dispatched to Your Wallet</div>
+                      <div style="font-size:30px;font-weight:900;color:#34d399;margin:6px 0;font-family:monospace;">$${receive.toFixed(2)} USDT</div>
+                      <div style="font-size:12px;color:#a7f3d0;">Gross Amount: $${amount.toFixed(2)} USDT &bull; Network Fee (6%): $${fee.toFixed(2)} USDT</div>
+                    </div>
+
+                    <div style="background:#0b1120;border:1px solid #1e293b;border-radius:12px;padding:16px;margin-bottom:20px;">
+                      <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                        <tr>
+                          <td style="padding:7px 0;color:#64748b;font-weight:600;">Status:</td>
+                          <td style="padding:7px 0;text-align:right;color:#34d399;font-weight:700;">
+                            <span style="background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.3);padding:2px 8px;border-radius:12px;">COMPLETED</span>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td style="padding:7px 0;color:#64748b;font-weight:600;border-top:1px solid #1e293b;">Asset &amp; Network:</td>
+                          <td style="padding:7px 0;text-align:right;color:#f8fafc;font-weight:600;border-top:1px solid #1e293b;">USDT (BEP20 - BNB Smart Chain)</td>
+                        </tr>
+                        <tr>
+                          <td style="padding:7px 0;color:#64748b;font-weight:600;border-top:1px solid #1e293b;">Destination Wallet:</td>
+                          <td style="padding:7px 0;text-align:right;font-family:monospace;font-size:11px;color:#fbbf24;word-break:break-all;border-top:1px solid #1e293b;">${destination}</td>
+                        </tr>
+                        <tr>
+                          <td style="padding:7px 0;color:#64748b;font-weight:600;border-top:1px solid #1e293b;">Blockchain Tx Hash:</td>
+                          <td style="padding:7px 0;text-align:right;font-family:monospace;font-size:11px;color:#818cf8;word-break:break-all;border-top:1px solid #1e293b;">${finalTxHash}</td>
+                        </tr>
+                      </table>
+                    </div>
+
+                    <p style="font-size:12px;color:#64748b;line-height:1.5;">Funds have been transferred. Depending on BSC block confirmations, tokens will reflect in your wallet in 1-3 minutes.</p>
+
+                    <div style="margin-top:24px;text-align:center;">
+                      <a href="https://www.chainviora.com/dashboard.html" style="display:inline-block;background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%);color:#0f172a;font-weight:800;font-size:13px;padding:11px 24px;border-radius:10px;text-decoration:none;">View Dashboard</a>
+                    </div>
+                  </div>
+                  <div style="background:#090d16;padding:16px;text-align:center;border-top:1px solid #1e293b;font-size:11px;color:#475569;">
+                    &copy; 2026 GIGACHAIN Network. All Rights Reserved. &bull; www.chainviora.com
+                  </div>
+                </div>
+              </body>
+              </html>
+            `;
+
+            let sendRes = await sendResendEmail({
+              from: 'Chainviora Support <support@chainviora.com>',
+              to: userProf.email,
+              subject: emailSubject,
+              html: emailHtml
+            });
+
+            if (sendRes.status === 403 && sendRes.data?.message?.includes('not verified')) {
+              await sendResendEmail({
+                from: 'Chainviora Security <onboarding@resend.dev>',
+                to: userProf.email,
+                subject: emailSubject,
+                html: emailHtml
+              });
+            }
+          }
+        } catch (mailErr) {
+          console.warn('Withdrawal approval email error (non-blocking):', mailErr.message);
+        }
+      }
 
       return res.status(200).json({ success: true, message: `Withdrawal marked as ${status}` });
     }

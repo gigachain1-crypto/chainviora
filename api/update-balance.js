@@ -269,6 +269,82 @@ module.exports = async (req, res) => {
         } catch (e) { }
       }
 
+      // Cross-reference user's activities with the transactions table so approved/completed
+      // withdrawals and deposits always show 'Completed' with their verified tx_hash.
+      let resolvedActivities = Array.isArray(syncState.activities) ? [...syncState.activities] : [];
+      try {
+        const { data: userTxs } = await supabase
+          .from('transactions')
+          .select('id, type, status, tx_hash, amount_usdt, created_at')
+          .eq('user_id', profile.id);
+
+        if (userTxs && userTxs.length > 0) {
+          const txHashMap = {};
+          userTxs.forEach(t => {
+            if (t.tx_hash) {
+              txHashMap[t.tx_hash.toLowerCase()] = t;
+            }
+          });
+
+          let anyActivityFixed = false;
+          resolvedActivities = resolvedActivities.map(act => {
+            const h = (act.txHash || '').toLowerCase();
+            const directMatch = txHashMap[h];
+
+            if (directMatch) {
+              const mappedStatus = (directMatch.status === 'completed' || directMatch.status === 'approved')
+                ? 'Completed'
+                : (directMatch.status === 'rejected' ? 'Rejected' : act.status);
+              if (act.status !== mappedStatus) {
+                anyActivityFixed = true;
+                return { ...act, status: mappedStatus, id: act.id || directMatch.id };
+              }
+              return act;
+            }
+
+            // Fallback match for withdrawals by type and amount
+            if (act.type && act.type.toLowerCase().includes('withdraw')) {
+              const actAmt = Math.abs(parseFloat(act.rawAmount || (act.amount + '').replace(/[^0-9.-]/g, '') || 0));
+              const txMatch = userTxs.find(t =>
+                t.type === 'withdrawal' &&
+                Math.abs(parseFloat(t.amount_usdt || 0) - actAmt) < 0.05
+              );
+
+              if (txMatch) {
+                const mappedStatus = (txMatch.status === 'completed' || txMatch.status === 'approved')
+                  ? 'Completed'
+                  : (txMatch.status === 'rejected' ? 'Rejected' : act.status);
+                if (act.status !== mappedStatus || (txMatch.tx_hash && act.txHash !== txMatch.tx_hash)) {
+                  anyActivityFixed = true;
+                  return {
+                    ...act,
+                    status: mappedStatus,
+                    txHash: txMatch.tx_hash || act.txHash,
+                    id: act.id || txMatch.id
+                  };
+                }
+              }
+            }
+            return act;
+          });
+
+          // Persist corrected activities back to profile so cross-device state stays consistent
+          if (anyActivityFixed) {
+            try {
+              syncState.activities = resolvedActivities;
+              await supabase.from('profiles').update({
+                deposit_addresses: {
+                  ...profile.deposit_addresses,
+                  sync_state: syncState
+                }
+              }).eq('id', profile.id);
+            } catch (e) { }
+          }
+        }
+      } catch (e) {
+        console.warn('Activities db cross-reference check error:', e.message);
+      }
+
       return res.status(200).json({
         success: true,
         user_id: profile.id,
@@ -285,7 +361,7 @@ module.exports = async (req, res) => {
         referral_earned: totalReferralEarned,
         referral_count: totalInvitedCount,
         pending_sells: serverPendingSells,
-        activities: Array.isArray(syncState.activities) ? syncState.activities : []
+        activities: resolvedActivities
       });
     }
 
@@ -375,7 +451,21 @@ module.exports = async (req, res) => {
 
       let resolvedActivities = Array.isArray(existingSync.activities) ? existingSync.activities : [];
       if (Array.isArray(body.activities) && body.activities.length > 0) {
-        resolvedActivities = body.activities;
+        // Build map of already completed transactions to preserve status
+        const completedMap = {};
+        resolvedActivities.forEach(a => {
+          if (a.txHash && a.status === 'Completed') {
+            completedMap[a.txHash.toLowerCase()] = a;
+          }
+        });
+
+        resolvedActivities = body.activities.map(a => {
+          const h = (a.txHash || '').toLowerCase();
+          if (completedMap[h] && a.status === 'Pending') {
+            return { ...a, status: 'Completed', txHash: completedMap[h].txHash || a.txHash };
+          }
+          return a;
+        });
       }
 
       const newSyncState = {
