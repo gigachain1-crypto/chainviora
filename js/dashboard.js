@@ -2,6 +2,29 @@
    GIGACHAIN - User Dashboard & Vault Management (Deposit / Withdrawal)
    ============================================================================== */
 
+// Remove splash screen after dashboard is fully ready
+(function removeSplash() {
+  const minSplashTime = 3000;
+  function doRemove() {
+    const splash = document.getElementById('giga-splash-screen');
+    if (!splash) return;
+    splash.style.opacity = '0';
+    setTimeout(() => { if (splash.parentNode) splash.parentNode.removeChild(splash); }, 600);
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+      const elapsed = Date.now() - (window._gigaSplashStartTime || 0);
+      const wait = Math.max(minSplashTime - elapsed, 800);
+      setTimeout(doRemove, wait);
+    });
+  } else {
+    const elapsed = Date.now() - (window._gigaSplashStartTime || 0);
+    const wait = Math.max(minSplashTime - elapsed, 800);
+    setTimeout(doRemove, wait);
+  }
+})();
+
+
 document.addEventListener('DOMContentLoaded', () => {
   initDashboardUser();
   initDepositModal();

@@ -9,6 +9,40 @@
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="assets/gigachain-logo.png">
 
+  <!-- Splash Screen: shown immediately if user is already logged in -->
+  <script>
+    (function() {
+      try {
+        var savedUser = localStorage.getItem('gigachain_current_user');
+        if (savedUser) {
+          var splash = document.createElement('div');
+          splash.id = 'giga-splash-screen';
+          splash.style.cssText = 'position:fixed;inset:0;z-index:999999;background:linear-gradient(135deg,#0f172a 0%,#1e1b4b 55%,#0f172a 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font-family:sans-serif;';
+          splash.innerHTML = '<img src="assets/gigachain-logo.png" style="width:90px;height:90px;border-radius:50%;box-shadow:0 0 48px rgba(212,175,55,0.55);animation:splashPulse 1.6s ease-in-out infinite;" />'
+            + '<div style="font-size:28px;font-weight:900;color:#D4AF37;letter-spacing:4px;text-shadow:0 0 20px rgba(212,175,55,0.4);">GIGACHAIN</div>'
+            + '<div style="font-size:13px;color:#94a3b8;letter-spacing:1px;margin-top:-8px;">Secure Web3 Platform</div>'
+            + '<div style="display:flex;gap:8px;margin-top:8px;">'
+            +   '<span style="width:10px;height:10px;border-radius:50%;background:#D4AF37;animation:splashDot 1.2s ease-in-out infinite;"></span>'
+            +   '<span style="width:10px;height:10px;border-radius:50%;background:#D4AF37;animation:splashDot 1.2s ease-in-out 0.2s infinite;"></span>'
+            +   '<span style="width:10px;height:10px;border-radius:50%;background:#D4AF37;animation:splashDot 1.2s ease-in-out 0.4s infinite;"></span>'
+            + '</div>'
+            + '<style>'
+            + '@keyframes splashPulse{0%,100%{box-shadow:0 0 32px rgba(212,175,55,0.4);}50%{box-shadow:0 0 60px rgba(212,175,55,0.75);}}'
+            + '@keyframes splashDot{0%,100%{opacity:0.3;transform:scale(0.8);}50%{opacity:1;transform:scale(1.2);}}'
+            + '</style>';
+          document.documentElement.appendChild(splash);
+          window._gigaSplashStartTime = Date.now();
+        }
+      } catch(e) {}
+    })();
+  </script>
+
+  <!-- Prefetch dashboard for instant navigation -->
+  <link rel="prefetch" href="dashboard.html">
+  <link rel="prefetch" href="js/dashboard.js">
+  <link rel="preload" href="assets/gigachain-logo.png" as="image">
+
+
   <!-- Google Fonts: Plus Jakarta Sans & Space Grotesk -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -42,11 +76,7 @@
       }
     }
   </script>
-
-  <!-- Chart.js CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-  <!-- Custom Styles for Multi-Color Borders and Golden Theme -->
+<!-- Custom Styles for Multi-Color Borders and Golden Theme -->
   <link rel="stylesheet" href="css/style.css">
 </head>
 

@@ -1183,14 +1183,27 @@ function initAuthModal() {
     });
   }
 
-  // Check initial session
+  // Check initial session — if already logged in, redirect to dashboard with splash
   setTimeout(() => {
     const savedUserJson = localStorage.getItem('gigachain_current_user');
     if (savedUserJson) {
       try {
         const savedUser = JSON.parse(savedUserJson);
         updateAuthStateUI(savedUser);
+        // If logged in, show splash and redirect to dashboard after min 3 seconds
+        const splash = document.getElementById('giga-splash-screen');
+        if (splash) {
+          const elapsed = Date.now() - (window._gigaSplashStartTime || Date.now());
+          const remaining = Math.max(3000 - elapsed, 500);
+          setTimeout(() => {
+            window.location.href = 'dashboard.html';
+          }, remaining);
+        }
       } catch (e) { }
+    } else {
+      // No logged in user — remove splash if it somehow appeared
+      const splash = document.getElementById('giga-splash-screen');
+      if (splash) splash.remove();
     }
   }, 300);
 }
