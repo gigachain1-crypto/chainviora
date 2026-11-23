@@ -48,6 +48,16 @@ module.exports = async (req, res) => {
       });
     }
 
+    // 🔒 Double-click / rapid purchase debounce guard: reject calls within 2 seconds
+    if (buyer && buyer.last_updated) {
+      const diffMs = Date.now() - new Date(buyer.last_updated).getTime();
+      if (diffMs > 0 && diffMs < 2000) {
+        return res.status(429).json({
+          error: 'Purchase in progress. Please wait a moment before trying again.'
+        });
+      }
+    }
+
     // 2. Prepare new pending sell order for this buyer
     const updatedUsdt = Math.max(0, currentUsdt - cost);
     const newPendingOrder = {

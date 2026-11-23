@@ -2323,8 +2323,11 @@ function initBuySellMarket() {
     });
   }
 
-  // 5. Execute Buy Action (Database-backed with 2-Buyer Matching)
+  // 5. Execute Buy Action (Database-backed with 2-Buyer Matching & Double-Click Guard)
+  let isExecutingBuy = false;
   async function executeBuyGiga(specificOrderId = null) {
+    if (isExecutingBuy) return;
+    isExecutingBuy = true;
     const cost = 30.00;
 
     // Verify main balance has at least $30 USDT
@@ -2337,6 +2340,7 @@ function initBuySellMarket() {
           depModal.classList.add('flex');
         }, 800);
       }
+      isExecutingBuy = false;
       return;
     }
 
@@ -2431,7 +2435,7 @@ function initBuySellMarket() {
 
     localStorage.setItem('gigachain_current_user', JSON.stringify(currentUser));
     await syncBalanceToSupabase('buy_giga');
-    recordTxToSupabase('buy_giga', 30.00, 1, sellOrderId, 'Bought 1 GIGA for $30.00');
+    // (Transaction is recorded server-side by /api/marketplace-buy)
 
     // Re-render UI
     renderPoolTable(searchInput ? searchInput.value : '');
@@ -2441,6 +2445,7 @@ function initBuySellMarket() {
     // Open Buy Successfully Popup Modal
     openSuccessModal(sellOrderId);
     showToast(`Successfully bought 1 GIGA for $30.00! Placed in Sell queue as Pending`, 'success');
+    isExecutingBuy = false;
   }
 
   // 6. Sync user's marketplace orders from Supabase on load
