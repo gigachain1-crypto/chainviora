@@ -516,10 +516,9 @@ function initDepositModal() {
     }
 
     if (addrNote) {
-      addrNote.textContent = isCached
-        ? `✅ Your permanent ${meta.name} deposit address`
-        : `✅ New permanent ${meta.label} address assigned to your account`;
-      addrNote.className = 'text-[10px] text-emerald-600 mt-1 font-medium';
+      addrNote.textContent = '';
+      addrNote.className = 'hidden';
+      addrNote.style.display = 'none';
     }
   }
 
@@ -568,13 +567,13 @@ function initDepositModal() {
     if (addrInput) addrInput.value = '';
     if (addrInput) addrInput.placeholder = `Generating your ${meta.label} address...`;
     if (addrNote) {
-      addrNote.textContent = `⏳ Connecting to gateway for ${meta.label} address...`;
-      addrNote.className = 'text-[10px] text-slate-500 mt-1';
+      addrNote.className = 'hidden';
+      addrNote.style.display = 'none';
     }
 
     try {
       if (!user || !user.id) {
-        if (addrNote) addrNote.textContent = '⚠️ Please log in to get your deposit address.';
+        showToast('Please log in to get your deposit address.', 'error');
         return;
       }
 
@@ -607,17 +606,11 @@ function initDepositModal() {
         renderQRCode(data.address);
       } else {
         console.error('Failed to get deposit address:', data);
-        if (addrNote) {
-          addrNote.textContent = `⚠️ Could not generate ${meta.label} address. Please try again.`;
-          addrNote.className = 'text-[10px] text-red-500 mt-1';
-        }
+        showToast(`Could not generate ${meta.label} address. Please try again.`, 'error');
       }
     } catch (err) {
       console.error('Deposit address fetch error:', err);
-      if (addrNote) {
-        addrNote.textContent = '⚠️ Network error. Please try again.';
-        addrNote.className = 'text-[10px] text-red-500 mt-1';
-      }
+      showToast('Network error fetching deposit address. Please try again.', 'error');
     }
   }
 
@@ -820,9 +813,6 @@ function initDepositModal() {
         } else {
           // Transaction still waiting on blockchain
           showToast('⏳ Waiting for transfer. No incoming transfer detected yet on this address. If you just sent crypto from your wallet, please wait 1-2 minutes for network confirmation and click again.', 'info');
-          if (addrNote) {
-            addrNote.innerHTML = '<span class="text-amber-600 font-bold animate-pulse">⏳ Live Blockchain Listener Scanning... Waiting for transfer on this address</span>';
-          }
         }
 
       } catch (err) {
