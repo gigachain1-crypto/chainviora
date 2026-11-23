@@ -103,9 +103,40 @@ module.exports = async (req, res) => {
             const { data } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
             profile = data;
           }
+          // Lookup 3: by deposit_address (primary column)
           if (!profile && payAddress) {
-            const { data } = await supabase.from('profiles').select('*').eq('deposit_address', payAddress).maybeSingle();
+            const { data } = await supabase.from('profiles').select('*').ilike('deposit_address', payAddress).maybeSingle();
             profile = data;
+          }
+          // Lookup 4: by deposit_addresses JSON (any network key)
+          if (!profile && payAddress) {
+            const { data: allProfiles } = await supabase.from('profiles').select('*');
+            if (allProfiles) {
+              profile = allProfiles.find(p => {
+                if (!p.deposit_addresses) return false;
+                return Object.values(p.deposit_addresses).some(v => v && v.toString().toLowerCase() === payAddress.toLowerCase());
+              }) || null;
+            }
+          }
+          // Lookup 5: by order_id prefix from NOWPayments (dep_XXXXXXXX_...)
+          if (!profile && paymentId) {
+            try {
+              const npOrdRes = await fetch(`https://api.nowpayments.io/v1/payment/${paymentId}`, {
+                headers: { 'x-api-key': NOWPAYMENTS_API_KEY }
+              });
+              if (npOrdRes.ok) {
+                const npOrdData = await npOrdRes.json();
+                const orderId = npOrdData.order_id || '';
+                const ordMatch = orderId.match(/^dep_([a-f0-9\-]{8,36})/i);
+                if (ordMatch) {
+                  const idPrefix = ordMatch[1].toLowerCase().replace(/-/g,'');
+                  const { data: allProfs } = await supabase.from('profiles').select('*');
+                  if (allProfs) {
+                    profile = allProfs.find(p => p.id && p.id.replace(/-/g,'').startsWith(idPrefix.slice(0,8))) || null;
+                  }
+                }
+              }
+            } catch(ordErr) { console.warn('order_id fallback error:', ordErr.message); }
           }
 
           if (profile) {

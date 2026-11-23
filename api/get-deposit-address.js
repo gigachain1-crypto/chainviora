@@ -11,7 +11,7 @@ if (!envKey || envKey.includes('GDQE') || envKey.includes('DFZY1F2')) {
 }
 const NOWPAYMENTS_API_KEY = envKey;
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://bhcddgzlzyzovecccmrj.supabase.co';
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'sb_publishable_HwMEDaihTWj54hP1s90VDA_ndMsJnJY';
 
 // Network metadata
 const NETWORK_META = {
