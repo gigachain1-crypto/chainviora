@@ -67,7 +67,7 @@ module.exports = async (req, res) => {
       price: cost,
       profit: 50.00,
       matchedBuyers: 0,
-      requiredBuyers: 2,
+      requiredBuyers: 3,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       status: 'Pending',
       created_at: new Date().toISOString()
@@ -93,10 +93,10 @@ module.exports = async (req, res) => {
           const sSync = sMap.sync_state || {};
           const sPending = Array.isArray(sSync.pending_sells) ? sSync.pending_sells : [];
 
-          const targetOrder = sPending.find(item => item.status === 'Pending' && (item.matchedBuyers || 0) < 2);
+          const targetOrder = sPending.find(item => item.status === 'Pending' && (item.matchedBuyers || 0) < 3);
           if (targetOrder) {
             targetOrder.matchedBuyers = (targetOrder.matchedBuyers || 0) + 1;
-            const isComplete = targetOrder.matchedBuyers >= 2;
+            const isComplete = targetOrder.matchedBuyers >= 3;
             if (isComplete) {
               targetOrder.status = 'Completed';
               targetOrder.completedAt = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -117,7 +117,7 @@ module.exports = async (req, res) => {
                 asset: 'USDT',
                 amount: '+$50.00 USDT',
                 status: 'Completed',
-                notes: `Sell Queue ${targetOrder.orderId} completed (2 buyers matched) — +$50.00 Profit credited`,
+                notes: `Sell Queue ${targetOrder.orderId} completed (3 buyers matched) — +$50.00 Profit credited`,
                 rawAmount: 50.00,
                 orderId: targetOrder.orderId
               });
@@ -156,7 +156,7 @@ module.exports = async (req, res) => {
                   tx_hash: sellerTxHash,
                   order_id: targetOrder.orderId,
                   status: 'completed',
-                  notes: `Sell completed (2 of 2 buyers matched) — +$50.00 profit credited`,
+                  notes: `Sell completed (3 of 3 buyers matched) — +$50.00 profit credited`,
                   created_at: new Date().toISOString()
                 });
               } catch (e) { }

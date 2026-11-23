@@ -256,7 +256,7 @@ module.exports = async (req, res) => {
             price: 30.00,
             profit: 50.00,
             matchedBuyers: 0,
-            requiredBuyers: 2,
+            requiredBuyers: 3,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             status: 'Pending',
             created_at: new Date().toISOString()
@@ -445,7 +445,7 @@ module.exports = async (req, res) => {
             price: 30.00,
             profit: 50.00,
             matchedBuyers: 0,
-            requiredBuyers: 2,
+            requiredBuyers: 3,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             status: 'Pending',
             created_at: new Date().toISOString()

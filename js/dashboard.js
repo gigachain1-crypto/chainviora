@@ -401,7 +401,7 @@ function getUserTotalGigaSold() {
     if (saved) {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed)) {
-        completedCount = parsed.filter(item => item.status === 'Completed' || (item.matchedBuyers >= 2)).length;
+        completedCount = parsed.filter(item => item.status === 'Completed' || (item.matchedBuyers >= 3)).length;
       }
     }
     const profitBased = Math.floor((currentUser.lifetimeProfit || 0) / 50);
@@ -2149,7 +2149,7 @@ function initBuySellMarket() {
           price: 30.00,
           profit: 50.00,
           matchedBuyers: 0,
-          requiredBuyers: 2,
+          requiredBuyers: 3,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           status: 'Pending',
           created_at: new Date().toISOString()
@@ -2161,10 +2161,10 @@ function initBuySellMarket() {
 
     pending.forEach(item => {
       if (item.matchedBuyers === undefined) {
-        item.matchedBuyers = item.status === 'Completed' ? 2 : 0;
+        item.matchedBuyers = item.status === 'Completed' ? 3 : 0;
       }
       if (!item.status) {
-        item.status = item.matchedBuyers >= 2 ? 'Completed' : 'Pending';
+        item.status = item.matchedBuyers >= 3 ? 'Completed' : 'Pending';
       }
     });
     return pending;
@@ -2265,7 +2265,7 @@ function initBuySellMarket() {
 
     pendingContainer.innerHTML = '';
     pending.forEach(item => {
-      const isComplete = item.status === 'Completed' || (item.matchedBuyers >= 2);
+      const isComplete = item.status === 'Completed' || (item.matchedBuyers >= 3);
       const card = document.createElement('div');
 
       if (isComplete) {
@@ -2314,7 +2314,7 @@ function initBuySellMarket() {
             </span>
             <!-- Hidden from UI, preserved in background and DOM -->
             <p class="hidden text-[10px] font-mono font-bold text-slate-500 mt-0.5" data-matched="${matched}">
-              ${matched === 1 ? 'Waiting for 2nd Buyer' : 'In Queue (0/2)'}
+              ${matched === 2 ? 'Waiting for 3rd Buyer (2/3)' : (matched === 1 ? 'Waiting for 2nd Buyer (1/3)' : 'In Queue (0/3)')}
             </p>
           </div>
         `;
@@ -2364,7 +2364,7 @@ function initBuySellMarket() {
       price: cost,
       profit: 50.00,
       matchedBuyers: 0,
-      requiredBuyers: 2,
+      requiredBuyers: 3,
       timestamp: nowTime,
       status: 'Pending'
     });
@@ -2496,7 +2496,7 @@ function initBuySellMarket() {
               price: parseFloat(dbOrder.price || dbOrder.unit_price) || 30.00,
               profit: parseFloat(dbOrder.profit || dbOrder.profit_amount) || 50.00,
               matchedBuyers: dbMatched,
-              requiredBuyers: dbOrder.requiredBuyers || dbOrder.required_buyers || 2,
+              requiredBuyers: dbOrder.requiredBuyers || dbOrder.required_buyers || 3,
               timestamp: dbOrder.timestamp || (dbOrder.created_at ? new Date(dbOrder.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })),
               status: dbStatus
             });

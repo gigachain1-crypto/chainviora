@@ -905,20 +905,25 @@ module.exports = async (req, res) => {
         totalGigaInWallets += gigaBal;
         totalProfitPaid += profit;
 
-        // Count pending sells per user
+        // Count pending sells per user - only active uncompleted orders enter matching pool
         pendingSells.forEach(s => {
           const amt = parseFloat(s.amount || 1);
-          totalPendingSellValue += amt * 50;
-          allPendingSells.push({
-            id: s.orderId || s.id || 'ORDER',
-            orderId: s.orderId || s.id || 'ORDER',
-            amount: amt,
-            matchedBuyers: s.matchedBuyers || 0,
-            status: s.status || 'Pending',
-            email: p.email,
-            username: p.username || 'Member',
-            queued_at: s.created_at || s.time || null
-          });
+          const matched = parseInt(s.matchedBuyers || 0, 10);
+          const isPending = s.status === 'Pending' && matched < 3;
+          if (isPending) {
+            totalPendingSellValue += amt * 50;
+            allPendingSells.push({
+              id: s.orderId || s.id || 'ORDER',
+              orderId: s.orderId || s.id || 'ORDER',
+              amount: amt,
+              matchedBuyers: matched,
+              requiredBuyers: 3,
+              status: 'Pending',
+              email: p.email,
+              username: p.username || 'Member',
+              queued_at: s.created_at || s.time || null
+            });
+          }
         });
 
         // Build per-user GIGA summary
@@ -974,7 +979,7 @@ module.exports = async (req, res) => {
 
         let status = 'Available';
         let matchedBuyers = 0;
-        let requiredBuyers = 2;
+        let requiredBuyers = 3;
         let price = 30.00;
         let profit = 50.00;
         let ownerEmail = null;
@@ -983,13 +988,22 @@ module.exports = async (req, res) => {
 
         if (order) {
           const m = parseInt(order.matchedBuyers || 0, 10);
-          status = order.status === 'Completed' || m >= 2 ? 'Completed' : (m === 1 ? 'Waiting for 2nd Buyer' : 'In Sell Queue');
-          matchedBuyers = m;
-          price = parseFloat(order.price || 30.00);
-          profit = parseFloat(order.profit || 50.00);
-          ownerEmail = order.email;
-          ownerUsername = order.username;
-          orderId = order.orderId;
+          if (m >= 3 || order.status === 'Completed') {
+            // As soon as 3rd buyer completes, unit auto-returns to Available in pool
+            status = 'Available';
+            matchedBuyers = 0;
+            ownerEmail = null;
+            ownerUsername = null;
+            orderId = null;
+          } else {
+            status = m === 2 ? 'Waiting 3rd Buyer' : (m === 1 ? 'Waiting 2nd Buyer' : 'In Sell Queue');
+            matchedBuyers = m;
+            price = parseFloat(order.price || 30.00);
+            profit = parseFloat(order.profit || 50.00);
+            ownerEmail = order.email;
+            ownerUsername = order.username;
+            orderId = order.orderId;
+          }
         }
 
         // Apply admin override if any
@@ -1052,18 +1066,24 @@ module.exports = async (req, res) => {
       }
 
       const newMatched = parseInt(matchedBuyers !== undefined ? matchedBuyers : 0, 10);
-      const isCompleted = status === 'Completed' || newMatched >= 2;
+      const isCompleted = status === 'Completed' || newMatched >= 3;
 
-      config.giga_pool_overrides[unitId] = {
-        price: parseFloat(price || 30.00),
-        profit: parseFloat(profit || 50.00),
-        status: isCompleted ? 'Completed' : (status || (newMatched === 1 ? 'Waiting for 2nd Buyer' : (newMatched === 0 ? 'In Sell Queue' : 'Available'))),
-        matchedBuyers: newMatched,
-        ownerEmail: ownerEmail || null,
-        ownerUsername: ownerUsername || null,
-        orderId: orderId || null,
-        updated_at: new Date().toISOString()
-      };
+      if (isCompleted) {
+        // As requested: Once completed (3rd buyer matched), the unit resets to Available in 100 pool
+        delete config.giga_pool_overrides[unitId];
+      } else {
+        config.giga_pool_overrides[unitId] = {
+          price: parseFloat(price || 30.00),
+          profit: parseFloat(profit || 50.00),
+          status: status || (newMatched === 2 ? 'Waiting 3rd Buyer' : (newMatched === 1 ? 'Waiting 2nd Buyer' : (newMatched === 0 ? 'In Sell Queue' : 'Available'))),
+          matchedBuyers: newMatched,
+          requiredBuyers: 3,
+          ownerEmail: ownerEmail || null,
+          ownerUsername: ownerUsername || null,
+          orderId: orderId || null,
+          updated_at: new Date().toISOString()
+        };
+      }
 
       // If marked Completed and ownerEmail is provided, credit the $50 profit to the seller in Supabase
       if (isCompleted && ownerEmail) {
@@ -1078,7 +1098,7 @@ module.exports = async (req, res) => {
             const targetOrder = sPending.find(o => (orderId && o.orderId === orderId) || o.status === 'Pending');
             if (targetOrder) {
               targetOrder.status = 'Completed';
-              targetOrder.matchedBuyers = 2;
+              targetOrder.matchedBuyers = 3;
               targetOrder.completedAt = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             }
 
@@ -1096,7 +1116,7 @@ module.exports = async (req, res) => {
               asset: 'USDT',
               amount: `+$${payout.toFixed(2)} USDT`,
               status: 'Completed',
-              notes: `GIGA Unit ${unitId} (${orderId || 'Sell Queue'}) completed (2 of 2 buyers matched) — +$${payout.toFixed(2)} Profit credited`,
+              notes: `GIGA Unit ${unitId} (${orderId || 'Sell Queue'}) completed (3 of 3 buyers matched) — +$${payout.toFixed(2)} Profit credited`,
               rawAmount: payout,
               orderId: orderId || unitId
             });
