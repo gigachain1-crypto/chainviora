@@ -1,15 +1,22 @@
 // api/record-transaction.js
 // Handles recording (POST) and retrieving (GET) user transaction activity from Supabase
 
+const { applySecurityMiddleware, isValidEmail } = require('./_security');
+
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://bhcddgzlzyzovecccmrj.supabase.co';
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'sb_publishable_HwMEDaihTWj54hP1s90VDA_ndMsJnJY';
 
-module.exports = async (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+// Allowed transaction types (whitelist — no arbitrary types allowed)
+const ALLOWED_TYPES = ['buy_giga', 'sell_giga', 'withdrawal', 'activity', 'referral_bonus', 'admin_config'];
 
-  if (req.method === 'OPTIONS') return res.status(200).end();
+module.exports = async (req, res) => {
+  // 🔒 Security middleware — allow GET + POST, rate limit 20/min
+  const proceed = await applySecurityMiddleware(req, res, {
+    endpoint: 'record-transaction',
+    allowGet: true,
+    rateLimit: { max: 20, windowMs: 60 * 1000 }
+  });
+  if (!proceed) return;
 
   // --------------------------------------------------------------------------
   // GET: Fetch user's transaction history
@@ -106,8 +113,6 @@ module.exports = async (req, res) => {
         return res.status(400).json({ error: 'User profile not found for transaction' });
       }
 
-      // 🔒 SECURITY CHECK: Clients CANNOT submit 'deposit' transactions directly!
-      // All deposits must come through the verified blockchain gateway (/api/check-deposit-status)
       const cleanType = (type || 'activity').toLowerCase().replace(/\s+/g, '_');
       if (cleanType === 'deposit') {
         return res.status(403).json({ error: 'Direct deposit recording forbidden. Must be verified via blockchain gateway.' });

@@ -3,15 +3,17 @@
 // Strictly updates seller and buyer cross-device sync_state in Supabase
 
 const crypto = require('crypto');
+const { applySecurityMiddleware } = require('./_security');
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://bhcddgzlzyzovecccmrj.supabase.co';
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'sb_publishable_HwMEDaihTWj54hP1s90VDA_ndMsJnJY';
 
 module.exports = async (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  // 🔒 Security: 10 buy requests per minute per IP
+  const proceed = await applySecurityMiddleware(req, res, {
+    endpoint: 'marketplace-buy',
+    rateLimit: { max: 10, windowMs: 60 * 1000 }
+  });
+  if (!proceed) return;
 
   try {
     const { user_id, email, username, background_order_id } = req.body || {};

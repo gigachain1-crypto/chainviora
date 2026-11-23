@@ -2,6 +2,7 @@ const https = require('https');
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
+const { applySecurityMiddleware, isValidEmail } = require('./_security');
 
 // Auto-load .env for local execution if not in production
 if (!process.env.RESEND_API_KEY) {
@@ -58,37 +59,22 @@ function sendResendRequest(payload) {
 }
 
 module.exports = async (req, res) => {
-  // CORS Headers
-  res.setHeader('Access-Control-Allow-Credentials', true);
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
-  );
-
-  if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
-  }
-
-  if (req.method !== 'POST') {
-    return res.status(405).json({ success: false, message: 'Method Not Allowed' });
-  }
+  // 🔒 Apply comprehensive security middleware (rate limit: 5 OTP requests/min per IP)
+  const proceed = await applySecurityMiddleware(req, res, {
+    endpoint: 'send-otp',
+    rateLimit: { max: 5, windowMs: 60 * 1000 }
+  });
+  if (!proceed) return;
 
   try {
     let body = req.body;
     if (typeof body === 'string') {
-      try {
-        body = JSON.parse(body);
-      } catch (e) {
-        body = {};
-      }
+      try { body = JSON.parse(body); } catch (e) { body = {}; }
     }
 
     const email = body?.email ? body.email.trim().toLowerCase() : '';
 
-    if (!email || !email.includes('@') || !email.includes('.')) {
+    if (!isValidEmail(email)) {
       return res.status(400).json({ success: false, message: 'Please enter a valid email address.' });
     }
 

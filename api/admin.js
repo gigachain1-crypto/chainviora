@@ -7,6 +7,7 @@ const https = require('https');
 const fs = require('fs');
 const path = require('path');
 const { createClient } = require('@supabase/supabase-js');
+const { isRateLimited, getClientIp } = require('./_security');
 
 // Auto-load .env for local execution if not in production
 if (!process.env.RESEND_API_KEY) {
@@ -209,14 +210,45 @@ async function saveAdminConfig(supabase, config) {
 
 // ─── Main Serverless Function ───────────────────────────────────────────────
 module.exports = async (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  // 🔒 Admin panel: only allow from chainviora.com domain + local dev
+  const origin = req.headers['origin'] || req.headers['referer'] || '';
+  const allowedAdminOrigins = [
+    'https://www.chainviora.com',
+    'https://chainviora.com',
+    'http://localhost:3000',
+    'http://localhost:5500',
+    'http://127.0.0.1:5500',
+    'http://127.0.0.1:3000'
+  ];
+  const isAllowedOrigin = !origin || allowedAdminOrigins.some(o => origin.startsWith(o)) || origin.match(/^https:\/\/chainviora-[a-z0-9-]+\.vercel\.app/);
+
+  res.setHeader('Access-Control-Allow-Origin', isAllowedOrigin && origin ? origin : (allowedAdminOrigins[0]));
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Cache-Control', 'no-store');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+  // 🔒 Block known attack bots
+  const ua = req.headers['user-agent'] || '';
+  const BOT_PATTERNS = [/sqlmap/i, /nikto/i, /nessus/i, /masscan/i, /dirbuster/i, /havij/i, /acunetix/i, /zgrab/i, /nmap/i];
+  if (BOT_PATTERNS.some(p => p.test(ua))) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+
+  // 🔒 Rate limit: 30 admin API calls per minute per IP (for general endpoints)
+  const clientIp = getClientIp(req);
   const action = req.query.action || (req.body && req.body.action);
+
+  // Stricter rate limit on login (5 attempts per minute — brute force prevention)
+  const loginRateLimit = action === 'login' ? { max: 5, windowMs: 60 * 1000 } : { max: 30, windowMs: 60 * 1000 };
+  if (isRateLimited(clientIp, `admin::${action || 'general'}`, loginRateLimit.max, loginRateLimit.windowMs)) {
+    res.setHeader('Retry-After', '60');
+    return res.status(429).json({ error: 'Too many requests. Please wait before trying again.' });
+  }
+
+  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
   // 1. PUBLIC ENDPOINT: Get active system notifications for user dashboard bell
   if (action === 'get_public_notifications') {

@@ -1,14 +1,19 @@
 // api/get-referrals.js
 // Fetches the full list of users referred by a user's referral code with username, email, and deposit/bonus status
 
+const { applySecurityMiddleware } = require('./_security');
+
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://bhcddgzlzyzovecccmrj.supabase.co';
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 module.exports = async (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  if (req.method === 'OPTIONS') return res.status(200).end();
+  // 🔒 Rate limit: 20 requests per minute, allow GET
+  const proceed = await applySecurityMiddleware(req, res, {
+    endpoint: 'get-referrals',
+    allowGet: true,
+    rateLimit: { max: 20, windowMs: 60 * 1000 }
+  });
+  if (!proceed) return;
 
   try {
     const code = req.query?.ref_code || req.body?.ref_code || '';

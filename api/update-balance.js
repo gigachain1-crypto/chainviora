@@ -2,6 +2,8 @@
 // 100% Cross-Device Real-Time Sync between Desktop & Mobile via Supabase Database
 // Includes Server-Authoritative Balances & Automatic Referral Bonus Crediting
 
+const { applySecurityMiddleware } = require('./_security');
+
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://bhcddgzlzyzovecccmrj.supabase.co';
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
@@ -158,11 +160,13 @@ async function ensureReferralBonusesCredited(supabase, profile) {
 }
 
 module.exports = async (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-
-  if (req.method === 'OPTIONS') return res.status(200).end();
+  // 🔒 Security: 60 sync requests per minute per IP (dashboard polls frequently)
+  const proceed = await applySecurityMiddleware(req, res, {
+    endpoint: 'update-balance',
+    allowGet: true,
+    rateLimit: { max: 60, windowMs: 60 * 1000 }
+  });
+  if (!proceed) return;
 
   try {
     const { createClient } = require('@supabase/supabase-js');
