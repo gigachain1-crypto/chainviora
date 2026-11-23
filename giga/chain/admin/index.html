@@ -466,6 +466,7 @@
                     <th class="py-3 px-4">USDT Vault</th>
                     <th class="py-3 px-4">GIGA Held</th>
                     <th class="py-3 px-4">Profit</th>
+                    <th class="py-3 px-4">Ref Bonus</th>
                     <th class="py-3 px-4">Register Date</th>
                     <th class="py-3 px-4">Status</th>
                     <th class="py-3 px-4 text-right">Actions</th>
@@ -473,7 +474,7 @@
                 </thead>
                 <tbody id="usersTableBody" class="divide-y divide-slate-800/80 font-mono text-slate-300">
                   <tr>
-                    <td colspan="8" class="py-8 text-center text-slate-500">Loading users...</td>
+                    <td colspan="9" class="py-8 text-center text-slate-500">Loading users...</td>
                   </tr>
                 </tbody>
               </table>
@@ -1429,7 +1430,7 @@
     function renderUsersTable(users) {
       const tbody = document.getElementById('usersTableBody');
       if (!users || users.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" class="py-8 text-center text-slate-500">No users found</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" class="py-8 text-center text-slate-500">No users found</td></tr>`;
         return;
       }
 
@@ -1443,6 +1444,10 @@
           <td class="py-3 px-4 text-emerald-400 font-bold">$${u.usdt_balance.toFixed(2)}</td>
           <td class="py-3 px-4 text-amber-300 font-bold">${u.giga_balance} GIGA</td>
           <td class="py-3 px-4 text-slate-300">+$${u.lifetime_profit.toFixed(2)}</td>
+          <td class="py-3 px-4">
+            <span class="text-purple-400 font-bold">$${(u.referral_bonus || 0).toFixed(2)}</span>
+            ${(u.referral_count || 0) > 0 ? `<span class="ml-1 text-[10px] text-slate-500 font-normal">(${u.referral_count} ref)</span>` : ''}
+          </td>
           <td class="py-3 px-4 text-slate-400 text-[11px]">${formatDate(u.created_at)}</td>
           <td class="py-3 px-4">
             <span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${u.status === 'suspended' ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'}">

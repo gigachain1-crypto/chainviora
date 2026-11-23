@@ -489,8 +489,29 @@ module.exports = async (req, res) => {
 
       if (error) throw error;
 
+      // Index referrals by referrer_code
+      const refMap = {};
+      (data || []).forEach(p => {
+        if (p.referred_by) {
+          const code = p.referred_by.trim().toUpperCase();
+          if (!refMap[code]) refMap[code] = [];
+          refMap[code].push(p);
+        }
+      });
+
       const formatted = (data || []).map(p => {
         const syncState = (p.deposit_addresses && p.deposit_addresses.sync_state) || {};
+        const myCode = p.referral_code ? p.referral_code.trim().toUpperCase() : null;
+        const invited = (myCode && refMap[myCode]) ? refMap[myCode] : [];
+
+        const credUsers = syncState.credited_referral_users || {};
+        const credBonus = Object.values(credUsers).reduce((sum, item) => sum + (parseFloat(item.amount) || 5.00), 0);
+        let qualBonus = 0;
+        invited.forEach(inv => {
+          if (parseFloat(inv.usdt_balance || 0) >= 30) qualBonus += 5.00;
+        });
+        const referralBonus = Math.max(credBonus, qualBonus);
+
         return {
           id: p.id,
           email: p.email,
@@ -499,6 +520,10 @@ module.exports = async (req, res) => {
           usdt_balance: parseFloat(p.usdt_balance || 0),
           giga_balance: parseFloat(p.giga_balance || 0),
           lifetime_profit: parseFloat(p.lifetime_profit || 0),
+          referral_bonus: referralBonus,
+          referral_count: invited.length,
+          referral_code: p.referral_code || null,
+          referred_by: p.referred_by || null,
           created_at: p.created_at,
           status: syncState.account_status || 'active',
           pending_sells: Array.isArray(syncState.pending_sells) ? syncState.pending_sells.length : 0
