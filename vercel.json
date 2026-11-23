@@ -2,8 +2,14 @@
   "cleanUrls": true,
   "trailingSlash": false,
   "rewrites": [
-    { "source": "/giga/chain/admin", "destination": "/giga/chain/admin/index.html" },
-    { "source": "/giga/chain/admin/", "destination": "/giga/chain/admin/index.html" }
+    {
+      "source": "/giga/chain/admin",
+      "destination": "/giga/chain/admin/index.html"
+    },
+    {
+      "source": "/giga/chain/admin/",
+      "destination": "/giga/chain/admin/index.html"
+    }
   ],
   "headers": [
     {
@@ -61,6 +67,23 @@
         {
           "key": "X-Content-Type-Options",
           "value": "nosniff"
+        }
+      ]
+    },
+    {
+      "source": "/giga/chain/admin(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, no-cache, max-age=0, must-revalidate"
+        },
+        {
+          "key": "Pragma",
+          "value": "no-cache"
+        },
+        {
+          "key": "Expires",
+          "value": "0"
         }
       ]
     }

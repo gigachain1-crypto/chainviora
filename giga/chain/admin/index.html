@@ -44,222 +44,7 @@
       }
     }
 
-    // ─── 100 GIGA UNITS POOL & BUYER MANAGEMENT FUNCTIONS ───────────────────────
-    let global100PoolData = [];
-    let current100PoolFilter = 'all';
-
-    function filter100GigaPool(filter) {
-      current100PoolFilter = filter;
-      const buttons = ['all', 'available', 'queue', 'waiting', 'completed'];
-      buttons.forEach(b => {
-        const btn = document.getElementById('poolFilterBtn_' + b);
-        if (btn) {
-          if (b === filter) {
-            btn.className = 'px-3 py-1 rounded-lg text-xs font-bold bg-amber-500 text-slate-950 transition-colors';
-          } else {
-            btn.className = 'px-3 py-1 rounded-lg text-xs font-bold bg-slate-800 text-slate-400 hover:text-white transition-colors';
-          }
-        }
-      });
-      render100GigaPoolTable();
-    }
-
-    function render100GigaPoolTable() {
-      const tbody = document.getElementById('pool100TableBody');
-      if (!tbody) return;
-
-      const q = (document.getElementById('poolSearchInput')?.value || '').toLowerCase().trim();
-
-      // Count stats
-      let cntAvailable = 0;
-      let cntQueue = 0;
-      let cntWaiting = 0;
-      let cntCompleted = 0;
-
-      global100PoolData.forEach(item => {
-        const s = (item.status || '').toLowerCase();
-        if (s.includes('completed')) cntCompleted++;
-        else if (s.includes('waiting') || item.matchedBuyers === 1) cntWaiting++;
-        else if (s.includes('queue') || s.includes('pending') || item.ownerEmail) cntQueue++;
-        else cntAvailable++;
-      });
-
-      const setBadge = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-      setBadge('poolStatAvailable', cntAvailable + ' Units');
-      setBadge('poolStatQueue', cntQueue + ' Units');
-      setBadge('poolStatWaiting', cntWaiting + ' Units');
-      setBadge('poolStatCompleted', cntCompleted + ' Units');
-
-      setBadge('poolBadgeAll', global100PoolData.length);
-      setBadge('poolBadgeAvailable', cntAvailable);
-      setBadge('poolBadgeQueue', cntQueue);
-      setBadge('poolBadgeWaiting', cntWaiting);
-      setBadge('poolBadgeCompleted', cntCompleted);
-
-      // Filter by status pill
-      let filtered = global100PoolData.filter(item => {
-        const s = (item.status || '').toLowerCase();
-        if (current100PoolFilter === 'available') return s.includes('available') && !item.ownerEmail;
-        if (current100PoolFilter === 'queue') return (s.includes('queue') || s.includes('pending')) && (item.matchedBuyers === 0);
-        if (current100PoolFilter === 'waiting') return s.includes('waiting') || item.matchedBuyers === 1;
-        if (current100PoolFilter === 'completed') return s.includes('completed') || item.matchedBuyers >= 2;
-        return true;
-      });
-
-      // Filter by search query
-      if (q) {
-        filtered = filtered.filter(item =>
-          item.id.toLowerCase().includes(q) ||
-          (item.orderId && item.orderId.toLowerCase().includes(q)) ||
-          (item.ownerEmail && item.ownerEmail.toLowerCase().includes(q)) ||
-          (item.ownerUsername && item.ownerUsername.toLowerCase().includes(q))
-        );
-      }
-
-      if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="py-8 text-center text-slate-500">No GIGA units match your search or filter criteria.</td></tr>';
-        return;
-      }
-
-      tbody.innerHTML = filtered.map(item => {
-        const matched = parseInt(item.matchedBuyers || 0, 10);
-        const req = parseInt(item.requiredBuyers || 2, 10);
-        const percent = matched >= 2 ? 100 : (matched === 1 ? 50 : 0);
-
-        let statusBadge = '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Available</span>';
-        if (item.status === 'Completed' || matched >= 2) {
-          statusBadge = '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/20 text-purple-400 border border-purple-500/30">Completed (2/2)</span>';
-        } else if (item.status === 'Waiting for 2nd Buyer' || matched === 1) {
-          statusBadge = '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 animate-pulse">Waiting 2nd (1/2)</span>';
-        } else if (item.ownerEmail || item.status === 'In Sell Queue') {
-          statusBadge = '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">In Queue (0/2)</span>';
-        }
-
-        const buyerDisplay = item.ownerEmail
-          ? '<div><div class="font-bold text-white text-xs">' + escapeHtml(item.ownerUsername || 'Buyer') + '</div><div class="text-[10px] text-amber-400/90 font-mono truncate max-w-[180px]">' + escapeHtml(item.ownerEmail) + '</div>' + (item.orderId ? '<div class="text-[9px] text-slate-500 font-mono">' + escapeHtml(item.orderId) + '</div>' : '') + '</div>'
-          : '<span class="text-slate-500 text-[11px] italic font-sans">— None (Open in Pool) —</span>';
-
-        const matchColor = matched >= 2 ? 'text-purple-400' : (matched === 1 ? 'text-cyan-400' : (item.ownerEmail ? 'text-amber-400' : 'text-slate-500'));
-        const barColor = matched >= 2 ? 'bg-purple-400' : (matched === 1 ? 'bg-cyan-400' : 'bg-amber-400');
-        const matchLabel = matched >= 2 ? '2 of 2 Buyers (Sold & Settled)' : (matched === 1 ? '1 of 2 Buyers (1 more needed)' : (item.ownerEmail ? '0 of 2 Buyers (2 needed)' : '0 / 2 Buyers (Capacity Ready)'));
-
-        return `
-          <tr class="hover:bg-slate-900/50 transition-colors">
-            <td class="py-3 px-4">
-              <span class="font-mono font-bold text-amber-300 text-xs px-2 py-0.5 rounded bg-slate-950 border border-slate-800">${item.id}</span>
-            </td>
-            <td class="py-3 px-4 font-bold text-white">
-              ${(item.price || 30.00).toFixed(2)}
-            </td>
-            <td class="py-3 px-4">
-              ${statusBadge}
-            </td>
-            <td class="py-3 px-4">
-              ${buyerDisplay}
-            </td>
-            <td class="py-3 px-4 min-w-[190px]">
-              <div class="space-y-1">
-                <div class="flex items-center justify-between text-[10px]">
-                  <span class="${matchColor} font-bold">${matchLabel}</span>
-                  <span class="text-slate-400">${percent}%</span>
-                </div>
-                <div class="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
-                  <div class="h-1.5 rounded-full ${barColor}" style="width: ${percent}%"></div>
-                </div>
-              </div>
-            </td>
-            <td class="py-3 px-4 text-right">
-              <span class="font-bold text-emerald-400 font-mono">+${(item.profit || 50.00).toFixed(2)}</span>
-              <div class="text-[9px] text-slate-500">+66.6% ROI</div>
-            </td>
-            <td class="py-3 px-4 text-right">
-              <button onclick="openEditGigaModal('${item.id}')"
-                class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-400 hover:text-amber-300 text-[11px] font-bold border border-slate-700 cursor-pointer transition-colors shadow-sm inline-flex items-center gap-1">
-                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
-                <span>Edit</span>
-              </button>
-            </td>
-          </tr>
-        `;
-      }).join('');
-    }
-
-    function openEditGigaModal(unitId) {
-      const item = global100PoolData.find(x => x.id === unitId) || {
-        id: unitId,
-        price: 30.00,
-        profit: 50.00,
-        status: 'Available',
-        matchedBuyers: 0,
-        ownerEmail: '',
-        orderId: ''
-      };
-
-      document.getElementById('editGigaUnitId').value = item.id;
-      document.getElementById('editGigaUnitBadge').textContent = item.id;
-      document.getElementById('editGigaPrice').value = (item.price || 30.00).toFixed(2);
-      document.getElementById('editGigaProfit').value = (item.profit || 50.00).toFixed(2);
-      document.getElementById('editGigaStatus').value = item.status || 'Available';
-      document.getElementById('editGigaMatched').value = String(item.matchedBuyers || 0);
-      document.getElementById('editGigaOwnerEmail').value = item.ownerEmail || '';
-      document.getElementById('editGigaOrderId').value = item.orderId || '';
-
-      openModal('editGigaModal');
-    }
-
-    function quickMatchGigaBuyer() {
-      const cur = parseInt(document.getElementById('editGigaMatched').value || '0', 10);
-      const next = Math.min(2, cur + 1);
-      document.getElementById('editGigaMatched').value = String(next);
-      if (next === 1) {
-        document.getElementById('editGigaStatus').value = 'Waiting for 2nd Buyer';
-      } else if (next === 2) {
-        document.getElementById('editGigaStatus').value = 'Completed';
-      }
-      showToast('Matched count updated to ' + next + ' of 2. Click "Save Changes" to commit.', 'info');
-    }
-
-    function quickCompleteGigaUnit() {
-      document.getElementById('editGigaMatched').value = '2';
-      document.getElementById('editGigaStatus').value = 'Completed';
-      showToast('Set to Completed (2 of 2). Click "Save Changes" to commit payout.', 'info');
-    }
-
-    function quickResetGigaUnit() {
-      document.getElementById('editGigaMatched').value = '0';
-      document.getElementById('editGigaStatus').value = 'Available';
-      document.getElementById('editGigaOwnerEmail').value = '';
-      document.getElementById('editGigaOrderId').value = '';
-      showToast('Unit reset fields cleared. Click "Save Changes" to commit.', 'info');
-    }
-
-    async function saveGigaUnitEdit(e) {
-      if (e) e.preventDefault();
-      const unitId = document.getElementById('editGigaUnitId').value;
-      const price = parseFloat(document.getElementById('editGigaPrice').value) || 30.00;
-      const profit = parseFloat(document.getElementById('editGigaProfit').value) || 50.00;
-      const status = document.getElementById('editGigaStatus').value;
-      const matchedBuyers = parseInt(document.getElementById('editGigaMatched').value, 10);
-      const ownerEmail = document.getElementById('editGigaOwnerEmail').value.trim();
-      const orderId = document.getElementById('editGigaOrderId').value.trim();
-
-      try {
-        const res = await apiRequest('update_giga_unit', {
-          body: { unitId, price, profit, status, matchedBuyers, ownerEmail, orderId }
-        });
-
-        if (res.success) {
-          showToast(res.message || 'Unit ' + unitId + ' updated successfully!', 'success');
-          closeModal('editGigaModal');
-          fetchTrades();
-        } else {
-          showToast(res.error || 'Failed to update unit', 'error');
-        }
-      } catch (err) {
-        showToast(err.message || 'Network error updating GIGA unit', 'error');
-      }
-    }
-  </script>
+      </script>
 
   <style>
     body {
@@ -1747,6 +1532,7 @@
       if (targetBtn) targetBtn.classList.add('active', 'bg-slate-800', 'text-white');
 
       // Close mobile sidebar if open
+      if (tabName === 'trades') { fetchTrades(); }
       document.getElementById('adminSidebar').classList.add('-translate-x-full');
     }
 
@@ -2510,6 +2296,223 @@
         }
       }
     });
+
+
+    // ─── 100 GIGA UNITS POOL & BUYER MANAGEMENT FUNCTIONS ───────────────────────
+    let global100PoolData = [];
+    let current100PoolFilter = 'all';
+
+    function filter100GigaPool(filter) {
+      current100PoolFilter = filter;
+      const buttons = ['all', 'available', 'queue', 'waiting', 'completed'];
+      buttons.forEach(b => {
+        const btn = document.getElementById('poolFilterBtn_' + b);
+        if (btn) {
+          if (b === filter) {
+            btn.className = 'px-3 py-1 rounded-lg text-xs font-bold bg-amber-500 text-slate-950 transition-colors';
+          } else {
+            btn.className = 'px-3 py-1 rounded-lg text-xs font-bold bg-slate-800 text-slate-400 hover:text-white transition-colors';
+          }
+        }
+      });
+      render100GigaPoolTable();
+    }
+
+    function render100GigaPoolTable() {
+      const tbody = document.getElementById('pool100TableBody');
+      if (!tbody) return;
+
+      const q = (document.getElementById('poolSearchInput')?.value || '').toLowerCase().trim();
+
+      // Count stats
+      let cntAvailable = 0;
+      let cntQueue = 0;
+      let cntWaiting = 0;
+      let cntCompleted = 0;
+
+      global100PoolData.forEach(item => {
+        const s = (item.status || '').toLowerCase();
+        if (s.includes('completed')) cntCompleted++;
+        else if (s.includes('waiting') || item.matchedBuyers === 1) cntWaiting++;
+        else if (s.includes('queue') || s.includes('pending') || item.ownerEmail) cntQueue++;
+        else cntAvailable++;
+      });
+
+      const setBadge = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+      setBadge('poolStatAvailable', cntAvailable + ' Units');
+      setBadge('poolStatQueue', cntQueue + ' Units');
+      setBadge('poolStatWaiting', cntWaiting + ' Units');
+      setBadge('poolStatCompleted', cntCompleted + ' Units');
+
+      setBadge('poolBadgeAll', global100PoolData.length);
+      setBadge('poolBadgeAvailable', cntAvailable);
+      setBadge('poolBadgeQueue', cntQueue);
+      setBadge('poolBadgeWaiting', cntWaiting);
+      setBadge('poolBadgeCompleted', cntCompleted);
+
+      // Filter by status pill
+      let filtered = global100PoolData.filter(item => {
+        const s = (item.status || '').toLowerCase();
+        if (current100PoolFilter === 'available') return s.includes('available') && !item.ownerEmail;
+        if (current100PoolFilter === 'queue') return (s.includes('queue') || s.includes('pending')) && (item.matchedBuyers === 0);
+        if (current100PoolFilter === 'waiting') return s.includes('waiting') || item.matchedBuyers === 1;
+        if (current100PoolFilter === 'completed') return s.includes('completed') || item.matchedBuyers >= 2;
+        return true;
+      });
+
+      // Filter by search query
+      if (q) {
+        filtered = filtered.filter(item =>
+          item.id.toLowerCase().includes(q) ||
+          (item.orderId && item.orderId.toLowerCase().includes(q)) ||
+          (item.ownerEmail && item.ownerEmail.toLowerCase().includes(q)) ||
+          (item.ownerUsername && item.ownerUsername.toLowerCase().includes(q))
+        );
+      }
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="py-8 text-center text-slate-500">No GIGA units match your search or filter criteria.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(item => {
+        const matched = parseInt(item.matchedBuyers || 0, 10);
+        const req = parseInt(item.requiredBuyers || 2, 10);
+        const percent = matched >= 2 ? 100 : (matched === 1 ? 50 : 0);
+
+        let statusBadge = '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Available</span>';
+        if (item.status === 'Completed' || matched >= 2) {
+          statusBadge = '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/20 text-purple-400 border border-purple-500/30">Completed (2/2)</span>';
+        } else if (item.status === 'Waiting for 2nd Buyer' || matched === 1) {
+          statusBadge = '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 animate-pulse">Waiting 2nd (1/2)</span>';
+        } else if (item.ownerEmail || item.status === 'In Sell Queue') {
+          statusBadge = '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">In Queue (0/2)</span>';
+        }
+
+        const buyerDisplay = item.ownerEmail
+          ? '<div><div class="font-bold text-white text-xs">' + escapeHtml(item.ownerUsername || 'Buyer') + '</div><div class="text-[10px] text-amber-400/90 font-mono truncate max-w-[180px]">' + escapeHtml(item.ownerEmail) + '</div>' + (item.orderId ? '<div class="text-[9px] text-slate-500 font-mono">' + escapeHtml(item.orderId) + '</div>' : '') + '</div>'
+          : '<span class="text-slate-500 text-[11px] italic font-sans">— None (Open in Pool) —</span>';
+
+        const matchColor = matched >= 2 ? 'text-purple-400' : (matched === 1 ? 'text-cyan-400' : (item.ownerEmail ? 'text-amber-400' : 'text-slate-500'));
+        const barColor = matched >= 2 ? 'bg-purple-400' : (matched === 1 ? 'bg-cyan-400' : 'bg-amber-400');
+        const matchLabel = matched >= 2 ? '2 of 2 Buyers (Sold & Settled)' : (matched === 1 ? '1 of 2 Buyers (1 more needed)' : (item.ownerEmail ? '0 of 2 Buyers (2 needed)' : '0 / 2 Buyers (Capacity Ready)'));
+
+        return `
+          <tr class="hover:bg-slate-900/50 transition-colors">
+            <td class="py-3 px-4">
+              <span class="font-mono font-bold text-amber-300 text-xs px-2 py-0.5 rounded bg-slate-950 border border-slate-800">${item.id}</span>
+            </td>
+            <td class="py-3 px-4 font-bold text-white">
+              ${(item.price || 30.00).toFixed(2)}
+            </td>
+            <td class="py-3 px-4">
+              ${statusBadge}
+            </td>
+            <td class="py-3 px-4">
+              ${buyerDisplay}
+            </td>
+            <td class="py-3 px-4 min-w-[190px]">
+              <div class="space-y-1">
+                <div class="flex items-center justify-between text-[10px]">
+                  <span class="${matchColor} font-bold">${matchLabel}</span>
+                  <span class="text-slate-400">${percent}%</span>
+                </div>
+                <div class="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                  <div class="h-1.5 rounded-full ${barColor}" style="width: ${percent}%"></div>
+                </div>
+              </div>
+            </td>
+            <td class="py-3 px-4 text-right">
+              <span class="font-bold text-emerald-400 font-mono">+${(item.profit || 50.00).toFixed(2)}</span>
+              <div class="text-[9px] text-slate-500">+66.6% ROI</div>
+            </td>
+            <td class="py-3 px-4 text-right">
+              <button onclick="openEditGigaModal('${item.id}')"
+                class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-400 hover:text-amber-300 text-[11px] font-bold border border-slate-700 cursor-pointer transition-colors shadow-sm inline-flex items-center gap-1">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                <span>Edit</span>
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function openEditGigaModal(unitId) {
+      const item = global100PoolData.find(x => x.id === unitId) || {
+        id: unitId,
+        price: 30.00,
+        profit: 50.00,
+        status: 'Available',
+        matchedBuyers: 0,
+        ownerEmail: '',
+        orderId: ''
+      };
+
+      document.getElementById('editGigaUnitId').value = item.id;
+      document.getElementById('editGigaUnitBadge').textContent = item.id;
+      document.getElementById('editGigaPrice').value = (item.price || 30.00).toFixed(2);
+      document.getElementById('editGigaProfit').value = (item.profit || 50.00).toFixed(2);
+      document.getElementById('editGigaStatus').value = item.status || 'Available';
+      document.getElementById('editGigaMatched').value = String(item.matchedBuyers || 0);
+      document.getElementById('editGigaOwnerEmail').value = item.ownerEmail || '';
+      document.getElementById('editGigaOrderId').value = item.orderId || '';
+
+      openModal('editGigaModal');
+    }
+
+    function quickMatchGigaBuyer() {
+      const cur = parseInt(document.getElementById('editGigaMatched').value || '0', 10);
+      const next = Math.min(2, cur + 1);
+      document.getElementById('editGigaMatched').value = String(next);
+      if (next === 1) {
+        document.getElementById('editGigaStatus').value = 'Waiting for 2nd Buyer';
+      } else if (next === 2) {
+        document.getElementById('editGigaStatus').value = 'Completed';
+      }
+      showToast('Matched count updated to ' + next + ' of 2. Click "Save Changes" to commit.', 'info');
+    }
+
+    function quickCompleteGigaUnit() {
+      document.getElementById('editGigaMatched').value = '2';
+      document.getElementById('editGigaStatus').value = 'Completed';
+      showToast('Set to Completed (2 of 2). Click "Save Changes" to commit payout.', 'info');
+    }
+
+    function quickResetGigaUnit() {
+      document.getElementById('editGigaMatched').value = '0';
+      document.getElementById('editGigaStatus').value = 'Available';
+      document.getElementById('editGigaOwnerEmail').value = '';
+      document.getElementById('editGigaOrderId').value = '';
+      showToast('Unit reset fields cleared. Click "Save Changes" to commit.', 'info');
+    }
+
+    async function saveGigaUnitEdit(e) {
+      if (e) e.preventDefault();
+      const unitId = document.getElementById('editGigaUnitId').value;
+      const price = parseFloat(document.getElementById('editGigaPrice').value) || 30.00;
+      const profit = parseFloat(document.getElementById('editGigaProfit').value) || 50.00;
+      const status = document.getElementById('editGigaStatus').value;
+      const matchedBuyers = parseInt(document.getElementById('editGigaMatched').value, 10);
+      const ownerEmail = document.getElementById('editGigaOwnerEmail').value.trim();
+      const orderId = document.getElementById('editGigaOrderId').value.trim();
+
+      try {
+        const res = await apiRequest('update_giga_unit', {
+          body: { unitId, price, profit, status, matchedBuyers, ownerEmail, orderId }
+        });
+
+        if (res.success) {
+          showToast(res.message || 'Unit ' + unitId + ' updated successfully!', 'success');
+          closeModal('editGigaModal');
+          fetchTrades();
+        } else {
+          showToast(res.error || 'Failed to update unit', 'error');
+        }
+      } catch (err) {
+        showToast(err.message || 'Network error updating GIGA unit', 'error');
+      }
+    }
   </script>
 </body>
 
