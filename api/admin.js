@@ -964,11 +964,64 @@ module.exports = async (req, res) => {
       const txBuys = txsRes.data ? txsRes.data.filter(t => t.type.includes('buy')) : [];
       const txBuyGigaTotal = txBuys.reduce((sum, t) => sum + parseFloat(t.amount_giga || 1), 0);
 
+      // ─── Build Complete 100 GIGA Units Marketplace Pool & Buyer Tracking ───
+      const poolOverrides = (config && config.giga_pool_overrides) || {};
+      const gigaPool = [];
+      for (let i = 1; i <= 100; i++) {
+        const id = `GIGA-${String(i).padStart(3, '0')}`;
+        const order = allPendingSells[i - 1] || null;
+        const ovr = poolOverrides[id] || {};
+
+        let status = 'Available';
+        let matchedBuyers = 0;
+        let requiredBuyers = 2;
+        let price = 30.00;
+        let profit = 50.00;
+        let ownerEmail = null;
+        let ownerUsername = null;
+        let orderId = null;
+
+        if (order) {
+          const m = parseInt(order.matchedBuyers || 0, 10);
+          status = order.status === 'Completed' || m >= 2 ? 'Completed' : (m === 1 ? 'Waiting for 2nd Buyer' : 'In Sell Queue');
+          matchedBuyers = m;
+          price = parseFloat(order.price || 30.00);
+          profit = parseFloat(order.profit || 50.00);
+          ownerEmail = order.email;
+          ownerUsername = order.username;
+          orderId = order.orderId;
+        }
+
+        // Apply admin override if any
+        if (ovr.status) status = ovr.status;
+        if (ovr.price !== undefined) price = parseFloat(ovr.price);
+        if (ovr.profit !== undefined) profit = parseFloat(ovr.profit);
+        if (ovr.matchedBuyers !== undefined) matchedBuyers = parseInt(ovr.matchedBuyers, 10);
+        if (ovr.ownerEmail !== undefined) ownerEmail = ovr.ownerEmail;
+        if (ovr.ownerUsername !== undefined) ownerUsername = ovr.ownerUsername;
+        if (ovr.orderId !== undefined) orderId = ovr.orderId;
+
+        gigaPool.push({
+          id,
+          index: i,
+          price,
+          profit,
+          status,
+          matchedBuyers,
+          requiredBuyers,
+          remainingBuyers: Math.max(0, requiredBuyers - matchedBuyers),
+          ownerEmail,
+          ownerUsername,
+          orderId
+        });
+      }
+
       return res.status(200).json({
         success: true,
         trades,
         pendingSellQueue: allPendingSells,
         perUserGiga,
+        gigaPool,
         gigaStats: {
           totalGigaBought: Math.max(totalGigaBought, txBuyGigaTotal),
           totalGigaInWallets,
@@ -981,6 +1034,113 @@ module.exports = async (req, res) => {
           sellPrice: 50
         }
       });
+    }
+
+    // ─── 10B. Edit / Update 100 GIGA Units Pool & Buyer Status ─────────────
+    if (action === 'update_giga_unit') {
+      if (!hasPerm('trades')) return res.status(403).json({ error: 'Access denied to Trades' });
+
+      const { unitId, price, profit, status, matchedBuyers, ownerEmail, ownerUsername, orderId, reset } = req.body || {};
+      if (!unitId) return res.status(400).json({ error: 'unitId is required (e.g. GIGA-001)' });
+
+      config.giga_pool_overrides = config.giga_pool_overrides || {};
+
+      if (reset) {
+        delete config.giga_pool_overrides[unitId];
+        await saveAdminConfig(supabase, config);
+        return res.status(200).json({ success: true, message: `Unit ${unitId} reset to Available in 100 Pool.` });
+      }
+
+      const newMatched = parseInt(matchedBuyers !== undefined ? matchedBuyers : 0, 10);
+      const isCompleted = status === 'Completed' || newMatched >= 2;
+
+      config.giga_pool_overrides[unitId] = {
+        price: parseFloat(price || 30.00),
+        profit: parseFloat(profit || 50.00),
+        status: isCompleted ? 'Completed' : (status || (newMatched === 1 ? 'Waiting for 2nd Buyer' : (newMatched === 0 ? 'In Sell Queue' : 'Available'))),
+        matchedBuyers: newMatched,
+        ownerEmail: ownerEmail || null,
+        ownerUsername: ownerUsername || null,
+        orderId: orderId || null,
+        updated_at: new Date().toISOString()
+      };
+
+      // If marked Completed and ownerEmail is provided, credit the $50 profit to the seller in Supabase
+      if (isCompleted && ownerEmail) {
+        try {
+          const { data: sellerProf } = await supabase.from('profiles').select('*').ilike('email', ownerEmail.trim().toLowerCase()).maybeSingle();
+          if (sellerProf) {
+            const sMap = (sellerProf.deposit_addresses && typeof sellerProf.deposit_addresses === 'object') ? sellerProf.deposit_addresses : {};
+            const sSync = sMap.sync_state || {};
+            const sPending = Array.isArray(sSync.pending_sells) ? sSync.pending_sells : [];
+
+            // Update order in seller's pending_sells if found
+            const targetOrder = sPending.find(o => (orderId && o.orderId === orderId) || o.status === 'Pending');
+            if (targetOrder) {
+              targetOrder.status = 'Completed';
+              targetOrder.matchedBuyers = 2;
+              targetOrder.completedAt = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            }
+
+            const currentUsdt = parseFloat(sellerProf.usdt_balance || 0);
+            const currentProfit = parseFloat(sellerProf.lifetime_profit || 0);
+            const payout = parseFloat(profit || 50.00);
+            const newUsdt = currentUsdt + payout;
+            const newProfit = currentProfit + payout;
+
+            const sActivities = Array.isArray(sSync.activities) ? [...sSync.activities] : [];
+            sActivities.unshift({
+              id: 'profit_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+              time: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ', ' + new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+              type: 'Sell Profit',
+              asset: 'USDT',
+              amount: `+$${payout.toFixed(2)} USDT`,
+              status: 'Completed',
+              notes: `GIGA Unit ${unitId} (${orderId || 'Sell Queue'}) completed (2 of 2 buyers matched) — +$${payout.toFixed(2)} Profit credited`,
+              rawAmount: payout,
+              orderId: orderId || unitId
+            });
+
+            const updatedSync = {
+              ...sSync,
+              usdt_balance: newUsdt,
+              lifetime_profit: newProfit,
+              total_giga_sold: (parseInt(sSync.total_giga_sold || 0, 10)) + 1,
+              pending_sells: sPending,
+              activities: sActivities.slice(0, 50)
+            };
+
+            await supabase.from('profiles').update({
+              usdt_balance: newUsdt,
+              lifetime_profit: newProfit,
+              deposit_addresses: {
+                ...sMap,
+                sync_state: updatedSync
+              },
+              last_updated: new Date().toISOString()
+            }).eq('id', sellerProf.id);
+
+            // Record transaction
+            const crypto = require('crypto');
+            await supabase.from('transactions').insert({
+              user_id: sellerProf.id,
+              type: 'sell_giga',
+              amount_usdt: payout,
+              amount_giga: 1.0000,
+              tx_hash: '0x' + crypto.randomBytes(32).toString('hex'),
+              order_id: orderId || unitId,
+              status: 'completed',
+              notes: `Admin completed Unit ${unitId} — +$${payout.toFixed(2)} profit credited to ${ownerEmail}`,
+              created_at: new Date().toISOString()
+            });
+          }
+        } catch (creditErr) {
+          console.warn('Admin complete GIGA unit error:', creditErr.message);
+        }
+      }
+
+      await saveAdminConfig(supabase, config);
+      return res.status(200).json({ success: true, message: `Unit ${unitId} successfully updated!` });
     }
 
     // ─── 11. Staff Management (Superadmin Only) ─────────────────────────────
