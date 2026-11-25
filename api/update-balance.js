@@ -428,20 +428,103 @@ module.exports = async (req, res) => {
       const authoritativeGiga = parseFloat(profile.giga_balance || 0);
       let authoritativeProfit = parseFloat(profile.lifetime_profit || 0.00);
 
-      // Handle withdrawal deduction strictly from Total Profit
-      if (body.action === 'withdrawal' && body.amount) {
+      // Handle OTP-verified atomic withdrawal strictly from Total Profit
+      let withdrawalResult = null;
+      let updatedUsedTokens = Array.isArray(existingSync.used_withdrawal_tokens) ? [...existingSync.used_withdrawal_tokens] : [];
+      if (body.action === 'withdrawal') {
+        const crypto = require('crypto');
+        const OTP_SECRET = process.env.OTP_SECRET || 'chainviora-secret-key-otp-2026';
         const withdrawAmt = parseFloat(body.amount) || 0;
-        if (withdrawAmt > 0 && authoritativeProfit >= withdrawAmt) {
-          authoritativeProfit = Math.max(0, authoritativeProfit - withdrawAmt);
-          try {
-            await supabase.from('profiles').update({
-              lifetime_profit: authoritativeProfit,
-              last_updated: new Date().toISOString()
-            }).eq('id', profile.id);
-          } catch (e) {
-            console.warn('Withdrawal profit deduction error:', e.message);
-          }
+        const destination = String(body.destination || '').trim();
+        const assetName = String(body.asset || 'USDT').trim();
+        const otp = String(body.otp || '').trim();
+        const otpToken = String(body.otp_token || '').trim();
+        const targetEmail = (profile.email || email || '').trim().toLowerCase();
+
+        if (withdrawAmt < 50) {
+          return res.status(400).json({ error: 'Minimum withdrawal amount is $50.00 USDT.' });
         }
+        if (!destination || destination.length < 10) {
+          return res.status(400).json({ error: 'Valid destination wallet address is required.' });
+        }
+        if (!/^\d{6}$/.test(otp) || !otpToken || !otpToken.includes('.')) {
+          return res.status(403).json({ error: 'Valid 6-digit Email OTP and verification token are required.' });
+        }
+
+        const [expectedHash, expiresAtStr] = otpToken.split('.');
+        const expiresAt = parseInt(expiresAtStr, 10);
+        if (isNaN(expiresAt) || Date.now() > expiresAt) {
+          return res.status(400).json({ error: 'Withdrawal OTP has expired. Please request a new OTP.' });
+        }
+
+        const tokenSig = crypto.createHash('sha256').update(otpToken).digest('hex').slice(0, 24);
+        if (updatedUsedTokens.includes(tokenSig)) {
+          return res.status(409).json({ error: 'This withdrawal OTP has already been used. Please request a new OTP.' });
+        }
+
+        const computedHash = crypto
+          .createHmac('sha256', OTP_SECRET)
+          .update(`${targetEmail}:${otp}:${expiresAt}`)
+          .digest('hex');
+
+        const isOtpValid = expectedHash.length === computedHash.length &&
+          crypto.timingSafeEqual(Buffer.from(computedHash, 'hex'), Buffer.from(expectedHash, 'hex'));
+
+        if (!isOtpValid) {
+          return res.status(403).json({ error: 'Invalid withdrawal Email OTP. Authorization denied.' });
+        }
+
+        if (authoritativeProfit < withdrawAmt) {
+          return res.status(400).json({ error: `Insufficient profit balance. Available: $${authoritativeProfit.toFixed(2)}` });
+        }
+
+        const nextProfit = parseFloat(Math.max(0, authoritativeProfit - withdrawAmt).toFixed(2));
+        const { data: lockedProfRows, error: lockErr } = await supabase
+          .from('profiles')
+          .update({
+            lifetime_profit: nextProfit,
+            last_updated: new Date().toISOString()
+          })
+          .eq('id', profile.id)
+          .gte('lifetime_profit', withdrawAmt)
+          .select('id, lifetime_profit');
+
+        if (lockErr || !lockedProfRows || lockedProfRows.length === 0) {
+          return res.status(400).json({ error: 'Insufficient profit balance or concurrent withdrawal already processed.' });
+        }
+
+        authoritativeProfit = nextProfit;
+        updatedUsedTokens = [tokenSig, ...updatedUsedTokens].slice(0, 20);
+
+        const fee = parseFloat((withdrawAmt * 0.06).toFixed(2));
+        const receive = parseFloat((withdrawAmt - fee).toFixed(2));
+        const wTxHash = '0x' + crypto.randomBytes(32).toString('hex');
+        const nowIso = new Date().toISOString();
+        const wNotes = `Address: ${destination} | Net: ${receive.toFixed(2)} ${assetName} | Fee: ${fee.toFixed(2)} ${assetName}`;
+
+        await supabase.from('transactions').insert({
+          user_id: profile.id,
+          type: 'withdrawal',
+          amount_usdt: withdrawAmt,
+          amount_giga: 0,
+          tx_hash: wTxHash,
+          status: 'pending',
+          notes: `[${assetName} (-6% Fee)] ${wNotes} (Tx: ${wTxHash.slice(0, 10)}...)`,
+          created_at: nowIso
+        });
+
+        withdrawalResult = {
+          id: 'w_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+          type: 'Withdrawal',
+          asset: `${assetName} (-6% Fee)`,
+          amount: `-${withdrawAmt.toFixed(2)} ${assetName}`,
+          rawAmount: withdrawAmt,
+          txHash: wTxHash,
+          time: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ', ' + new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+          isoTime: nowIso,
+          status: 'Pending',
+          notes: wNotes
+        };
       }
 
       const defaultUsername = profile.email
@@ -472,7 +555,9 @@ module.exports = async (req, res) => {
       }
 
       let resolvedActivities = Array.isArray(existingSync.activities) ? existingSync.activities : [];
-      if (Array.isArray(body.activities) && body.activities.length > 0) {
+      if (withdrawalResult) {
+        resolvedActivities = [withdrawalResult, ...resolvedActivities].slice(0, 50);
+      } else if (Array.isArray(body.activities) && body.activities.length > 0) {
         // Build map of already completed transactions to preserve status
         const completedMap = {};
         resolvedActivities.forEach(a => {
@@ -498,6 +583,7 @@ module.exports = async (req, res) => {
         lifetime_profit: authoritativeProfit,
         total_giga_bought: authoritativeGiga,
         total_giga_sold: existingSync.total_giga_sold || 0,
+        used_withdrawal_tokens: updatedUsedTokens,
         pending_sells: resolvedPendingSells,
         activities: resolvedActivities
       };
@@ -522,10 +608,11 @@ module.exports = async (req, res) => {
       // Return the TRUE authoritative server balances back to the client
       return res.status(200).json({
         success: true,
-        action: 'sync',
+        action: body.action || 'sync',
         usdt_balance: authoritativeUsdt,
         giga_balance: authoritativeGiga,
         lifetime_profit: authoritativeProfit,
+        withdrawal: withdrawalResult,
         state: newSyncState
       });
     }

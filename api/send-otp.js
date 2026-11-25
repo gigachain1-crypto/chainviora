@@ -289,16 +289,7 @@ module.exports = async (req, res) => {
 
       const errMessage = sendResult.data?.message || '';
 
-      // If withdrawal in testing sandbox, provide fallback so verification flow is never blocked
-      if (isWithdrawal) {
-        return res.status(200).json({
-          success: true,
-          token: token,
-          devOtp: otp,
-          message: `Security OTP: ${otp} (Enter this code to authorize withdrawal).`
-        });
-      }
-
+      // 🔒 SECURITY: NEVER expose OTP codes (devOtp) in API responses, especially for withdrawals!
       // Helpful message if testing email constraint in Resend sandbox
       if (errMessage.includes('can only send testing emails to your own email address') || errMessage.includes('testing email address')) {
         return res.status(400).json({

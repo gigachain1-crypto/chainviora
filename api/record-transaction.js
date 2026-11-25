@@ -117,6 +117,9 @@ module.exports = async (req, res) => {
       if (cleanType === 'deposit') {
         return res.status(403).json({ error: 'Direct deposit recording forbidden. Must be verified via blockchain gateway.' });
       }
+      if (cleanType === 'withdrawal') {
+        return res.status(403).json({ error: 'Direct withdrawal recording forbidden. Must verify Email OTP via secure withdrawal endpoint.' });
+      }
 
       const noteText = notes || (asset ? `[${asset}] ${type}` : `${type}`);
       // Generate a fallback tx_hash if not provided (tx_hash column is NOT NULL in DB)

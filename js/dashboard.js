@@ -1097,11 +1097,7 @@ function initWithdrawModal() {
             otpInput.focus();
           }
 
-          if (data.devOtp) {
-            showToast(`Security OTP: ${data.devOtp} (Testing Code Generated) ✉️`, 'success');
-          } else {
-            showToast(`Security code sent to ${email}! Check your inbox ✉️`, 'success');
-          }
+          showToast(`Security code sent to ${email}! Check your inbox ✉️`, 'success');
 
           // 3-Minute (180s) Timer Countdown
           let timeLeft = 180;
@@ -1205,49 +1201,54 @@ function initWithdrawModal() {
       }
 
       try {
-        // Verify OTP via Serverless API
-        const verifyRes = await fetch('/api/verify-otp', {
+        // Server-Authoritative OTP-Verified Withdrawal (verifies HMAC token + atomic profit lock + single-use replay guard)
+        const wRes = await fetch('/api/update-balance', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            email: window.chainvioraWithdrawOtpEmail || email,
+            user_id: localStorage.getItem('supabase_user_id') || currentUser.id,
+            email: window.chainvioraWithdrawOtpEmail || currentUser.email || email,
+            username: currentUser.username,
+            action: 'withdrawal',
+            amount: amount,
+            destination: destination,
+            asset: asset,
             otp: enteredOtp,
-            token: window.chainvioraWithdrawOtpToken
+            otp_token: window.chainvioraWithdrawOtpToken
           })
         });
 
-        const verifyData = await verifyRes.json();
-
-        if (!verifyData.success) {
+        const wData = await wRes.json().catch(() => ({}));
+        if (!wRes.ok || !wData.success) {
           if (submitBtn) {
             submitBtn.disabled = false;
             submitBtn.classList.remove('opacity-70', 'cursor-not-allowed');
             submitBtn.innerHTML = origSubmitText;
           }
-          showToast(verifyData.message || 'Incorrect OTP code. Please enter the valid code.', 'error');
+          showToast((wData && (wData.error || wData.message)) || 'Withdrawal verification failed. Please check OTP & profit balance.', 'error');
           if (otpInput) otpInput.focus();
           return;
         }
 
-        // OTP Verified Successfully! Proceed with Withdrawal
+        // Server confirmed & persisted withdrawal! Update local UI state cleanly
         const { fee, receive } = calculateReceive();
-
-        // Deduct balance directly from Total Profit
-        currentUser.lifetimeProfit = Math.max(0, (currentUser.lifetimeProfit || 0) - amount);
+        currentUser.lifetimeProfit = wData.lifetime_profit !== undefined
+          ? parseFloat(wData.lifetime_profit)
+          : Math.max(0, (currentUser.lifetimeProfit || 0) - amount);
         updateBalanceDisplays();
 
-        // Add to user activity history & sync
-        const txHash = generateTxHash();
+        const serverAct = wData.withdrawal || {};
         logUserActivity({
+          id: serverAct.id,
           type: 'Withdrawal',
-          asset: `${asset} (-6% Fee)`,
-          amount: `-${amount.toFixed(2)} ${asset}`,
+          asset: serverAct.asset || `${asset} (-6% Fee)`,
+          amount: serverAct.amount || `-${amount.toFixed(2)} ${asset}`,
           rawAmount: amount,
-          txHash: txHash,
+          txHash: serverAct.txHash || generateTxHash(),
           status: 'Pending',
-          notes: `Address: ${destination} | Net: ${receive.toFixed(2)} ${asset} | Fee: ${fee.toFixed(2)} ${asset}`
+          notes: serverAct.notes || `Address: ${destination} | Net: ${receive.toFixed(2)} ${asset} | Fee: ${fee.toFixed(2)} ${asset}`,
+          skipServerRecord: true
         });
-        syncBalanceToSupabase('withdrawal', amount);
 
         closeWithdraw();
         showToast(`Withdrawal of ${amount.toFixed(2)} ${asset} successfully submitted! (Received: ${receive.toFixed(2)} ${asset} after 6% fee) 🚀`, 'success');
