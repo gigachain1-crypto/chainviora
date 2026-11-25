@@ -41,25 +41,52 @@ module.exports = async (req, res) => {
       buyer = data;
     }
 
-    const currentUsdt = buyer ? parseFloat(buyer.usdt_balance || 0) : 0;
-    if (buyer && currentUsdt < cost) {
+    if (!buyer) {
+      return res.status(404).json({
+        error: 'User profile not found. Please log out and log back in.'
+      });
+    }
+
+    const currentUsdt = parseFloat(buyer.usdt_balance || 0);
+    if (currentUsdt < cost) {
       return res.status(400).json({
         error: `Insufficient balance! You have $${currentUsdt.toFixed(2)}, but need $30.00 to buy 1 GIGA.`
       });
     }
 
-    // 🔒 Double-click / rapid purchase debounce guard: reject calls within 2 seconds
-    if (buyer && buyer.last_updated) {
-      const diffMs = Date.now() - new Date(buyer.last_updated).getTime();
-      if (diffMs > 0 && diffMs < 2000) {
+    // 🔒 Double-click / rapid purchase debounce guard: reject calls within 3 seconds of last GIGA buy
+    const existingBuyerMap = (buyer.deposit_addresses && typeof buyer.deposit_addresses === 'object') ? buyer.deposit_addresses : {};
+    const existingBuyerSync = existingBuyerMap.sync_state || {};
+    if (existingBuyerSync.last_buy_at) {
+      const diffMs = Date.now() - new Date(existingBuyerSync.last_buy_at).getTime();
+      if (diffMs >= 0 && diffMs < 3000) {
         return res.status(429).json({
           error: 'Purchase in progress. Please wait a moment before trying again.'
         });
       }
     }
 
-    // 2. Prepare new pending sell order for this buyer
-    const updatedUsdt = Math.max(0, currentUsdt - cost);
+    // 🔒 ATOMIC BALANCE LOCK: Deduct $30 ONLY if DB usdt_balance >= $30 right now
+    // Prevents concurrent requests or double-clicks from ever buying 2 GIGA with $30
+    const updatedUsdt = Math.max(0, parseFloat((currentUsdt - cost).toFixed(2)));
+    const buyTimestampIso = new Date().toISOString();
+    const { data: lockedRows, error: lockErr } = await supabase
+      .from('profiles')
+      .update({
+        usdt_balance: updatedUsdt,
+        balance_usdt: updatedUsdt,
+        last_updated: buyTimestampIso
+      })
+      .eq('id', buyer.id)
+      .gte('usdt_balance', cost)
+      .select('*');
+
+    if (lockErr || !lockedRows || lockedRows.length === 0) {
+      return res.status(400).json({
+        error: 'Insufficient USDT balance or concurrent purchase already processed.'
+      });
+    }
+    buyer = lockedRows[0];
     const newPendingOrder = {
       orderId: sellCode,
       backgroundOrderId: bgOrderId,
@@ -172,21 +199,29 @@ module.exports = async (req, res) => {
       console.warn('Marketplace matching error (non-fatal):', matchingErr.message);
     }
 
-    // 4. Update Buyer: Deduct $30 USDT and add new Pending Sell Order
+    // 4. Update Buyer: Save new Pending Sell Order & Activity (USDT balance already atomically deducted above)
+    let buyerTxHash = null;
+    let buyActivity = null;
+    let newGigaBalance = parseInt(buyer.giga_balance || 0, 10) + 1;
+
     if (buyer) {
+      buyerTxHash = '0x' + crypto.randomBytes(32).toString('hex');
       const buyerMap = (buyer.deposit_addresses && typeof buyer.deposit_addresses === 'object') ? buyer.deposit_addresses : {};
       const buyerSync = buyerMap.sync_state || {};
       const existingPending = Array.isArray(buyerSync.pending_sells) ? buyerSync.pending_sells : [];
       const updatedPending = [newPendingOrder, ...existingPending];
+      const newTotalBought = Math.max((parseInt(buyerSync.total_giga_bought || 0, 10)) + 1, newGigaBalance);
 
       const existingActivities = Array.isArray(buyerSync.activities) ? buyerSync.activities : [];
-      const buyActivity = {
+      buyActivity = {
         id: 'buy_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
         time: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ', ' + new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+        isoTime: new Date().toISOString(),
         type: 'Buy GIGA',
         asset: '1 GIGA ($30.00)',
         amount: '-$30.00 USDT',
         status: 'Completed',
+        txHash: buyerTxHash,
         notes: `Bought 1 GIGA ($30.00) — Placed in Sell Queue (${sellCode})`,
         rawAmount: 30.00,
         orderId: sellCode
@@ -196,8 +231,9 @@ module.exports = async (req, res) => {
       const updatedSync = {
         ...buyerSync,
         usdt_balance: updatedUsdt,
-        giga_balance: (parseInt(buyerSync.giga_balance || 0, 10)) + 1,
-        total_giga_bought: (parseInt(buyerSync.total_giga_bought || 0, 10)) + 1,
+        giga_balance: newGigaBalance,
+        total_giga_bought: newTotalBought,
+        last_buy_at: buyTimestampIso,
         pending_sells: updatedPending,
         activities: updatedActivities
       };
@@ -206,8 +242,9 @@ module.exports = async (req, res) => {
         .from('profiles')
         .update({
           usdt_balance: updatedUsdt,
-          giga_balance: (parseInt(buyer.giga_balance || 0, 10)) + 1,
-          balance_giga: (parseInt(buyer.giga_balance || 0, 10)) + 1,
+          balance_usdt: updatedUsdt,
+          giga_balance: newGigaBalance,
+          balance_giga: newGigaBalance,
           deposit_addresses: {
             ...buyerMap,
             sync_state: updatedSync
@@ -216,9 +253,8 @@ module.exports = async (req, res) => {
         })
         .eq('id', buyer.id);
 
-      // Record transaction
+      // Record transaction once on server
       try {
-        const buyerTxHash = '0x' + crypto.randomBytes(32).toString('hex');
         await supabase.from('transactions').insert({
           user_id: buyer.id,
           type: 'buy_giga',
@@ -238,6 +274,9 @@ module.exports = async (req, res) => {
     return res.status(200).json({
       success: true,
       new_usdt_balance: updatedUsdt,
+      new_giga_balance: newGigaBalance,
+      tx_hash: buyerTxHash,
+      activity: buyActivity,
       order: newPendingOrder,
       matched_seller: matchedSellerOrder ? {
         orderId: matchedSellerOrder.orderId,

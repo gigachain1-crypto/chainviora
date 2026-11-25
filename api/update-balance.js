@@ -430,10 +430,10 @@ module.exports = async (req, res) => {
         ? 'GIGA' + (profile.email.split('@')[0].replace(/[^0-9]/g, '').slice(-6) || Math.floor(100000 + Math.random() * 900000))
         : 'GIGA' + Math.floor(100000 + Math.random() * 900000);
 
-      // Preserve existing pending sells; never overwrite with empty array
+      // Preserve authoritative server pending sells (never let stale client state overwrite DB orders)
       let resolvedPendingSells = Array.isArray(existingSync.pending_sells) ? existingSync.pending_sells : [];
-      if (Array.isArray(body.pending_sells) && body.pending_sells.length > 0) {
-        resolvedPendingSells = body.pending_sells;
+      if (resolvedPendingSells.length === 0 && Array.isArray(body.pending_sells) && body.pending_sells.length > 0 && authoritativeGiga > 0) {
+        resolvedPendingSells = body.pending_sells.slice(0, Math.max(1, Math.floor(authoritativeGiga)));
       }
       if (authoritativeGiga > resolvedPendingSells.length) {
         const missing = authoritativeGiga - resolvedPendingSells.length;
