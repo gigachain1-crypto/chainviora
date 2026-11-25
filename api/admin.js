@@ -715,6 +715,7 @@ module.exports = async (req, res) => {
 
       const finalTxHash = txHash || tx.tx_hash || ('0x' + crypto.randomBytes(32).toString('hex'));
       const dbStatus = status === 'rejected' ? 'rejected' : 'completed';
+      const approvedAtIso = dbStatus === 'completed' ? new Date().toISOString() : null;
 
       // If rejected and refund requested: add profit balance back to user
       if (status === 'rejected') {
@@ -727,12 +728,13 @@ module.exports = async (req, res) => {
       }
 
       // 1. Update transactions table
+      const approvalNote = approvedAtIso ? ` | ApprovedAt: ${approvedAtIso}` : '';
       await supabase
         .from('transactions')
         .update({
           status: dbStatus,
           tx_hash: finalTxHash,
-          notes: `${tx.notes || ''} | Admin: ${status} ${refundReason ? '(' + refundReason + ')' : ''}`
+          notes: `${tx.notes || ''} | Admin: ${status}${refundReason ? ' (' + refundReason + ')' : ''}${approvalNote}`
         })
         .eq('id', transactionId);
 
@@ -753,7 +755,8 @@ module.exports = async (req, res) => {
             return {
               ...act,
               status: dbStatus === 'rejected' ? 'Rejected' : 'Completed',
-              txHash: finalTxHash
+              txHash: finalTxHash,
+              ...(approvedAtIso ? { completedAt: act.completedAt || approvedAtIso } : {})
             };
           }
           return act;

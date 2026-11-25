@@ -1461,6 +1461,64 @@ function addTransactionRow(type, asset, amount, txHash, time, status) {
   });
 }
 
+function extractApprovedAtFromNotes(notes) {
+  if (!notes) return null;
+  const match = String(notes).match(/ApprovedAt:\s*([^\s|]+)/i);
+  return match ? match[1] : null;
+}
+
+function updateWithdrawalStatusBadges(txs) {
+  const pendingEl = document.getElementById('withdrawalPendingBadge');
+  const pendingTxt = document.getElementById('withdrawalPendingText');
+  const completeEl = document.getElementById('withdrawalCompleteBadge');
+  const completeTxt = document.getElementById('withdrawalCompleteText');
+  if (!pendingEl && !completeEl) return;
+
+  const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
+  const now = Date.now();
+
+  const withdrawals = (Array.isArray(txs) ? txs : []).filter(
+    t => t && t.type && t.type.toLowerCase().includes('withdraw')
+  );
+
+  const pendingCount = withdrawals.filter(
+    w => String(w.status || '').trim().toLowerCase() === 'pending'
+  ).length;
+
+  const recentCompleteCount = withdrawals.filter(w => {
+    const st = String(w.status || '').trim().toLowerCase();
+    if (st !== 'completed' && st !== 'approved') return false;
+    const completedStr = w.completedAt || extractApprovedAtFromNotes(w.notes) || w.isoTime;
+    if (!completedStr) return false;
+    const completedMs = new Date(completedStr).getTime();
+    if (isNaN(completedMs)) return false;
+    const ageMs = now - completedMs;
+    return ageMs >= -60000 && ageMs < TWENTY_FOUR_HOURS_MS;
+  }).length;
+
+  if (pendingEl) {
+    if (pendingCount > 0) {
+      if (pendingTxt) pendingTxt.textContent = `${pendingCount} Withdrawal Pending`;
+      pendingEl.classList.remove('hidden');
+      pendingEl.classList.add('inline-flex');
+    } else {
+      pendingEl.classList.add('hidden');
+      pendingEl.classList.remove('inline-flex');
+    }
+  }
+
+  if (completeEl) {
+    if (recentCompleteCount > 0) {
+      if (completeTxt) completeTxt.textContent = `${recentCompleteCount} Withdrawal Complete`;
+      completeEl.classList.remove('hidden');
+      completeEl.classList.add('inline-flex');
+    } else {
+      completeEl.classList.add('hidden');
+      completeEl.classList.remove('inline-flex');
+    }
+  }
+}
+
 function renderUserTransactionsTable() {
   const table = document.getElementById('transactionHistoryTable');
   if (!table) return;
@@ -1470,6 +1528,7 @@ function renderUserTransactionsTable() {
   if (countBadge) {
     countBadge.textContent = `${txs.length} ${txs.length === 1 ? 'Activity' : 'Activities'}`;
   }
+  updateWithdrawalStatusBadges(txs);
 
   if (txs.length === 0) {
     table.innerHTML = `
@@ -1581,6 +1640,7 @@ async function syncTransactionsFromDb() {
         const targetStatus = (dbTx.status === 'completed' || dbTx.status === 'approved')
           ? 'Completed'
           : (dbTx.status === 'rejected' ? 'Rejected' : (dbTx.status ? (dbTx.status.charAt(0).toUpperCase() + dbTx.status.slice(1)) : 'Completed'));
+        const dbApprovedAt = extractApprovedAtFromNotes(dbTx.notes);
 
         const mappedItem = {
           id: dbTx.id,
@@ -1592,6 +1652,7 @@ async function syncTransactionsFromDb() {
           time: formatTxDateTime(dbTx.created_at),
           isoTime: dbTx.created_at || new Date().toISOString(),
           status: targetStatus,
+          ...(targetStatus === 'Completed' ? { completedAt: dbApprovedAt || dbTx.created_at || new Date().toISOString() } : {}),
           notes: dbTx.notes || '',
           orderId: dbTx.order_id || null
         };
@@ -1607,6 +1668,16 @@ async function syncTransactionsFromDb() {
           const cur = localTxs[existingIdx];
           if (cur.status !== targetStatus) {
             cur.status = targetStatus;
+            if (targetStatus === 'Completed' && !cur.completedAt) {
+              cur.completedAt = dbApprovedAt || new Date().toISOString();
+            }
+            changed = true;
+          } else if (targetStatus === 'Completed' && dbApprovedAt && cur.completedAt !== dbApprovedAt) {
+            cur.completedAt = dbApprovedAt;
+            changed = true;
+          }
+          if (dbTx.notes && cur.notes !== dbTx.notes) {
+            cur.notes = dbTx.notes;
             changed = true;
           }
           if (dbTx.tx_hash && cur.txHash !== dbTx.tx_hash) {

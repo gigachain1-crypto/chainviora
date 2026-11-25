@@ -279,8 +279,14 @@ module.exports = async (req, res) => {
       try {
         const { data: userTxs } = await supabase
           .from('transactions')
-          .select('id, type, status, tx_hash, amount_usdt, created_at')
+          .select('id, type, status, tx_hash, amount_usdt, notes, created_at')
           .eq('user_id', profile.id);
+
+        const extractApprovedAt = (notes) => {
+          if (!notes) return null;
+          const m = String(notes).match(/ApprovedAt:\s*([^\s|]+)/i);
+          return m ? m[1] : null;
+        };
 
         if (userTxs && userTxs.length > 0) {
           const txHashMap = {};
@@ -299,9 +305,17 @@ module.exports = async (req, res) => {
               const mappedStatus = (directMatch.status === 'completed' || directMatch.status === 'approved')
                 ? 'Completed'
                 : (directMatch.status === 'rejected' ? 'Rejected' : act.status);
-              if (act.status !== mappedStatus) {
+              const approvedTime = mappedStatus === 'Completed'
+                ? (act.completedAt || extractApprovedAt(directMatch.notes) || directMatch.created_at)
+                : act.completedAt;
+              if (act.status !== mappedStatus || (approvedTime && act.completedAt !== approvedTime)) {
                 anyActivityFixed = true;
-                return { ...act, status: mappedStatus, id: act.id || directMatch.id };
+                return {
+                  ...act,
+                  status: mappedStatus,
+                  id: act.id || directMatch.id,
+                  ...(approvedTime ? { completedAt: approvedTime } : {})
+                };
               }
               return act;
             }
@@ -318,13 +332,17 @@ module.exports = async (req, res) => {
                 const mappedStatus = (txMatch.status === 'completed' || txMatch.status === 'approved')
                   ? 'Completed'
                   : (txMatch.status === 'rejected' ? 'Rejected' : act.status);
-                if (act.status !== mappedStatus || (txMatch.tx_hash && act.txHash !== txMatch.tx_hash)) {
+                const approvedTime = mappedStatus === 'Completed'
+                  ? (act.completedAt || extractApprovedAt(txMatch.notes) || txMatch.created_at)
+                  : act.completedAt;
+                if (act.status !== mappedStatus || (txMatch.tx_hash && act.txHash !== txMatch.tx_hash) || (approvedTime && act.completedAt !== approvedTime)) {
                   anyActivityFixed = true;
                   return {
                     ...act,
                     status: mappedStatus,
                     txHash: txMatch.tx_hash || act.txHash,
-                    id: act.id || txMatch.id
+                    id: act.id || txMatch.id,
+                    ...(approvedTime ? { completedAt: approvedTime } : {})
                   };
                 }
               }
