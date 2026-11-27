@@ -114,6 +114,23 @@ body {
   box-shadow: 0 6px 16px rgba(0, 112, 243, 0.15);
 }
 
+.btn-withdraw-color {
+  position: relative;
+  border: 1.5px solid transparent;
+  background: linear-gradient(135deg, #4c1d95 0%, #9d174d 58%, #d97706 100%) padding-box, var(--rainbow-gradient) border-box;
+  color: #FFFFFF;
+  font-weight: 700;
+  border-radius: 0.75rem;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 16px rgba(157, 23, 77, 0.28);
+}
+
+.btn-withdraw-color:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 22px rgba(157, 23, 77, 0.38);
+  filter: brightness(1.08);
+}
+
 /* 5. Static Badges (Rectangular) */
 .badge-rainbow {
   border: 1.5px solid transparent;
