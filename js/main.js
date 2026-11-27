@@ -788,17 +788,38 @@ function initAuthModal() {
     }
   }
 
-  // Handle Logout
+  // Handle Logout (Show splash screen while signing out)
   async function handleLogout() {
     try {
+      const existingSplash = document.getElementById('giga-splash-screen');
+      if (existingSplash && existingSplash.parentNode) {
+        existingSplash.parentNode.removeChild(existingSplash);
+      }
+      if (typeof window.injectGigaSplash === 'function') {
+        window.injectGigaSplash('Logging out securely...');
+      }
+
       if (window.gigachainAuth) {
-        await window.gigachainAuth.signOut();
+        await Promise.race([
+          window.gigachainAuth.signOut(),
+          new Promise(resolve => setTimeout(resolve, 1200))
+        ]);
       }
       localStorage.removeItem('gigachain_current_user');
       localStorage.removeItem('gigachain_username');
-      showToast('Logged out successfully.', 'info');
       updateAuthStateUI(null);
+
+      setTimeout(() => {
+        const splash = document.getElementById('giga-splash-screen');
+        if (splash) {
+          splash.style.opacity = '0';
+          setTimeout(() => { if (splash.parentNode) splash.parentNode.removeChild(splash); }, 500);
+        }
+        showToast('Logged out successfully.', 'info');
+      }, 600);
     } catch (err) {
+      const splash = document.getElementById('giga-splash-screen');
+      if (splash && splash.parentNode) splash.parentNode.removeChild(splash);
       showToast(err.message || 'Error signing out', 'error');
     }
   }

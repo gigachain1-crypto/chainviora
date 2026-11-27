@@ -279,15 +279,40 @@ function initDashboardUser() {
     }
   });
 
-  // Logout Action
+  // Logout Action (Show full GIGACHAIN flash splash loading screen immediately on click)
   const logoutBtn = document.getElementById('logoutBtn');
   if (logoutBtn) {
-    logoutBtn.addEventListener('click', () => {
+    logoutBtn.addEventListener('click', async () => {
+      if (logoutBtn.disabled) return;
+      logoutBtn.disabled = true;
+
+      // Immediately show full-screen GIGACHAIN splash loading screen
+      try {
+        const existingSplash = document.getElementById('giga-splash-screen');
+        if (existingSplash && existingSplash.parentNode) {
+          existingSplash.parentNode.removeChild(existingSplash);
+        }
+        if (typeof window.injectGigaSplash === 'function') {
+          window.injectGigaSplash('Logging out securely...');
+        }
+      } catch (e) { }
+
       localStorage.removeItem('gigachain_current_user');
-      showToast('Logged out of dashboard.', 'info');
+      localStorage.removeItem('gigachain_username');
+
+      // Sign out from Supabase (capped at 1.2s so slow network never blocks redirect)
+      try {
+        if (window.gigachainAuth && typeof window.gigachainAuth.signOut === 'function') {
+          await Promise.race([
+            window.gigachainAuth.signOut(),
+            new Promise(resolve => setTimeout(resolve, 1200))
+          ]);
+        }
+      } catch (e) { }
+
       setTimeout(() => {
         window.location.href = 'index.html';
-      }, 700);
+      }, 650);
     });
   }
 }
