@@ -53,6 +53,27 @@ body {
   box-shadow: 0 12px 28px -4px rgba(121, 40, 202, 0.12), 0 4px 12px -2px rgba(212, 175, 55, 0.15);
 }
 
+/* Buy & Sell Marketplace Cards with Crisp Full-Clarity Custom Background Images (Zero Blur) */
+.multi-border-card.card-bg-buy {
+  background-color: #FAF8F2 !important;
+  background-image: url('../assets/bg-buy-giga.jpg'), var(--rainbow-gradient) !important;
+  background-size: cover, 100% 100% !important;
+  background-position: center, center !important;
+  background-repeat: no-repeat, no-repeat !important;
+  background-origin: padding-box, border-box !important;
+  background-clip: padding-box, border-box !important;
+}
+
+.multi-border-card.card-bg-sell {
+  background-color: #FAF8F2 !important;
+  background-image: url('../assets/bg-sell-giga.jpg'), var(--rainbow-gradient) !important;
+  background-size: 100% 100%, 100% 100% !important;
+  background-position: center, center !important;
+  background-repeat: no-repeat, no-repeat !important;
+  background-origin: padding-box, border-box !important;
+  background-clip: padding-box, border-box !important;
+}
+
 /* 2. Static Conic / Rainbow Box (No spinning, completely stable) */
 .conic-border-box {
   position: relative;
