@@ -482,7 +482,7 @@
       <!-- BUY BOX (Col 8 / Left Pane: 100 GIGA List @ $30 each) -->
       <div class="lg:col-span-8 multi-border-card card-bg-buy p-3.5 sm:p-7 shadow-xl flex flex-col justify-between">
         <div>
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-amber-900/10">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-2.5 sm:p-3 rounded-xl bg-white/95 border border-amber-200/80 shadow-xs">
             <div class="flex items-center gap-3">
               <img src="assets/icon-buy-pool.svg" alt="Buy GIGA (Available Pool)"
                 class="w-10 h-10 rounded-xl object-contain drop-shadow-sm select-none">
@@ -503,7 +503,7 @@
           </div>
 
           <!-- Pool Info Bar -->
-          <div class="mt-3.5 flex items-center justify-between gap-3 text-xs text-slate-500 font-medium">
+          <div class="mt-3 px-2.5 py-1.5 rounded-lg bg-white/90 border border-slate-200/80 flex items-center justify-between gap-2 text-xs text-slate-600 font-medium">
             <div class="flex items-center gap-1.5">
               <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
               <span class="font-bold text-slate-700">Available Units in Pool</span>
@@ -517,10 +517,10 @@
 
           <!-- 100 GIGA Scrollable List Table -->
           <div
-            class="mt-4 max-h-[380px] overflow-y-auto rounded-xl border border-amber-900/15 divide-y divide-slate-200/70 bg-white/45">
+            class="mt-3 max-h-[380px] overflow-y-auto rounded-xl border border-amber-900/15 divide-y divide-slate-200/70 bg-white/80">
             <table class="w-full text-left text-xs">
               <thead
-                class="sticky top-0 bg-white/90 text-slate-600 font-bold uppercase tracking-wider text-[11px] border-b border-amber-900/15">
+                class="sticky top-0 z-10 bg-white text-slate-600 font-bold uppercase tracking-wider text-[11px] border-b border-slate-200">
                 <tr>
                   <th class="py-2.5 px-4">Quantity</th>
                   <th class="py-2.5 px-4">Price (USD)</th>
@@ -535,16 +535,16 @@
           </div>
         </div>
 
-        <div class="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
-          <span>* Click any row's <strong>Buy ($30)</strong> button to purchase 1 GIGA.</span>
-          <span class="font-mono text-emerald-600 font-bold">USDT Auto-Deduction</span>
+        <div class="mt-3 p-2.5 sm:px-3.5 rounded-xl bg-white/95 border border-amber-200/80 shadow-xs flex items-center justify-between gap-2 text-[11px] text-slate-600">
+          <span>* Click any row's <strong class="text-slate-900">Buy ($30)</strong> button to purchase 1 GIGA.</span>
+          <span class="font-mono text-emerald-700 font-bold shrink-0">USDT Auto-Deduction</span>
         </div>
       </div>
 
       <!-- SELL BOX (Col 4 / Right Pane: My Pending Sell Queue) -->
       <div class="lg:col-span-4 multi-border-card card-bg-sell p-3.5 sm:p-7 shadow-xl flex flex-col justify-between">
         <div>
-          <div class="flex items-center justify-between pb-4 border-b border-amber-900/10">
+          <div class="flex items-center justify-between p-2.5 sm:p-3 rounded-xl bg-white/95 border border-amber-200/80 shadow-xs">
             <div class="flex items-center gap-3">
               <img src="assets/icon-sell-queue.svg" alt="Sell GIGA"
                 class="w-10 h-10 rounded-xl object-contain drop-shadow-sm select-none">
@@ -584,16 +584,16 @@
           </div>
 
           <!-- List of User's Pending Sells -->
-          <div class="mt-4">
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Your Pending Sell Queue</span>
-              <span class="text-[11px] text-slate-500 font-mono font-bold">1 GIGA = $30</span>
+          <div class="mt-3.5">
+            <div class="flex items-center justify-between mb-2 px-2.5 py-1.5 rounded-lg bg-white/95 border border-slate-200/80">
+              <span class="text-[11px] font-bold uppercase tracking-wider text-slate-600">Your Pending Sell Queue</span>
+              <span class="text-[11px] text-slate-700 font-mono font-bold">1 GIGA = $30</span>
             </div>
 
             <div id="pendingSellListContainer" class="max-h-[260px] overflow-y-auto space-y-2 pr-1">
               <!-- Empty state initially -->
               <div id="emptyPendingSellNotice"
-                class="p-6 rounded-xl border border-dashed border-slate-200 text-center text-slate-400">
+                class="p-6 rounded-xl bg-white/90 border border-dashed border-slate-300 text-center text-slate-500">
                 <svg class="w-8 h-8 text-slate-300 mx-auto mb-1.5" fill="none" stroke="currentColor"
                   viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
@@ -609,7 +609,7 @@
 
         <!-- Info Notice -->
         <div
-          class="mt-4 p-3 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-500 flex items-start gap-2">
+          class="mt-3.5 p-3 rounded-xl bg-white/95 border border-amber-200/80 shadow-xs text-[11px] text-slate-600 flex items-start gap-2">
           <svg class="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
               d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />

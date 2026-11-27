@@ -74,6 +74,18 @@ body {
   background-clip: padding-box, border-box !important;
 }
 
+@media (max-width: 767px) {
+  .multi-border-card.card-bg-buy {
+    background-image: url('../assets/bg-buy-giga-mobile.jpg'), var(--rainbow-gradient) !important;
+    background-size: 100% 100%, 100% 100% !important;
+  }
+
+  .multi-border-card.card-bg-sell {
+    background-image: url('../assets/bg-sell-giga-mobile.jpg'), var(--rainbow-gradient) !important;
+    background-size: 100% 100%, 100% 100% !important;
+  }
+}
+
 /* 2. Static Conic / Rainbow Box (No spinning, completely stable) */
 .conic-border-box {
   position: relative;
